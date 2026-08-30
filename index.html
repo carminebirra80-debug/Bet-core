@@ -458,6 +458,40 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return t;
   }
 
+  // Raggruppa per mese solo le pick ufficiali chiuse che incidono sulla cassa.
+  function riepilogoMensile(){
+    var mesi = {}, i, g;
+    for(i=0;i<S.giocate.length;i++){
+      g = S.giocate[i];
+      if(g.osservata || (g.statoCore && g.statoCore!=="ufficiale") || g.esito==="aperta") continue;
+      var m = String(g.data||"").slice(0,7);
+      if(!/^\d{4}-\d{2}$/.test(m)) continue;
+      if(!mesi[m]) mesi[m] = { mese:m, n:0, giocato:0, profitto:0 };
+      mesi[m].n++;
+      mesi[m].giocato += Number(g.stake)||0;
+      mesi[m].profitto += Number(g.profitto)||0;
+    }
+    var versPerMese = {};
+    for(i=0;i<S.versamenti.length;i++){
+      var vm = String(S.versamenti[i].data||"").slice(0,7);
+      if(!/^\d{4}-\d{2}$/.test(vm)) continue;
+      versPerMese[vm] = (versPerMese[vm]||0) + (Number(S.versamenti[i].importo)||0);
+    }
+    var chiavi = Object.keys(mesi).concat(Object.keys(versPerMese));
+    var uniche = chiavi.filter(function(v,idx){ return chiavi.indexOf(v)===idx; });
+    return uniche.sort().reverse().map(function(m){
+      var d = mesi[m] || { mese:m, n:0, giocato:0, profitto:0 };
+      var v = versPerMese[m] || 0;
+      return { mese:m, n:d.n, giocato:d.giocato, profitto:d.profitto,
+        roi: d.giocato ? (d.profitto/d.giocato)*100 : 0, versato:v };
+    });
+  }
+
+  function etichettaMese(chiave){
+    var p=String(chiave||"").split("-");
+    return p.length===2 ? nomeMese(Number(p[1]))+" "+p[0] : String(chiave||"");
+  }
+
   function conti(){
     var chiuse=[], aperte=[], i, g;
     for(i=0;i<S.giocate.length;i++){
@@ -1304,7 +1338,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       mesi.forEach(function(m, idx){
         listaMesi.appendChild(el("div",{"class":"mese"+(idx===0?" mese-corrente":"")},[
           el("div",{"class":"mese-top"},[
-            el("span",{"text":nomeMese(m.mese)}),
+            el("span",{"text":etichettaMese(m.mese)}),
             el("span",{"class":"tab","style":{fontWeight:"600",
               color: m.n===0 ? "#4A5A68" : m.profitto>=0 ? "#4FB286" : "#D4635F"},
               "text": m.n===0 ? "\u2014" : segnato(m.profitto)})
