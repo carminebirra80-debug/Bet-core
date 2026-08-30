@@ -230,6 +230,53 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return v.map(function(x){ return {evento:String(x&&x.evento||""),mercato:String(x&&x.mercato||"")}; });
   }
 
+  function testoChiave(v){
+    return String(v||"").trim().toLowerCase().replace(/\s+/g," ");
+  }
+
+  function chiaveSemantica(g){
+    return [g.data||"",g.tipster||"",testoChiave(g.evento||g.nota),testoChiave(g.mercato),
+      testoChiave(g.nota),Number(g.stake||0).toFixed(2),g.faseIngresso||"PRE"].join("|");
+  }
+
+  function deduplicaGiocate(lista){
+    var gruppi={};
+    (lista||[]).forEach(function(g){
+      var k=chiaveSemantica(g);
+      if(!gruppi[k]) gruppi[k]=[];
+      gruppi[k].push(g);
+    });
+    var pulite=[];
+    Object.keys(gruppi).forEach(function(k){
+      var gruppo=gruppi[k],conTicket={},senza=[];
+      gruppo.forEach(function(g){
+        var t=String(g.ticketId||"").trim().toUpperCase();
+        if(t) conTicket[t]=g;
+        else senza.push(g);
+      });
+      var tickets=Object.keys(conTicket);
+      if(tickets.length){
+        tickets.forEach(function(t){pulite.push(conTicket[t]);});
+      }else if(senza.length){
+        pulite.push(senza[senza.length-1]);
+      }
+    });
+    return pulite;
+  }
+
+  function hashBreve(s){
+    var h=2166136261;
+    for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+    return (h>>>0).toString(36);
+  }
+
+  function legacyCloud(g){
+    if(g.cloudLegacyId) return String(g.cloudLegacyId);
+    var t=String(g.ticketId||"").trim().toUpperCase();
+    if(t) return "ticket:"+t;
+    return "pick:"+hashBreve([chiaveSemantica(g),Number(g.quota||0).toFixed(3)].join("|"));
+  }
+
   function valoreDataOraLocale(iso){
     if(!iso) return "";
     var d=new Date(iso); if(isNaN(d.getTime())) return "";
@@ -372,6 +419,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           x.tipoSchedina=x.tipoSchedina||((x.nota||"").toLowerCase().indexOf("multipla")>=0?"MULTIPLA":"SINGOLA");
           x.gambe=normalizzaGambe(x.gambe);
         });
+        S.giocate=deduplicaGiocate(S.giocate);
         S.versamenti = d.versamenti || [];
         // Migrazione dalla vecchia "cassa iniziale"
         if(!S.versamenti.length && d.cassaIniziale){
@@ -384,6 +432,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   }
   function salva(soloLocale){
     try{
+      S.giocate=deduplicaGiocate(S.giocate);
       localStorage.setItem(CHIAVE, JSON.stringify({
         giocate:S.giocate, versamenti:S.versamenti,
         tetti:S.tetti, budgetMese:S.budgetMese
@@ -402,7 +451,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return m[x]||"Aperta";
   }
   function pickCloud(g){
-    return { user_id:CLOUD.user.id, legacy_id:String(g.id), data:g.data, tipster:g.tipster, evento:g.evento||null, mercato:g.mercato||null, nota:g.nota||null,
+    return { user_id:CLOUD.user.id, legacy_id:legacyCloud(g), data:g.data, tipster:g.tipster, evento:g.evento||null, mercato:g.mercato||null, nota:g.nota||null,
       quota:Number(g.quota), quota_check:nval(g.quotaCheck), confidence:nval(g.confidence), debrief:g.debrief||null, stake:Number(g.stake||0),
       esito:normalizzaEsitoCloud(g.esito), profitto:Number(g.profitto||0), tipo:g.osservata?"osservata":"reale", stato_core:g.statoCore||(g.osservata?"scartata":"ufficiale"), motivo_scarto:g.motivoScarto||null,
       bookmaker:g.bookmaker||"Sportium", fase_ingresso:g.faseIngresso||"PRE", classificazione:classificazioneLegacy(g),
@@ -432,10 +481,15 @@ textarea{width:100%;min-height:78px;resize:vertical}
     CLOUD.busy=true; CLOUD.stato="Sincronizzazione…"; if(!silenzioso)disegna();
     try{
       await utenteCloudVerificato();
-      var r1=await DB.from("picks").delete().eq("user_id",CLOUD.user.id); if(r1.error) throw r1.error;
-      if(S.giocate.length){ var r2=await DB.from("picks").insert(S.giocate.map(pickCloud)); if(r2.error) throw r2.error; }
-      var r3=await DB.from("versamenti").delete().eq("user_id",CLOUD.user.id); if(r3.error) throw r3.error;
-      if(S.versamenti.length){ var r4=await DB.from("versamenti").insert(S.versamenti.map(versaCloud)); if(r4.error) throw r4.error; }
+      S.giocate=deduplicaGiocate(S.giocate);
+      if(S.giocate.length){
+        var r2=await DB.from("picks").upsert(S.giocate.map(pickCloud),{onConflict:"user_id,legacy_id"});
+        if(r2.error) throw r2.error;
+      }
+      if(S.versamenti.length){
+        var r4=await DB.from("versamenti").upsert(S.versamenti.map(versaCloud),{onConflict:"user_id,legacy_id"});
+        if(r4.error) throw r4.error;
+      }
       var imp={user_id:CLOUD.user.id,budget_mensile:Number(S.budgetMese),limite_sabato:Number(S.tetti.sabato),limite_domenica:Number(S.tetti.domenica),limite_feriali:Number(S.tetti.feriali),updated_at:new Date().toISOString()};
       var r5=await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"}); if(r5.error) throw r5.error;
       CLOUD.remoteCount=S.giocate.length;
@@ -453,7 +507,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     }
   }
   function daCloudPick(g){
-    return {id:g.legacy_id||g.id,data:g.data,tipster:g.tipster,evento:g.evento||"",mercato:g.mercato||"",nota:g.nota||"",
+    return {id:g.legacy_id||g.id,cloudLegacyId:g.legacy_id||null,data:g.data,tipster:g.tipster,evento:g.evento||"",mercato:g.mercato||"",nota:g.nota||"",
       quota:Number(g.quota),quotaCheck:g.quota_check==null?null:Number(g.quota_check),confidence:g.confidence,debrief:g.debrief||"",
       stake:Number(g.stake||0),esito:String(g.esito||"aperta").toLowerCase(),profitto:Number(g.profitto||0),
       osservata:g.tipo==="osservata",statoCore:g.stato_core||"candidata",motivoScarto:g.motivo_scarto||"",
@@ -462,17 +516,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
   }
   function chiavePick(g){
     if(g.ticketId) return "ticket:"+String(g.ticketId).toUpperCase();
-    if(g.id!==undefined && g.id!==null && String(g.id)!=="") return "id:"+String(g.id);
-    return "evt:"+[g.data||"",String(g.evento||"").toLowerCase(),String(g.mercato||"").toLowerCase(),String(g.tipster||"")].join("|");
+    return "sem:"+chiaveSemantica(g);
   }
   function riconciliaCloudPicks(remote){
-    var mappa={};
-    S.giocate.forEach(function(g){mappa[chiavePick(g)]=g;});
-    remote.forEach(function(g){
-      var k=chiavePick(g);
-      mappa[k]=g; // il cloud prevale sulla stessa pick
-    });
-    return Object.keys(mappa).map(function(k){return mappa[k];}).sort(function(a,b){
+    return deduplicaGiocate(S.giocate.concat(remote)).sort(function(a,b){
       if(a.data===b.data) return String(a.id).localeCompare(String(b.id));
       return a.data<b.data?-1:1;
     });
@@ -1202,8 +1249,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
             el("button",{"text":"Modifica","onclick":apriModifica}),
             el("button",{"text":"Elimina","onclick":function(){
               if(!window.confirm("Eliminare definitivamente questa pick?")) return;
-              S.giocate = S.giocate.filter(function(x){ return x.id!==g.id; });
-              salva(); disegna();
+              void eliminaGiocata(g);
             }})
           ])
         ]);
@@ -1212,8 +1258,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
           el("button",{"text":"Modifica","onclick":apriModifica}),
           el("button",{"text":"Correggi esito","onclick":function(){ void correggiEsito(g.id); }}),
           el("button",{"text":"Elimina","onclick":function(){
-            S.giocate = S.giocate.filter(function(x){ return x.id!==g.id; });
-            salva(); disegna();
+            if(!window.confirm("Eliminare definitivamente questa pick?")) return;
+            void eliminaGiocata(g);
           }})
         ]);
       }
@@ -1258,7 +1304,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var rr=await DB.from("picks")
       .select("id,legacy_id,data,tipster,evento,mercato,nota,quota,quota_check,confidence,debrief,stake,esito,profitto,tipo,stato_core,motivo_scarto,bookmaker,fase_ingresso,classificazione,ticket_id,orario_ingresso,tipo_schedina,gambe")
       .eq("user_id",CLOUD.user.id)
-      .eq("legacy_id",String(g.id))
+      .eq("legacy_id",legacyCloud(g))
       .maybeSingle();
     if(rr.error) throw rr.error;
     return rr.data||null;
@@ -1266,12 +1312,30 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
   function ripristinaDaRigaCloud(g,r){
     if(!r) return;
+    g.cloudLegacyId=r.legacy_id||g.cloudLegacyId||null;
     g.data=r.data; g.tipster=r.tipster; g.evento=r.evento||""; g.mercato=r.mercato||""; g.nota=r.nota||"";
     g.quota=Number(r.quota); g.quotaCheck=r.quota_check==null?null:Number(r.quota_check);
     g.confidence=r.confidence; g.debrief=r.debrief||""; g.stake=Number(r.stake||0);
     g.osservata=r.tipo==="osservata"; g.statoCore=r.stato_core||"candidata"; g.motivoScarto=r.motivo_scarto||"";
     g.bookmaker=r.bookmaker||"Sportium"; g.faseIngresso=r.fase_ingresso||"PRE"; g.classificazione=r.classificazione||classificazioneLegacy(g);
     g.ticketId=r.ticket_id||""; g.orarioIngresso=r.orario_ingresso||""; g.tipoSchedina=r.tipo_schedina||"SINGOLA"; g.gambe=normalizzaGambe(r.gambe);
+  }
+
+  async function eliminaGiocata(g){
+    try{
+      if(DB && CLOUD.user){
+        await utenteCloudVerificato();
+        var rr=await DB.from("picks").delete().eq("user_id",CLOUD.user.id).eq("legacy_id",legacyCloud(g));
+        if(rr.error) throw rr.error;
+      }
+      S.giocate=S.giocate.filter(function(x){return String(x.id)!==String(g.id);});
+      salva(true);
+      CLOUD.stato="Giocata eliminata";
+      S.errore=null;
+    }catch(e){
+      S.errore="Eliminazione non riuscita: "+(e.message||e);
+    }
+    disegna();
   }
 
   async function correggiEsito(id){
@@ -1312,7 +1376,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         var up=await DB.from("picks").update({
           esito:normalizzaEsitoCloud(esito),
           profitto:Number(profitto.toFixed(2))
-        }).eq("user_id",CLOUD.user.id).eq("legacy_id",String(g.id));
+        }).eq("user_id",CLOUD.user.id).eq("legacy_id",legacyCloud(g));
         if(up.error) throw up.error;
       }
 
