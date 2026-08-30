@@ -483,7 +483,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var d = mesi[m] || { mese:m, n:0, giocato:0, profitto:0 };
       var v = versPerMese[m] || 0;
       return { mese:m, n:d.n, giocato:d.giocato, profitto:d.profitto,
-        roi: d.giocato ? (d.profitto/d.giocato)*100 : 0, versato:v };
+        roi: d.giocato ? (d.profitto/d.giocato)*100 : 0,
+        versato:v,
+        rendimento: v ? (d.profitto/v)*100 : null };
     });
   }
 
@@ -1348,6 +1350,15 @@ textarea{width:100%;min-height:78px;resize:vertical}
               ? m.n+(m.n===1?" giocata":" giocate")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
               : "nessuna giocata"}),
             el("span",{"class":"tab","text": m.versato>0 ? "versati "+euro(m.versato) : ""})
+          ]),
+          el("div",{"class":"mese-riga","style":{marginTop:"6px"}},[
+            el("span",{"text":"Rendimento sul versato"}),
+            el("span",{"class":"tab","style":{
+              fontWeight:"600",
+              color: m.rendimento===null ? "#4A5A68" : m.rendimento>=0 ? "#4FB286" : "#D4635F"
+            },"text": m.rendimento===null
+              ? "\u2014"
+              : (m.rendimento>=0?"+":"")+m.rendimento.toFixed(1)+"%"})
           ])
         ]));
       });
