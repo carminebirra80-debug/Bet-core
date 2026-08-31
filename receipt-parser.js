@@ -77,6 +77,7 @@
       .replace(/MULTI\s*GOAL/g, "MULTIGOAL")
       .replace(/NO\s+GOL\b/g, "NO GOAL")
       .replace(/\bSORE\b/g, "OSPITE")
+      .replace(/\b(?:SEITE|SE1TE|5EITE)\b/g, "OSPITE")
       .replace(/\bOSPI(?:R|T|I|L|1)[A-Z0-9]*\b/g, "OSPITE")
       .replace(/\bOSP\s*ITE\b/g, "OSPITE")
       .replace(/\bCAS[A4]\b/g, "CASA")
@@ -93,10 +94,10 @@
       var s = normalizzaParoleMercato(riga);
       if(!s || rumoreInterfaccia(s) || sembraRigaProgramma(s) || sembraEvento(s)) return;
       s = s
-        .replace(/\bS[I1]\s*[|Il!]?\s*\d+[.,]\d{1,3}\s*$/i, "")
-        .replace(/\bS[I1]\s*[|Il!]?\s*\d{2,4}\s*$/i, "")
-        .replace(/[|Il!]\s*\d+[.,]\d{1,3}\s*$/i, "")
-        .replace(/[|Il!]\s*\d{2,4}\s*$/i, "")
+        .replace(/\bS[I1]\s*[\[\](){|Il!]?\s*\d+[.,]\d{1,3}\s*$/i, "")
+        .replace(/\bS[I1]\s*[\[\](){|Il!]?\s*\d{2,4}\s*$/i, "")
+        .replace(/[\[\](){|Il!]\s*\d+[.,]\d{1,3}\s*$/i, "")
+        .replace(/[\[\](){|Il!]\s*\d{2,4}\s*$/i, "")
         .replace(/\s+\d+[.,]\d{1,3}\s*$/i, "")
         .replace(/^S[I1]\s*[|Il!]\s*/i, "")
         .replace(/^[-+|:;,.\s]+|[-+|:;,.\s]+$/g, "")
@@ -194,4 +195,3 @@
     pulisciMercato:pulisciMercato
   };
 });
-
