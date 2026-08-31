@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.17</title>
+<title>Registro BET Core v4.18</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -143,6 +143,20 @@ li.vers{display:flex;justify-content:space-between;align-items:baseline;gap:12px
 .secondario:disabled{color:var(--spento)}
 .avviso{font-size:11px;color:var(--spento);line-height:1.5;margin:12px 0 0}
 .errore{font-size:12px;color:var(--rosso);margin:12px 0 0}
+.ricevuta-import{border:1px solid #4E9AA855;background:#4E9AA80F;border-radius:4px;
+  padding:14px;margin-bottom:20px}
+.ricevuta-import-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ricevuta-import h2{font-size:14px;font-weight:600;margin:0;color:var(--testo)}
+.ricevuta-import p{font-size:11px;line-height:1.5;color:var(--tenue2);margin:6px 0 0}
+.ricevuta-azione{width:auto;flex:0 0 auto;padding:10px 12px;border:1px solid #4E9AA8;
+  border-radius:4px;color:#8EC3CE;font-size:12px;font-weight:600}
+.ricevuta-azione:disabled{border-color:var(--bordo);color:var(--spento)}
+.ricevuta-progresso{height:4px;background:var(--bordo2);border-radius:99px;overflow:hidden;margin-top:12px}
+.ricevuta-progresso span{display:block;height:100%;background:#4E9AA8;transition:width .2s}
+.ricevuta-esito{margin-top:12px;padding-top:12px;border-top:1px solid #4E9AA833}
+.ricevuta-esito strong{display:block;font-size:12px;color:#8EC3CE;margin-bottom:4px}
+.ricevuta-esito .mercato-letto{font-size:12px;color:var(--testo);margin-top:8px}
+.ricevuta-warn{font-size:11px!important;color:#D9A15A!important}
 .core-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
 .core-card{border:1px solid var(--bordo);border-radius:4px;padding:14px;background:#111A22}
 .core-card .k{font-size:10px;color:var(--tenue);text-transform:uppercase;letter-spacing:.08em;margin:0 0 6px}
@@ -154,6 +168,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
+<script src="./receipt-parser.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
@@ -170,12 +185,151 @@ textarea{width:100%;min-height:78px;resize:vertical}
   var SUPABASE_KEY = "sb_publishable_gMT-w8cCqiMMKWOnNCA5DA_MDLIvTUe";
   var DB = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
   var CLOUD = { user:null, email:"", stato:"", busy:false, syncEnabled: localStorage.getItem("registro-tipster-cloud-sync")==="1", timer:null, pending:false, ultimaSyncOk:null, remoteCount:null, lastDownloadCount:null};
+  var OCR = { stato:"idle", progresso:0, fase:"", messaggio:"", risultato:null, libreria:null };
+  var OCR_CDN = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
   var S = {
     giocate:[], versamenti:[], budgetMese:200,
     tetti:{ sabato:20, domenica:20, feriali:10 },
     vista:"registro", filtro:"tutti", coreAnno:"", coreMese:"", coreStagione:"", errore:null, editingId:null,
-    form:{ data:oggi(), tipster:"mercante", evento:"", mercato:"", nota:"", quota:"", quotaCheck:"", confidence:"3", debrief:"", statoCore:"candidata", stake:"", toccato:false, osservata:false }
+    form:formVuoto(oggi(),"mercante")
   };
+
+  function formVuoto(data,tipster){
+    return { data:data||oggi(), tipster:tipster||"mercante", evento:"", mercato:"", nota:"", quota:"", quotaCheck:"",
+      confidence:"3", debrief:"", statoCore:"candidata", stake:"", toccato:false, osservata:false,
+      ticketId:"", orarioIngresso:"", tipoSchedina:"SINGOLA", gambe:[] };
+  }
+
+  function normalizzaGambe(v){
+    if(!Array.isArray(v)) return [];
+    return v.map(function(x){return {evento:String(x&&x.evento||""),mercato:String(x&&x.mercato||"")};});
+  }
+
+  function valoreDataOraLocale(iso){
+    if(!iso) return "";
+    var d=new Date(iso); if(isNaN(d.getTime())) return String(iso).slice(0,16);
+    var z=function(n){return String(n).padStart(2,"0");};
+    return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+"T"+z(d.getHours())+":"+z(d.getMinutes());
+  }
+
+  function isoDaDataOraLocale(v){
+    if(!v) return null;
+    var d=new Date(v); return isNaN(d.getTime())?null:d.toISOString();
+  }
+
+  function formDaGiocata(g){
+    return { data:g.data, tipster:g.tipster, evento:g.evento||"", mercato:g.mercato||"", nota:g.nota||"",
+      quota:String(g.quota), quotaCheck:g.quotaCheck ? String(g.quotaCheck) : "", confidence:g.confidence ? String(g.confidence) : "",
+      debrief:g.debrief||"", statoCore:g.statoCore||"candidata", stake:String(g.stake), toccato:true, osservata:!!g.osservata,
+      ticketId:g.ticketId||"", orarioIngresso:valoreDataOraLocale(g.orarioIngresso), tipoSchedina:g.tipoSchedina||"SINGOLA",
+      gambe:normalizzaGambe(g.gambe) };
+  }
+
+  function caricaLibreriaOCR(){
+    if(window.Tesseract) return Promise.resolve(window.Tesseract);
+    if(OCR.libreria) return OCR.libreria;
+    OCR.libreria=new Promise(function(resolve,reject){
+      var s=document.createElement("script");
+      s.src=OCR_CDN; s.async=true; s.crossOrigin="anonymous";
+      s.onload=function(){window.Tesseract?resolve(window.Tesseract):reject(new Error("Motore OCR non disponibile"));};
+      s.onerror=function(){reject(new Error("Impossibile caricare il lettore. Controlla la connessione Internet."));};
+      document.head.appendChild(s);
+    }).catch(function(e){OCR.libreria=null;throw e;});
+    return OCR.libreria;
+  }
+
+  function chiaveEventoRicevuta(v){
+    return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/\bbarca\b/g,"barcellona").replace(/[^a-z0-9]+/g," ").trim();
+  }
+
+  function trovaGiocataRicevuta(r){
+    var ticket=String(r.ticketId||"").toUpperCase();
+    if(ticket){
+      var esatta=S.giocate.find(function(g){return String(g.ticketId||"").toUpperCase()===ticket;});
+      if(esatta) return esatta;
+    }
+    if(!r.data || !r.quota || !r.stake) return null;
+    var eventoLetto=r.eventi&&r.eventi[0]?chiaveEventoRicevuta(r.eventi[0].evento):"";
+    var possibili=S.giocate.filter(function(g){
+      if(g.data!==r.data || String(g.esito||"").toLowerCase()!=="aperta") return false;
+      if(Math.abs(Number(g.quota||0)-Number(r.quota))>.001 || Math.abs(Number(g.stake||0)-Number(r.stake))>.01) return false;
+      if(!eventoLetto) return true;
+      var esistente=chiaveEventoRicevuta(g.evento||g.nota);
+      var prima=eventoLetto.split(" ")[0];
+      return !esistente || esistente.indexOf(prima)>=0 || eventoLetto.indexOf(esistente.split(" ")[0])>=0;
+    });
+    return possibili.length===1?possibili[0]:null;
+  }
+
+  function applicaRicevuta(r){
+    var esistente=trovaGiocataRicevuta(r);
+    if(esistente){S.editingId=esistente.id;S.form=formDaGiocata(esistente);}
+    if(r.data) S.form.data=r.data;
+    if(r.orarioIngresso) S.form.orarioIngresso=r.orarioIngresso;
+    if(r.ticketId) S.form.ticketId=r.ticketId;
+    if(r.quota) S.form.quota=r.quota.toFixed(2);
+    if(r.stake){S.form.stake=r.stake.toFixed(2);S.form.toccato=true;}
+    if(r.eventi&&r.eventi.length>1){
+      S.form.tipoSchedina="MULTIPLA";
+      S.form.evento="Multipla · "+r.eventi.length+" gambe"; S.form.mercato="MULTIPLA";
+      S.form.gambe=r.eventi.map(function(x){return {evento:x.evento,mercato:x.mercato};});
+    }else if(r.eventi&&r.eventi.length===1){
+      S.form.tipoSchedina="SINGOLA";
+      S.form.evento=r.eventi[0].evento; S.form.mercato=r.eventi[0].mercato; S.form.gambe=[];
+    }
+    OCR.risultato=r; OCR.stato="ready"; OCR.progresso=100;
+    OCR.messaggio=esistente
+      ? "Collegata alla giocata già presente: controlla e salva la modifica."
+      : "Dati inseriti: controlla e registra.";
+    S.errore=null;
+  }
+
+  async function leggiRicevutaSportium(file){
+    if(!file) return;
+    if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
+    OCR.stato="loading";OCR.progresso=1;OCR.fase="Caricamento lettore";OCR.messaggio="";OCR.risultato=null;disegna();
+    var worker=null,ultimo=-1;
+    try{
+      var T=await caricaLibreriaOCR();
+      worker=await T.createWorker("eng",1,{logger:function(m){
+        var p=Math.max(1,Math.round(Number(m.progress||0)*100));
+        OCR.progresso=p;OCR.fase=m.status==="recognizing text"?"Lettura della ricevuta":"Preparazione del lettore";
+        if(p===100 || p-ultimo>=5){ultimo=p;disegna();}
+      }});
+      if(worker.setParameters) await worker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
+      var lettura=await worker.recognize(file);
+      applicaRicevuta(window.BetCoreReceiptParser.parseSportium(lettura&&lettura.data?lettura.data.text:""));
+    }catch(e){
+      OCR.stato="error";OCR.progresso=0;OCR.messaggio=e&&e.message?e.message:"Non sono riuscito a leggere questa immagine.";
+    }finally{
+      if(worker){try{await worker.terminate();}catch(_e){}}
+      disegna();
+    }
+  }
+
+  function pannelloRicevuta(){
+    var input=el("input",{"type":"file","accept":"image/*","style":{display:"none"}});
+    input.addEventListener("change",function(){var f=this.files&&this.files[0];if(f)void leggiRicevutaSportium(f);});
+    var occupato=OCR.stato==="loading";
+    var bottone=el("button",{"class":"ricevuta-azione","text":occupato?"Lettura…":"Scegli screenshot","disabled":occupato,
+      "onclick":function(){input.click();}});
+    var figli=[input,el("div",{"class":"ricevuta-import-top"},[
+      el("div",null,[el("h2",{"text":"Importa ricevuta Sportium"}),el("p",{"text":"La foto viene letta sul telefono e non caricata nel cloud."})]),bottone])];
+    if(occupato){
+      figli.push(el("div",{"class":"ricevuta-progresso"},[el("span",{"style":{width:OCR.progresso+"%"}})]));
+      figli.push(el("p",{"text":OCR.fase+" · "+OCR.progresso+"%"}));
+    }else if(OCR.stato==="ready"&&OCR.risultato){
+      var r=OCR.risultato;
+      var mercati=(r.eventi||[]).map(function(x){return x.evento+" — "+(x.mercato||"mercato da completare");}).join(" · ");
+      figli.push(el("div",{"class":"ricevuta-esito"},[el("strong",{"text":"Ricevuta letta"}),el("p",{"text":OCR.messaggio}),
+        el("p",{"class":"mercato-letto","text":mercati}),
+        r.avvisi&&r.avvisi.length?el("p",{"class":"ricevuta-warn","text":"Da controllare: "+r.avvisi.join(" · ")}):null]));
+    }else if(OCR.stato==="error"){
+      figli.push(el("div",{"class":"ricevuta-esito"},[el("strong",{"style":{color:"#D4635F"},"text":"Lettura non riuscita"}),el("p",{"text":OCR.messaggio})]));
+    }
+    return el("div",{"class":"ricevuta-import"},figli);
+  }
 
   function oggi(){
     var d = new Date();
@@ -276,6 +430,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
           if(x.quotaCheck==null) x.quotaCheck=null; if(x.confidence==null) x.confidence=null;
           if(x.debrief==null) x.debrief="";
           if(x.statoCore==null) x.statoCore = x.osservata ? "scartata" : "ufficiale";
+          x.ticketId=x.ticketId||""; x.orarioIngresso=x.orarioIngresso||"";
+          x.tipoSchedina=x.tipoSchedina||((x.mercato||"").toUpperCase()==="MULTIPLA"?"MULTIPLA":"SINGOLA");
+          x.gambe=normalizzaGambe(x.gambe);
         });
         S.versamenti = d.versamenti || [];
         // Migrazione dalla vecchia "cassa iniziale"
@@ -309,7 +466,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
   function pickCloud(g){
     return { user_id:CLOUD.user.id, legacy_id:String(g.id), data:g.data, tipster:g.tipster, evento:g.evento||null, mercato:g.mercato||null, nota:g.nota||null,
       quota:Number(g.quota), quota_check:nval(g.quotaCheck), confidence:nval(g.confidence), debrief:g.debrief||null, stake:Number(g.stake||0),
-      esito:normalizzaEsitoCloud(g.esito), profitto:Number(g.profitto||0), tipo:g.osservata?"osservata":"reale", stato_core:g.statoCore||(g.osservata?"scartata":"ufficiale"), motivo_scarto:g.motivoScarto||null };
+      esito:normalizzaEsitoCloud(g.esito), profitto:Number(g.profitto||0), tipo:g.osservata?"osservata":"reale", stato_core:g.statoCore||(g.osservata?"scartata":"ufficiale"), motivo_scarto:g.motivoScarto||null,
+      bookmaker:"Sportium", ticket_id:(g.ticketId||"").trim()||null, orario_ingresso:g.orarioIngresso||null,
+      tipo_schedina:g.tipoSchedina||"SINGOLA", gambe:normalizzaGambe(g.gambe) };
   }
   function versaCloud(v){ return {user_id:CLOUD.user.id, legacy_id:String(v.id), data:v.data, importo:Number(v.importo), nota:v.nota||null}; }
   function pianificaCloud(){
@@ -358,7 +517,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return {id:g.legacy_id||g.id,data:g.data,tipster:g.tipster,evento:g.evento||"",mercato:g.mercato||"",nota:g.nota||"",
       quota:Number(g.quota),quotaCheck:g.quota_check==null?null:Number(g.quota_check),confidence:g.confidence,debrief:g.debrief||"",
       stake:Number(g.stake||0),esito:String(g.esito||"aperta").toLowerCase(),profitto:Number(g.profitto||0),
-      osservata:g.tipo==="osservata",statoCore:g.stato_core||"candidata",motivoScarto:g.motivo_scarto||""};
+      osservata:g.tipo==="osservata",statoCore:g.stato_core||"candidata",motivoScarto:g.motivo_scarto||"",
+      ticketId:g.ticket_id||"",orarioIngresso:g.orario_ingresso||"",tipoSchedina:g.tipo_schedina||"SINGOLA",gambe:normalizzaGambe(g.gambe)};
   }
   function chiavePick(g){
     if(g.id!==undefined && g.id!==null && String(g.id)!=="") return "id:"+String(g.id);
@@ -780,6 +940,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
               g.nota=(S.form.nota||"").trim(); g.quota=q; g.quotaCheck=parseFloat(S.form.quotaCheck)||null;
               g.confidence=parseInt(S.form.confidence,10)||null; g.debrief=(S.form.debrief||"").trim(); g.statoCore=S.form.statoCore||"candidata"; g.stake=s;
               g.osservata = !!S.form.osservata;
+              g.ticketId=S.form.ticketId||""; g.orarioIngresso=isoDaDataOraLocale(S.form.orarioIngresso);
+              g.tipoSchedina=S.form.tipoSchedina||"SINGOLA"; g.gambe=normalizzaGambe(S.form.gambe);
               // se era gia chiusa, il profitto va ricalcolato sulla nuova quota/stake
               if(g.esito==="vinta") g.profitto = g.stake*g.quota - g.stake;
               else if(g.esito==="persa") g.profitto = -g.stake;
@@ -791,11 +953,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
             evento:(S.form.evento||"").trim(), mercato:(S.form.mercato||"").trim(),
             nota:(S.form.nota||"").trim(), quota:q, quotaCheck:parseFloat(S.form.quotaCheck)||null,
             confidence:parseInt(S.form.confidence,10)||null, debrief:(S.form.debrief||"").trim(), statoCore:S.form.statoCore||"candidata",
-            stake:s, esito:"aperta", profitto:0, osservata: !!S.form.osservata });
+            stake:s, esito:"aperta", profitto:0, osservata: !!S.form.osservata,
+            ticketId:S.form.ticketId||"", orarioIngresso:isoDaDataOraLocale(S.form.orarioIngresso),
+            tipoSchedina:S.form.tipoSchedina||"SINGOLA", gambe:normalizzaGambe(S.form.gambe) });
         }
         salva();
-        S.form = { data:S.form.data, tipster:S.form.tipster, evento:"", mercato:"", nota:"", quota:"", quotaCheck:"", confidence:"3", debrief:"", statoCore:"candidata", stake:"",
-          toccato:false, osservata:false };
+        S.form=formVuoto(S.form.data,S.form.tipster); OCR.stato="idle"; OCR.risultato=null;
         S.vista="registro"; disegna(); window.scrollTo(0,0);
       }});
     bottone.id = "bottone-registra";
@@ -805,8 +968,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       "style":{marginTop:"10px"},
       "onclick":function(){
         S.editingId = null;
-        S.form = { data:oggi(), tipster:"mercante", evento:"", mercato:"", nota:"", quota:"", quotaCheck:"", confidence:"3", debrief:"", statoCore:"candidata", stake:"",
-          toccato:false, osservata:false };
+        S.form=formVuoto(oggi(),"mercante"); OCR.stato="idle"; OCR.risultato=null;
         S.vista="registro"; disegna();
       }}) : null;
 
@@ -849,6 +1011,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var elementi=[
       vessillo,
+      pannelloRicevuta(),
       el("div",{"class":"gruppo"},[ el("label",{"text":"Tipster"}), scelte ]),
       el("div",{"class":"gruppo"},[ el("label",{"text":"Evento / partita"}), inEvento ]),
       el("div",{"class":"gruppo due"},[
@@ -1052,9 +1215,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       }
       function apriModifica(){
         S.editingId = g.id;
-        S.form = { data:g.data, tipster:g.tipster, evento:g.evento||"", mercato:g.mercato||"", nota:g.nota||"",
-          quota:String(g.quota), quotaCheck:g.quotaCheck ? String(g.quotaCheck) : "", confidence:g.confidence ? String(g.confidence) : "",
-          debrief:g.debrief||"", stake:String(g.stake), toccato:true, osservata: !!g.osservata };
+        S.form=formDaGiocata(g); OCR.stato="idle"; OCR.risultato=null;
         S.vista="nuova"; disegna(); window.scrollTo(0,0);
       }
       if(g.esito==="aperta"){
@@ -1110,6 +1271,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
               (g.quotaCheck ? " → "+g.quotaCheck.toFixed(2) : "")+(g.confidence ? " · C"+g.confidence : "")+" · "+
               "["+(g.statoCore|| (g.osservata?"scartata":"ufficiale"))+ "] · "+
               (g.osservata || (g.statoCore && g.statoCore!=="ufficiale") ? "non impegnata ("+euro(g.stake)+" teorici)" : "puntati "+euro(g.stake))}),
+          g.ticketId ? el("p",{"class":"core-dett","text":"Sportium · ADM "+g.ticketId}) : null,
+          g.tipoSchedina==="MULTIPLA" && g.gambe && g.gambe.length
+            ? el("p",{"class":"core-dett","text":g.gambe.map(function(x,i){return (i+1)+". "+x.evento+" — "+x.mercato;}).join(" · ")}) : null,
           g.debrief ? el("p",{"class":"core-dett","text":"Debrief: "+g.debrief}) : null,
           azioni
         ])
