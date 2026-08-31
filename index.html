@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.15</title>
+<title>Registro BET Core v4.16</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
 <style>
 :root{
@@ -186,7 +186,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var a=annoData(iso), m=meseData(iso); if(!a||!m) return "";
     return m>=7 ? a+"/"+String(a+1).slice(-2) : (a-1)+"/"+String(a).slice(-2);
   }
-  function nomeMese(m){ return ["","Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"][Number(m)]||""; }
+  function nomeMese(m){
+    var nomi=["","Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+    var parti=String(m==null?"":m).split("-");
+    if(parti.length>=2 && /^\d{4}$/.test(parti[0])){
+      return (nomi[Number(parti[1])]||parti[1])+" "+parti[0];
+    }
+    return nomi[Number(m)]||"";
+  }
   function euro(n){ return (n<0?"-":"")+"\u20AC"+Math.abs(n).toFixed(2).replace(".",","); }
   function segnato(n){ return (n>=0?"+":"-")+"\u20AC"+Math.abs(n).toFixed(2).replace(".",","); }
   function trova(id){
@@ -1323,6 +1330,31 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return pag;
   }
 
+  // Riepilogo finanziario mensile. Conta le pick analitiche reali una volta,
+  // ma somma stake e profitto di tutti i ticket che le compongono.
+  function riepilogoMensile(){
+    var mesi={}, i;
+    var logiche=gruppiCore(chiuseTutte()).filter(function(g){return g.reale;});
+    logiche.forEach(function(g){
+      var m=String(g.data||"").slice(0,7);
+      if(!m) return;
+      if(!mesi[m]) mesi[m]={mese:m,n:0,giocato:0,profitto:0};
+      mesi[m].n++; mesi[m].giocato+=g.stake; mesi[m].profitto+=g.profitto;
+    });
+    var versPerMese={};
+    for(i=0;i<S.versamenti.length;i++){
+      var vm=String(S.versamenti[i].data||"").slice(0,7);
+      if(vm) versPerMese[vm]=(versPerMese[vm]||0)+Number(S.versamenti[i].importo||0);
+    }
+    var chiavi=Object.keys(mesi).concat(Object.keys(versPerMese));
+    var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
+    return uniche.sort().reverse().map(function(m){
+      var d=mesi[m]||{mese:m,n:0,giocato:0,profitto:0};
+      return {mese:m,n:d.n,giocato:d.giocato,profitto:d.profitto,
+        roi:d.giocato?(d.profitto/d.giocato)*100:0,versato:versPerMese[m]||0};
+    });
+  }
+
   function vistaCassa(c){
     var pag = el("div",{"class":"pag"});
     var mese = versatoQuestoMese();
@@ -1381,7 +1413,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           ]),
           el("div",{"class":"mese-riga"},[
             el("span",{"text": m.n
-              ? m.n+(m.n===1?" giocata":" giocate")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
+              ? m.n+(m.n===1?" pick reale":" pick reali")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
               : "nessuna giocata"}),
             el("span",{"class":"tab","text": m.versato>0 ? "versati "+euro(m.versato) : ""})
           ])
