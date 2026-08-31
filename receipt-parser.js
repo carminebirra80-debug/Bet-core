@@ -50,6 +50,8 @@
   function normalizzaEvento(v){
     return compatta(v)
       .replace(/\s+v(?:s|\.)?\s+/i, " vs ")
+      .replace(/\s*\(\s*\d+\s*:\s*\d+\s*\).*$/i, "")
+      .replace(/\s*[~\-]+\s*$/g, "")
       .replace(/^[-|:;,.\s]+|[-|:;,.\s]+$/g, "");
   }
 
@@ -75,6 +77,9 @@
     var s = compatta(v).toUpperCase();
     s = s
       .replace(/MULTI\s*GOAL/g, "MULTIGOAL")
+      .replace(/\bMULTIG(?:L|OL)?\b/g, "MULTIGOAL")
+      .replace(/\bDC\s+OUT\b/g, "X2")
+      .replace(/\bMG\s*(\d+\s*-\s*\d+)\b/g, "MULTIGOAL $1")
       .replace(/NO\s+GOL\b/g, "NO GOAL")
       .replace(/\bSORE\b/g, "OSPITE")
       .replace(/\b(?:SEITE|SE1TE|5EITE)\b/g, "OSPITE")
@@ -109,6 +114,8 @@
       var q = String(quota.toFixed(2)).replace(".", "[.,]");
       mercato = mercato.replace(new RegExp("(?:SI\\s*)?[|Il!]?\\s*" + q + "\\s*$", "i"), "").trim();
     }
+    var combo = mercato.match(/\b(1X|X2|12)\s*\+\s*MULTIGOAL\s+(\d+)\s*-\s*(\d+)/i);
+    if(combo) mercato = combo[1].toUpperCase() + " + MULTIGOAL " + combo[2] + "-" + combo[3];
     return mercato;
   }
 

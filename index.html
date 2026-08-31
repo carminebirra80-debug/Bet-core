@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.18</title>
+<title>Registro BET Core v4.19</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -253,7 +253,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var eventoLetto=r.eventi&&r.eventi[0]?chiaveEventoRicevuta(r.eventi[0].evento):"";
     var possibili=S.giocate.filter(function(g){
       if(g.data!==r.data || String(g.esito||"").toLowerCase()!=="aperta") return false;
-      if(Math.abs(Number(g.quota||0)-Number(r.quota))>.001 || Math.abs(Number(g.stake||0)-Number(r.stake))>.01) return false;
+      if(Math.abs(Number(g.quota||0)-Number(r.quota))>.05 || Math.abs(Number(g.stake||0)-Number(r.stake))>.01) return false;
       if(!eventoLetto) return true;
       var esistente=chiaveEventoRicevuta(g.evento||g.nota);
       var prima=eventoLetto.split(" ")[0];
@@ -285,21 +285,67 @@ textarea{width:100%;min-height:78px;resize:vertical}
     S.errore=null;
   }
 
+  async function creaRicevutaAltoContrasto(file){
+    var sorgente;
+    if(window.createImageBitmap){
+      sorgente=await window.createImageBitmap(file);
+    }else{
+      sorgente=await new Promise(function(resolve,reject){
+        var url=URL.createObjectURL(file),img=new Image();
+        img.onload=function(){URL.revokeObjectURL(url);resolve(img);};
+        img.onerror=function(){URL.revokeObjectURL(url);reject(new Error("Immagine non leggibile"));};
+        img.src=url;
+      });
+    }
+    var w=sorgente.width||sorgente.naturalWidth,h=sorgente.height||sorgente.naturalHeight;
+    var scala=Math.min(1.5,2600/Math.max(w,h));
+    var canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(w*scala)); canvas.height=Math.max(1,Math.round(h*scala));
+    var ctx=canvas.getContext("2d",{willReadFrequently:true});
+    ctx.drawImage(sorgente,0,0,canvas.width,canvas.height);
+    if(sorgente.close) sorgente.close();
+    var immagine=ctx.getImageData(0,0,canvas.width,canvas.height),px=immagine.data;
+    for(var i=0;i<px.length;i+=4){
+      var luce=px[i]*.299+px[i+1]*.587+px[i+2]*.114;
+      var v=luce>=89?255:0; px[i]=v;px[i+1]=v;px[i+2]=v;px[i+3]=255;
+    }
+    ctx.putImageData(immagine,0,0);
+    return canvas;
+  }
+
+  function punteggioRicevuta(r){
+    var p=0;
+    if(r.ticketId)p+=2;if(r.data)p+=2;if(r.quota)p+=2;if(r.stake)p+=2;
+    (r.eventi||[]).forEach(function(x){if(x.evento)p+=1;if(x.mercato)p+=4;});
+    return p-(r.avvisi||[]).length;
+  }
+
   async function leggiRicevutaSportium(file){
     if(!file) return;
     if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
     OCR.stato="loading";OCR.progresso=1;OCR.fase="Caricamento lettore";OCR.messaggio="";OCR.risultato=null;disegna();
-    var worker=null,ultimo=-1;
+    var worker=null,ultimo=-1,altoContrasto=false;
     try{
       var T=await caricaLibreriaOCR();
       worker=await T.createWorker("eng",1,{logger:function(m){
         var p=Math.max(1,Math.round(Number(m.progress||0)*100));
-        OCR.progresso=p;OCR.fase=m.status==="recognizing text"?"Lettura della ricevuta":"Preparazione del lettore";
+        OCR.progresso=p;OCR.fase=m.status==="recognizing text"
+          ? (altoContrasto?"Recupero del mercato ad alto contrasto":"Lettura della ricevuta")
+          : "Preparazione del lettore";
         if(p===100 || p-ultimo>=5){ultimo=p;disegna();}
       }});
       if(worker.setParameters) await worker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
       var lettura=await worker.recognize(file);
-      applicaRicevuta(window.BetCoreReceiptParser.parseSportium(lettura&&lettura.data?lettura.data.text:""));
+      var risultato=window.BetCoreReceiptParser.parseSportium(lettura&&lettura.data?lettura.data.text:"");
+      var mancaMercato=(risultato.eventi||[]).some(function(x){return !x.mercato;});
+      if(mancaMercato){
+        altoContrasto=true;ultimo=-1;OCR.progresso=1;OCR.fase="Recupero del mercato ad alto contrasto";disegna();
+        var contrasto=await creaRicevutaAltoContrasto(file);
+        var letturaContrasto=await worker.recognize(contrasto);
+        var alternativa=window.BetCoreReceiptParser.parseSportium(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
+        if(punteggioRicevuta(alternativa)>punteggioRicevuta(risultato)) risultato=alternativa;
+      }
+      applicaRicevuta(risultato);
     }catch(e){
       OCR.stato="error";OCR.progresso=0;OCR.messaggio=e&&e.message?e.message:"Non sono riuscito a leggere questa immagine.";
     }finally{
