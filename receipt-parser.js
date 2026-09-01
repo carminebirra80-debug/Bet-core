@@ -128,6 +128,13 @@
       componenti.push({tipo:"MULTIGOAL_SQUADRA", squadra:m[3], min:Number(m[1]), max:Number(m[2])});
     }
     if(componenti.length) return {tipo:componenti.length > 1 ? "COMBO" : "MULTIGOAL_SQUADRA", componenti:componenti};
+    var dc=s.match(/(?:^|\W)(1X|X2|12)(?:\W|$)/);
+    var mg=s.match(/MULTIGOAL\s+(\d+)\s*-\s*(\d+)/);
+    if(dc&&mg) return {tipo:"COMBO",componenti:[
+      {tipo:"DOPPIA_CHANCE",selezione:dc[1]},
+      {tipo:"MULTIGOAL",min:Number(mg[1]),max:Number(mg[2])}
+    ]};
+    if(mg) return {tipo:"MULTIGOAL",componenti:[{tipo:"MULTIGOAL",min:Number(mg[1]),max:Number(mg[2])}]};
     if(/\bNO GOAL\b/.test(s)) return {tipo:"NO_GOAL", componenti:[]};
     if(/\bGOAL\b/.test(s)) return {tipo:"GOAL", componenti:[]};
     if(/\bOVER\b/.test(s)) return {tipo:"OVER", componenti:[]};

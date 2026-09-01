@@ -1,7 +1,7 @@
 {
   "name": "BET Core",
   "short_name": "BET Core",
-  "description": "Registro Tipster e BET Core",
+  "description": "Registro BET Core con importazione Sportium e Market Lab",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
