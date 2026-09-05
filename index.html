@@ -1977,6 +1977,38 @@ textarea{width:100%;min-height:78px;resize:vertical}
     });
   }
 
+  // Stesso identico schema di riepilogoMensile, granularita' giornaliera:
+  // per ogni giorno conta anche vinte/perse/rimborsate, non solo il numero
+  // totale, cosi' il debrief giornaliero non deve ricontarle a mano.
+  function riepilogoGiornaliero(){
+    var giorni={}, i;
+    var logiche=gruppiCore(chiuseTutte()).filter(function(g){return g.reale;});
+    logiche.forEach(function(g){
+      var d=String(g.data||"");
+      if(!d) return;
+      if(!giorni[d]) giorni[d]={giorno:d,n:0,vinte:0,perse:0,rimborsate:0,giocato:0,profitto:0};
+      giorni[d].n++; giorni[d].giocato+=g.stake; giorni[d].profitto+=g.profitto;
+      var righeReali=(g.righe||[]).filter(rigaRealeCore);
+      var esito=righeReali.length?righeReali[0].esito:null;
+      if(esito==="vinta") giorni[d].vinte++;
+      else if(esito==="persa") giorni[d].perse++;
+      else if(esito==="rimborsata") giorni[d].rimborsate++;
+    });
+    var versPerGiorno={};
+    for(i=0;i<S.versamenti.length;i++){
+      var vd=String(S.versamenti[i].data||"");
+      if(vd) versPerGiorno[vd]=(versPerGiorno[vd]||0)+Number(S.versamenti[i].importo||0);
+    }
+    var chiavi=Object.keys(giorni).concat(Object.keys(versPerGiorno));
+    var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
+    return uniche.sort().reverse().map(function(d){
+      var x=giorni[d]||{giorno:d,n:0,vinte:0,perse:0,rimborsate:0,giocato:0,profitto:0};
+      return {giorno:d,n:x.n,vinte:x.vinte,perse:x.perse,rimborsate:x.rimborsate,
+        giocato:x.giocato,profitto:x.profitto,
+        roi:x.giocato?(x.profitto/x.giocato)*100:0,versato:versPerGiorno[d]||0};
+    });
+  }
+
   async function eliminaVersamento(v){
     if(!v || !window.confirm("Eliminare definitivamente questo versamento?")) return;
     try{
@@ -2061,6 +2093,39 @@ textarea{width:100%;min-height:78px;resize:vertical}
         ]));
       });
       pag.appendChild(listaMesi);
+    }
+
+    // Riepilogo giorno per giorno: stesso schema del mensile, ma con vinte/
+    // perse/rimborsate esplicite, cosi' l'impatto sulla cassa si legge senza
+    // dover riaprire il registro giornata per giornata.
+    var giorni = riepilogoGiornaliero();
+    if(giorni.length){
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
+        "text":"Riepilogo giornaliero"}));
+      var listaGiorni = el("div");
+      giorni.forEach(function(g, idx){
+        var dettaglio = g.n
+          ? [g.vinte&&(g.vinte+(g.vinte===1?" vinta":" vinte")),
+             g.perse&&(g.perse+(g.perse===1?" persa":" perse")),
+             g.rimborsate&&(g.rimborsate+" rimb.")]
+            .filter(Boolean).join(", ")
+          : "nessuna giocata";
+        listaGiorni.appendChild(el("div",{"class":"mese"+(idx===0?" mese-corrente":"")},[
+          el("div",{"class":"mese-top"},[
+            el("span",{"class":"tab","text":breve(g.giorno)}),
+            el("span",{"class":"tab","style":{fontWeight:"600",
+              color: g.n===0 ? "#4A5A68" : g.profitto>=0 ? "#4FB286" : "#D4635F"},
+              "text": g.n===0 ? "—" : segnato(g.profitto)})
+          ]),
+          el("div",{"class":"mese-riga"},[
+            el("span",{"text": g.n
+              ? dettaglio+" · ROI "+(g.roi>=0?"+":"")+g.roi.toFixed(0)+"%"
+              : dettaglio}),
+            el("span",{"class":"tab","text": g.versato>0 ? "versati "+euro(g.versato) : ""})
+          ])
+        ]));
+      });
+      pag.appendChild(listaGiorni);
     }
 
     // Nuovo versamento
