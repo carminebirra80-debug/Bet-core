@@ -110,6 +110,36 @@ Sportium viene chiesta esplicitamente a chi gioca, non stimata. La coppia
 senso valutare uno sconto calibrato invece di scoprire lo scarto a sorpresa
 ogni volta, come il -6% trovato su Fulham-Crystal Palace il 5 settembre.
 
+## Multipla J4F — solo su richiesta, mai proposta di default
+
+Regola concordata il 5 settembre 2026, dopo aver scartato l'idea di
+un'accumulatore automatico costruito con le pick respinte dal filtro.
+
+Il manuale vieta esplicitamente questo pattern (§15): *"Se non c'è un
+segnale credibile, dirlo senza costruire una multipla per raggiungere una
+quota-obiettivo."* Le "scartate" di un'analisi non sono partite senza tempo
+per essere guardate: sono partite dove si è già concluso che non c'è edge, o
+che il dato è troppo scarso per saperlo. Impacchettarle insieme non produce
+un edge nuovo — il margine del bookmaker si moltiplica ad ogni gamba, quindi
+il risultato atteso è peggiore della somma delle parti, non neutro. Restano
+inoltre due categorie diverse mischiate insieme: "so che non c'è valore" e
+"non lo so ancora", nessuna delle due giustifica una giocata.
+
+**La regola pratica:**
+- Non viene mai suggerita insieme alle pick Core, di default, ad ogni analisi.
+- Solo su richiesta esplicita ("dammi la J4F" o simile), con le gambe prese
+  dalle partite scartate della stessa giornata.
+- Etichettata esplicitamente come intrattenimento (nome storico già in uso
+  nel registro: "Multipla J4F"), quota indicativa 5-6.
+- **Fuori dal conteggio Core**: non entra nel campione con cui si giudica se
+  il metodo Core (modello + notizie + Sportium) funziona. Altrimenti, fra
+  qualche mese, il win-rate delle pick Core risulterebbe falsato da giocate
+  che sapevamo già essere senza valore al momento di proporle.
+- Tipicamente giocata su un bookmaker diverso da Sportium: se non rientra nel
+  flusso Core, non ha senso nemmeno cercare di allinearne il prezzo con
+  `sportium_gap.py` — a meno che venga comunque fornita una quota reale, nel
+  qual caso si registra comunque, ma segnalata come J4F nel log.
+
 ## Cosa manca rispetto alla specifica
 
 - **P_Elo** (§5): non implementato. Senza un secondo modello davvero
