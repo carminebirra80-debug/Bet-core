@@ -306,10 +306,17 @@ il loro esito diretto (vinta/persa/rimborsata).
 
 ### Multipla J4F (Roma-Atalanta Under 2.5 + Hull-Aston Villa 2 + Villarreal 1, quota Codere 5.47)
 
-Non e' confermato se sia stata effettivamente giocata. Se giocata, l'esito e
-l'eventuale quota reale ottenuta vanno chiesti all'utente: se fornita una
-quota reale (anche su book diverso da Sportium), va comunque registrata in
-`analytics/sportium_gap.py` come J4F, per regola gia' concordata.
+**PERSA**, confermato dall'utente: Villarreal 1 persa e Roma-Atalanta chiusa
+Over 2.5 (serviva Under) — due gambe su tre saltate, basta una per far
+perdere l'intera multipla. Stake €5 -> -€5,00, su Codere (fuori dal
+tracciamento cassa di Bet Core, che segue solo Sportium).
+
+Nota per non confondere due giocate diverse su Roma-Atalanta oggi: questa
+J4F (Codere, Under 2.5) e' distinta dalla "Multipla · 2 gambe" personale
+trovata nel registro Sportium (quota 1,72, Hull-Aston Villa + Roma-Atalanta
+Under, gia' chiusa -€5,00 in app) — stessa idea di fondo, giocata due volte
+su due book diversi. Entrambe perse, coerente col fatto che Roma-Atalanta e'
+finita Over 2.5 in entrambi i casi.
 
 ### Nota per l'app (Supabase)
 
@@ -337,6 +344,30 @@ cassa e il riepilogo di giornata riflettano i numeri veri.
   (`analytics/RISULTATI.md`): il fatto che una delle due pick di oggi abbia
   vinto non lo riabilita, dato che la decisione non si e' basata sul suo
   numero di value.
+
+### Bilancio finale per categoria (dopo conferma utente su J4F e Tipster)
+
+| Categoria | Giocate | Esito | Netto |
+|---|---|---|---|
+| Core (Sportium) | Forest-Tottenham NOGOAL, Fulham 1 | 1 vinta, 1 persa | **+€0,50** |
+| Tipster Fabrizio Rubino | 2 multiple (5,70 e 5,00) | 2 perse | **-€10,00** |
+| J4F (Codere, entertainment) | 1 multipla (5,47) | persa | **-€5,00** |
+| Personale (Sportium, fuori Core/Tipster) | 1 multipla (1,72) | persa | **-€5,00** |
+| **Totale reale della giornata (Sportium + Codere)** | 6 giocate | 1 vinta, 5 perse | **-€19,50** |
+
+**Lettura onesta, non una regola da un solo giorno**: l'unico processo
+disciplinato (edge stimato, tesi di formazione verificata a T-60/T-25) e' l'unico
+che oggi non ha perso soldi — anzi e' leggermente positivo. Tutto cio' che sta
+fuori da quel processo (i due tip di Fabrizio, la J4F costruita per
+intrattenimento, la multipla personale doppione della J4F su un altro book)
+ha perso su tutta la linea: -€20,00 combinati contro un Core a +€0,50. Con un
+solo giorno di dati questo NON dimostra che il Tipster o le multiple
+"personali" siano strutturalmente in perdita (manuale sez. 17A/18) - potrebbe
+essere semplice varianza su un campione piccolissimo (2 multiple Tipster, 2
+bet entertainment). Vale pero' la pena tracciarlo nei prossimi giorni: se il
+pattern "Core flat/positivo, tutto il resto negativo" si ripete su piu'
+giornate, li' si avrebbe un segnale reale su cui lavorare (ridurre stake o
+frequenza sulle multiple fuori Core, non necessariamente eliminarle).
 
 ### Riconciliazione conto Sportium vs cassa app (aggiunta dopo le schermate reali)
 
@@ -369,3 +400,20 @@ presi singolarmente. Serve uno dei due dati seguenti per chiudere:
    scollegato dalla giornata del 5 settembre) oppure se c'e' un movimento sul
    conto Sportium di oggi non legato a una giocata (bonus, cashback,
    arrotondamento della vincita) che l'app non puo' conoscere.
+
+**Aggiornamento dopo il registro reale**: le 4 giocate Core+Tipster su
+Sportium (NOGOAL, Fulham, Multipla FR 5,70, Multipla FR 5,00) risultano
+in app con la stessa quota ed esito delle schermate reali — nessuno scarto
+li' (l'ipotesi della quota 2,05 vs 2,10 era sbagliata, in app c'e' gia'
+2,10). Il quinto movimento del giorno su Sportium (Multipla 2 gambe
+personale, Hull-Aston Villa + Roma-Atalanta Under, quota 1,72, -€5,00 in
+app) e' persa in modo coerente col fatto che Roma-Atalanta e' finita Over
+2.5 (confermato dall'utente per la J4F sullo stesso incontro): non risulta
+quindi un cashout parziale su questo pick, ipotesi avanzata e non
+confermata. **I ~€1,6 di scarto restano non identificati**: sommando tutte
+le giocate reali note di oggi (Sportium + Codere) il calcolo interno torna
+coerente, quindi lo scarto segnalato sul conto o e' precedente al 5
+settembre (drift accumulato su quote inserite e mai corrette su giocate
+passate) o riguarda un movimento di conto non legato a una giocata. Non
+persguito oltre su richiesta indiretta dell'utente (la conversazione e'
+passata al debrief generale della giornata).
