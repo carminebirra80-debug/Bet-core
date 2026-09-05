@@ -227,6 +227,25 @@ textarea{width:100%;min-height:78px;resize:vertical}
     form:formVuoto(oggi(),"io")
   };
 
+  // Quota equa = 1 / probabilità, EV unitario = probabilità × quota − 1
+  // (framework §3, mercati senza rimborso). Restano indicazioni sul prezzo:
+  // un EV positivo non è una previsione di vincita.
+  function testoEV(){
+    var q=parseFloat(S.form.quota), p=parseFloat(S.form.probabilitaStimata);
+    var qOk=q && q>1, pOk=p && p>0 && p<100;
+    if(!pOk) return "Senza probabilità congelata questa giocata non sarà misurabile: Brier, log loss e calibrazione non si ricostruiscono dopo l'esito.";
+    var pr=p/100, equa=1/pr;
+    if(!qOk) return "Quota equa "+equa.toFixed(2)+" · inserisci la quota presa per vedere l'EV.";
+    var ev=(pr*q-1)*100;
+    return "Quota equa "+equa.toFixed(2)+" · EV a "+q.toFixed(2)+": "+(ev>=0?"+":"")+ev.toFixed(1)+"%"
+      +(q<equa?" · il prezzo non copre la tua stima":"");
+  }
+
+  function aggiornaEV(){
+    var n=document.getElementById("ev-live");
+    if(n) n.textContent=testoEV();
+  }
+
   function formVuoto(data,tipster){
     return { data:data||oggi(), tipster:tipster||"io", evento:"", mercato:"", mercatoAltro:"", nota:"", quota:"", quotaCheck:"",
       quotaChiusura:"", probabilitaStimata:"", probabilitaTimestamp:"",
@@ -1247,16 +1266,24 @@ textarea{width:100%;min-height:78px;resize:vertical}
     }
 
     var inQuota=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"2.30","value":S.form.quota,"class":"tab"});
-    inQuota.addEventListener("input",function(){S.form.quota=this.value;if(!S.form.toccato)S.form.stake="";aggiornaConsiglio(c);aggiornaTetto(c);});
+    inQuota.addEventListener("input",function(){S.form.quota=this.value;if(!S.form.toccato)S.form.stake="";aggiornaConsiglio(c);aggiornaTetto(c);aggiornaEV();});
     var inQuotaCheck=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"Quota al primo check","value":S.form.quotaCheck||"","class":"tab"});
     inQuotaCheck.addEventListener("input",function(){S.form.quotaCheck=this.value;});
     var inQuotaChiusura=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"Quota di chiusura","value":S.form.quotaChiusura||"","class":"tab"});
     inQuotaChiusura.addEventListener("input",function(){S.form.quotaChiusura=this.value;});
-    var inProbabilita=el("input",{"type":"number","inputmode":"decimal","step":"0.1","min":"0.1","max":"99.9","placeholder":"Probabilità stimata %","value":S.form.probabilitaStimata||"","class":"tab"});
+    var inProbabilita=el("input",{"type":"number","inputmode":"decimal","step":"0.1","min":"0.1","max":"99.9","placeholder":"52.0","value":S.form.probabilitaStimata||"","class":"tab"});
     inProbabilita.addEventListener("input",function(){
       S.form.probabilitaStimata=this.value;
       if(this.value && !S.form.probabilitaTimestamp) S.form.probabilitaTimestamp=valoreDataOraLocale(new Date().toISOString());
+      aggiornaEV();
     });
+    // Quota equa ed EV calcolati mentre si scrive. Sono le formule della
+    // sezione 3 del framework, che l'app finora non mostrava da nessuna parte:
+    // la probabilità congelata smette di essere un campo da compilare e
+    // diventa lo strumento che dice se il prezzo conviene, nel momento in cui
+    // serve saperlo. Senza probabilità la riga dice cosa si sta perdendo,
+    // perché Brier, log loss e calibrazione non sono ricostruibili dopo.
+    var evLive=el("p",{"class":"avviso","id":"ev-live","text":testoEV(),"style":{margin:"8px 0 0"}});
     var inConfidence=selectGuidato([["","—"],["1","1 - bassa"],["2","2"],["3","3 - media"],["4","4"],["5","5 - alta"]],String(S.form.confidence||""),function(v){S.form.confidence=v;});
     var inNota=el("input",{"type":"text","placeholder":"Motivo sintetico / fonte","value":S.form.nota||""});
     inNota.addEventListener("input",function(){S.form.nota=this.value;});
@@ -1288,7 +1315,6 @@ textarea{width:100%;min-height:78px;resize:vertical}
         el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Quota al check"}),inQuotaCheck]),
         el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Quota di chiusura"}),inQuotaChiusura])
       ]),
-      el("div",{"class":"gruppo"},[el("label",{"text":"Probabilità indipendente congelata (%)"}),inProbabilita]),
       el("div",{"class":"gruppo"},[el("label",{"text":"Nota analisi"}),inNota]),
       inEdit?el("div",{"class":"gruppo"},[el("label",{"text":"Debrief"}),inDebrief]):null
     ]));
@@ -1302,10 +1328,16 @@ textarea{width:100%;min-height:78px;resize:vertical}
       ]),
       el("div",{"class":"gruppo"},[el("label",{"text":"Registrazione"}),modo]),
       contenutoSchedina,
+      // Quota e probabilità sono le due facce della stessa decisione: quanto
+      // credo che accada, quanto mi pagano. Tenerle separate, con la seconda
+      // chiusa dentro "dati secondari", è il motivo per cui la probabilità è
+      // rimasta vuota in tutte le 60 righe del registro.
       el("div",{"class":"gruppo due"},[
         el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Quota presa"}),inQuota]),
-        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Fase"}),inFase])
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Probabilità stimata (%)"}),inProbabilita])
       ]),
+      el("div",{"class":"gruppo"},[evLive]),
+      el("div",{"class":"gruppo"},[el("label",{"text":"Fase di ingresso"}),inFase]),
       el("div",{"class":"scheda","style":{padding:"14px",marginBottom:"16px"}},[
         el("p",{"class":"etich","text":"Ricevuta bookmaker","style":{margin:"0 0 12px"}}),
         el("div",{"class":"due"},[inBook,inTicket]),
@@ -1635,7 +1667,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
             el("span",{"class":"badge-meta","text":g.tipoSchedina||"SINGOLA"}),
             el("span",{"class":"badge-meta","text":(g.bookmaker||"Sportium")+" · "+(g.faseIngresso||"PRE")}),
             g.famigliaMercato!=="NON_CLASSIFICATO"?el("span",{"class":"badge-meta","text":"LAB · "+etichettaFamiglia(g)}):null,
-            g.ticketId?el("span",{"class":"badge-meta","text":"ADM "+g.ticketId}):null
+            g.ticketId?el("span",{"class":"badge-meta","text":"ADM "+g.ticketId}):null,
+            // Segnalato, non impedito: una pick senza probabilità congelata
+            // resta valida per la cassa ma esce dal campione statistico, e
+            // conviene vederlo nell'elenco invece che scoprirlo al debrief.
+            (g.probabilitaStimata==null&&!g.osservata)
+              ?el("span",{"class":"badge-meta","text":"SENZA p · non misurabile","style":{color:"#C8873A",borderColor:"#C8873A55"}}):null
           ]),
           g.tipoSchedina==="MULTIPLA" && g.gambe && g.gambe.length
             ? el("p",{"class":"core-dett","text":g.gambe.map(function(x,i){return (i+1)+". "+x.evento+" — "+x.mercato;}).join(" · ")}) : null,
