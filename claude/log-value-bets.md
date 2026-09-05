@@ -95,6 +95,52 @@ Da trattare quindi come scommesse basate su un'intuizione informata, non come
 value bet certificate. Il criterio della verifica delle 15:00 e' "la notizia
 regge?", non "il modello dice +7.7%".
 
+### VERIFICA T-60 (ore 15:00, sezione 13A del manuale)
+
+Controllo eseguito a 60 minuti dal fischio d'inizio (16:00). Oggetto: formazioni
+ufficiali/probabili, assenze dell'ultima ora, meteo. Le quote non sono state
+riverificate in questo passaggio (verranno ricontrollate al refresh T-25 delle
+15:35, che ha invece per oggetto il prezzo).
+
+**Nottingham Forest-Tottenham | NO GOL @2.05 | VERDETTO: BET (confermata)**
+- Kulusevski: ancora in fase di recupero cautelativo, NON disponibile. Nessun
+  rientro a sorpresa.
+- Xavi Simons e Odobert: assenze lunghe confermate invariate (rientro non
+  prima di inizio/meta' 2027).
+- Sarr: infortunio minore confermato, nessun rientro a sorpresa.
+- NOTIZIA NUOVA (non nota stamattina): James Maddison, frattura alla spalla,
+  forte dubbio per la trasferta. Rinforza la tesi: un quarto titolare offensivo
+  Spurs a rischio, in aggiunta ai tre gia' fuori.
+- Difesa Forest (Sels, Murillo, Milenkovic): tutti disponibili, nessuna
+  assenza pesante. Condizione di invalidazione non verificata.
+- Meteo Nottingham 16:00: sereno/variabile, ~20°C, vento debole, pioggia <5%.
+  Nessun fattore avverso.
+- Quota invariata 2.05. Value ricalcolato sullo stesso floor 54.6%: +11.9%
+  (invariato, nessun input e' cambiato).
+
+**Fulham-Crystal Palace | 1 (Fulham) @2.32 | VERDETTO: BET (confermata)**
+- Mateta: infortunio bicipite femorale/coscia confermato dal tecnico Pierre
+  Sage, stop previsto ~3 settimane. Nessun rientro a sorpresa.
+- Sarr: confermato "needs time to recover, is injured at the moment"
+  (inguine). Nessun rientro a sorpresa.
+- Assente anche Chadi Riad (ginocchio) - ulteriore indebolimento difesa Palace,
+  non contemplato stamattina ma coerente con la tesi (non la indebolisce).
+- Fulham (Leno, Andersen, Berge, Iwobi): nessuna assenza pesante rilevata.
+  Condizione di invalidazione non verificata.
+- Quota invariata 2.30-2.32. Value ricalcolato sullo stesso floor 46.4%:
+  +7.7% (invariato).
+
+Nota: nessuna delle due formazioni e' ancora UFFICIALE al momento del
+controllo (mancano ~60' al fischio d'inizio) - i dati sono probabili/aggregati
+da piu' fonti (Sports Mole, LastWordOnSports, Sportsgambler, CPFC.co.uk,
+Agimeg). La conferma definitiva arriva di norma a ridosso del fischio
+d'inizio; il refresh T-25 delle 15:35 e' il punto in cui verificarla se
+disponibile, insieme al movimento quota.
+
+Per entrambe: nessuna delle condizioni di invalidazione elencate stamattina si
+e' verificata. Il criterio resta quello dichiarato: tiene la notizia, non il
+numero del modello (vedi avvertenza sotto).
+
 ### Note metodologiche della sessione
 - FBref, Understat, FootyStats e WorldFootball non raggiungibili (protezione Cloudflare):
   stime costruite su medie gol segnati/subiti con split casa/trasferta (ultime 10), non su xG puri.
