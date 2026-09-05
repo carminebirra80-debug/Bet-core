@@ -187,6 +187,25 @@ rispetto a stamattina** (2.05 e 2.30 sui book nominati). Nessuna delle due
 richiede attesa (HOLD) o annullamento (PASS): nessuna notizia ha invalidato le
 tesi, anzi la seconda e' stata rinforzata dalla formazione Palace.
 
+### Multiple Fabrizio Rubino (Tipster — fuori conteggio Core)
+
+Giocate reali di oggi, riferite dall'utente (non leggibili da Supabase in
+questa sessione, nessuna credenziale). Registrate qui solo per completare il
+quadro della cassa al debrief di stasera — non entrano nella validazione
+del metodo Core (origine Tipster, non Core).
+
+| Multipla | Quota | Stake | Esito |
+|---|---|---|---|
+| Fabrizio Rubino #1 | 5,00 | €5,00 | da verificare |
+| Fabrizio Rubino #2 | 2,00 | €5,00 | da verificare |
+
+Stake fisso €5 su entrambe, indipendentemente dalla quota: comportamento
+reale confermato dall'utente, diverso dal suggerimento a fasce dell'app
+(che per Tipster+Multipla proporrebbe ~€4 su quota 5,00 e ~€8 su quota
+2,00). Non e' un difetto: il campo "Punto invece" nel form esiste apposta
+per sovrascrivere il suggerimento, ed e' quello che viene usato qui. Nessuna
+modifica al codice richiesta finche' l'utente non chiede un default diverso.
+
 ### Note metodologiche della sessione
 - Sportium (il bookmaker reale su cui si gioca) restituisce HTTP 403 su ogni
   accesso automatizzato, verificato empiricamente - vedi docs/README.md,
