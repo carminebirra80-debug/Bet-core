@@ -49,11 +49,11 @@ DIVERGENCE = 6.0
 # de-vig, chiave della quota migliore). Le prime due differiscono: il modello
 # usa "over2.5", il file delle quote "O2.5".
 MARKETS = [
-    ("1", "1", "1", ("1", "X", "2"), "max1"),
-    ("X", "X", "X", ("1", "X", "2"), "maxX"),
-    ("2", "2", "2", ("1", "X", "2"), "max2"),
-    ("over2.5", "Over 2.5", "O2.5", ("O2.5", "U2.5"), "maxO2.5"),
-    ("under2.5", "Under 2.5", "U2.5", ("O2.5", "U2.5"), "maxU2.5"),
+    ("1", "1", "1", ("1", "X", "2"), "best1"),
+    ("X", "X", "X", ("1", "X", "2"), "bestX"),
+    ("2", "2", "2", ("1", "X", "2"), "best2"),
+    ("over2.5", "Over 2.5", "O2.5", ("O2.5", "U2.5"), "bestO2.5"),
+    ("under2.5", "Under 2.5", "U2.5", ("O2.5", "U2.5"), "bestU2.5"),
 ]
 
 
@@ -123,7 +123,10 @@ def main(argv: list[str]) -> int:
 
     print(f"\n=== Palinsesto {day:%A %d/%m/%Y} ===")
     print("    Riferimento = consenso di mercato de-vigato. Il modello NON e' un")
-    print("    segnale di gioco: serve solo a indicare dove indagare a mano.\n")
+    print("    segnale di gioco: serve solo a indicare dove indagare a mano.")
+    print("    ATTENZIONE: questo comando legge dati e quote insieme, quindi il suo")
+    print("    output NON e' blind e non vale come evidenza (manuale §2, §13). Per")
+    print("    un'analisi registrabile usare:  analytics/blind.py freeze\n")
 
     games, notes = analyse_day(day, divs or None)
     if not games:

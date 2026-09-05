@@ -23,6 +23,9 @@ manuale stesso lo prevede: ogni soglia è un'ipotesi finché non validata).
 | §17 Backtest walk-forward, Brier/Log Loss/CLV | `analytics/backtest.py`, `analytics/calibrate.py` |
 | §17A Registro e feedback statistico | `claude/log-value-bets.md` (Supabase non ancora collegato) |
 | §7 Uncertainty | `analytics/model.py` → `uncertainty_band()` |
+| §2, §13 Blind acquisition e universe lock | `analytics/blind.py` → `freeze()` / `compare()` |
+| §2A Quota eseguibile ≠ benchmark ≠ panel max | `analytics/sources.py` → `best*` / `panelmax*` |
+| §17 Snapshot immutabili | `snapshots/`, con hash SHA-256 di integrità |
 
 ## Misure che il manuale lascia aperte
 
@@ -37,14 +40,32 @@ out-of-sample. Fatto il 5 settembre 2026, risultati completi in
 - Coerente con l'avvertenza del manuale stesso: non è dimostrato che esista
   un motore quantitativo addestrato e validato.
 
+## Blind acquisition
+
+`analytics/blind.py` separa il protocollo in due comandi, con un file
+immutabile in mezzo:
+
+```
+blind.py freeze 2026-09-05 E0 I1      # fase A: nessuna quota letta
+blind.py compare snapshots/.../HHMMSS.json   # fase B: si apre il mercato
+```
+
+La fase A usa `load_fixtures_blind()`, che le quote non le contiene proprio:
+la regola è resa impossibile da violare invece che promessa. Lo snapshot porta
+un hash SHA-256 del contenuto, quindi una modifica successiva viene segnalata
+in fase B e il confronto è dichiarato non valido.
+
+L'universo è registrato per intero, incluse le partite escluse con il motivo
+(§13): senza, guardando solo le selezioni non si distingue un filtro che
+funziona da una scelta fatta a posteriori.
+
+`analyze.py` resta come strumento esplorativo rapido, ma dichiara nell'output
+che non è blind e non vale come evidenza.
+
 ## Cosa manca rispetto alla specifica
 
 - **P_Elo** (§5): non implementato. Senza un secondo modello davvero
   indipendente, λ > 0 non ha basi.
-- **Blind acquisition** (§2, §13): `analyze.py` legge dati e quote insieme, e
-  non congela `P_independent` con timestamp prima del mercato. Finché resta
-  così, le analisi prodotte **non sono dichiarabili blind** e non valgono come
-  evidenza per la validazione.
 - **Evidence Ledger** (§2): nessuna struttura per fonte/URL/timestamp/stato
   CONFERMATA-PROBABILE-NON VERIFICATA-CONTRADDETTA.
 - **CLV automatico** (§17A): il collegamento fra registro e quote di chiusura

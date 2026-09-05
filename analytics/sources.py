@@ -36,6 +36,13 @@ TTL_FIXTURES = 15 * 60
 
 USER_AGENT = "Mozilla/5.0 (compatible; BetCore/1.0)"
 
+# Bookmaker identificabili per nome nel file: sono quelli su cui ha senso
+# ragionare come prezzo realmente ottenibile. BFE e' l'exchange Betfair, dove
+# la quota e' al lordo della commissione.
+NAMED_BOOKS_HOME = ("B365H", "BFDH", "BVH", "BWH", "PPH", "SKBH", "BFEH")
+NAMED_BOOKS_DRAW = ("B365D", "BFDD", "BVD", "BWD", "PPD", "SKBD", "BFED")
+NAMED_BOOKS_AWAY = ("B365A", "BFDA", "BVA", "BWA", "PPA", "SKBA", "BFEA")
+
 # I 17 campionati coperti dalla fonte, con il nome leggibile.
 LEAGUES: dict[str, str] = {
     "E0": "Premier League",
@@ -211,6 +218,23 @@ def load_history(div: str, seasons: int = 3, today: date | None = None) -> list[
     return out
 
 
+def load_fixtures_blind(day: date | None = None, divs: list[str] | None = None) -> list[Fixture]:
+    """
+    Partite future SENZA quote: identita' dell'evento e nient'altro.
+
+    Serve alla fase A del protocollo (blind acquisition): la stima
+    indipendente va congelata prima di vedere il mercato. Non basta
+    l'intenzione di non guardare le quote, perche' se sono presenti nella
+    struttura dati prima o poi qualcuno le usa. Qui vengono proprio scartate
+    in lettura, cosi' la fase A non ha modo di accedervi.
+    """
+    return [
+        Fixture(div=f.div, day=f.day, kickoff=f.kickoff, home=f.home, away=f.away,
+                referee=f.referee, odds={})
+        for f in load_fixtures(day=day, divs=divs)
+    ]
+
+
 def load_fixtures(day: date | None = None, divs: list[str] | None = None) -> list[Fixture]:
     """
     Partite future. Con `day` filtra su quella data, con `divs` sui campionati.
@@ -236,10 +260,11 @@ def load_fixtures(day: date | None = None, divs: list[str] | None = None) -> lis
         candidates = {
             "1": ("AvgH", "AvgCH", "B365H"), "X": ("AvgD", "AvgCD", "B365D"),
             "2": ("AvgA", "AvgCA", "B365A"),
-            "max1": ("MaxH", "MaxCH"), "maxX": ("MaxD", "MaxCD"), "max2": ("MaxA", "MaxCA"),
+            "panelmax1": ("MaxH", "MaxCH"), "panelmaxX": ("MaxD", "MaxCD"),
+            "panelmax2": ("MaxA", "MaxCA"),
             "O2.5": ("Avg>2.5", "AvgC>2.5", "B365C>2.5"),
             "U2.5": ("Avg<2.5", "AvgC<2.5", "B365C<2.5"),
-            "maxO2.5": ("Max>2.5", "MaxC>2.5"), "maxU2.5": ("Max<2.5", "MaxC<2.5"),
+            "panelmaxO2.5": ("Max>2.5", "MaxC>2.5"), "panelmaxU2.5": ("Max<2.5", "MaxC<2.5"),
         }
         for key, fields in candidates.items():
             for field_name in fields:
@@ -247,6 +272,21 @@ def load_fixtures(day: date | None = None, divs: list[str] | None = None) -> lis
                 if val:
                     odds[key] = val
                     break
+
+        # Migliore quota fra i bookmaker NOMINATI, che e' cosa diversa dal
+        # massimo del panel. Il campo Max copre una quarantina di operatori e
+        # restituisce spesso valori fuori scala: per Fulham-Crystal Palace del
+        # 5 settembre 2026 i sei book nominati stavano fra 2.25 e 2.30 mentre
+        # Max diceva 3.00. Un prezzo del genere non e' eseguibile da chi gioca
+        # su un book italiano, e usarlo come riferimento gonfia ogni edge.
+        # Il manuale (§2A) chiede proprio di tenere distinte migliore quota
+        # eseguibile, benchmark e mercato di riferimento.
+        for key, cols in (("best1", NAMED_BOOKS_HOME), ("bestX", NAMED_BOOKS_DRAW),
+                          ("best2", NAMED_BOOKS_AWAY), ("bestO2.5", ("B365>2.5", "BFE>2.5")),
+                          ("bestU2.5", ("B365<2.5", "BFE<2.5"))):
+            quotes = [v for v in (_f(row, c) for c in cols) if v]
+            if quotes:
+                odds[key] = max(quotes)
         out.append(Fixture(
             div=div, day=when, kickoff=(row.get("Time") or "").strip(),
             home=home, away=away,
