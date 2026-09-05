@@ -62,6 +62,37 @@ funziona da una scelta fatta a posteriori.
 `analyze.py` resta come strumento esplorativo rapido, ma dichiara nell'output
 che non è blind e non vale come evidenza.
 
+## Limite verificato: Sportium non è raggiungibile
+
+Sportium è il bookmaker reale su cui vengono giocate le pick (vedi
+`bookmaker:"Sportium"` in quasi tutte le righe di `claude/log-value-bets.md`
+e del registro), ma **non è mai la fonte delle quote che vengono riportate
+nelle analisi**. Verificato empiricamente il 5 settembre 2026:
+
+```
+curl https://www.sportium.it/                   -> HTTP 403
+curl https://www.sportium.it/scommesse/calcio   -> HTTP 403
+```
+
+403 anche sulla sola homepage, sia in fetch diretto sia tramite motore di
+ricerca (non è indicizzato). Non riprovare ad ogni sessione: è un limite
+strutturale del sito verso accessi automatizzati, non un problema di rete
+temporaneo.
+
+Il problema è doppio, non solo di accesso live: **Sportium non è nemmeno fra
+i bookmaker coperti da football-data.co.uk** (i nomi in `sources.py` sono
+B365, BFD/Betfair Sportsbook, BV/BetVictor, BW/Bet365... — nessuna colonna
+Sportium), quindi manca anche nello storico usato dal modello. Il prezzo che
+`analytics/` riporta come "migliore quota" è sempre di book terzi
+(Marathonbet, AdmiralBet, StarVegas, bet365 e simili), mai quello
+effettivamente eseguibile su Sportium.
+
+**Conseguenza operativa**: la quota riportata in ogni analisi è indicativa,
+non la quota reale a cui si gioca. Prima di piazzare, il prezzo su Sportium
+va sempre controllato a mano (screenshot o apertura diretta dell'app);
+un `HOLD`/`BET` calcolato su un'altra quota non garantisce che la stessa
+convenienza esista su Sportium.
+
 ## Cosa manca rispetto alla specifica
 
 - **P_Elo** (§5): non implementato. Senza un secondo modello davvero

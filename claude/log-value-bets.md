@@ -188,6 +188,13 @@ richiede attesa (HOLD) o annullamento (PASS): nessuna notizia ha invalidato le
 tesi, anzi la seconda e' stata rinforzata dalla formazione Palace.
 
 ### Note metodologiche della sessione
+- Sportium (il bookmaker reale su cui si gioca) restituisce HTTP 403 su ogni
+  accesso automatizzato, verificato empiricamente - vedi docs/README.md,
+  sezione "Limite verificato: Sportium non e' raggiungibile". Le quote
+  riportate in questo log vengono sempre da book terzi (Marathonbet,
+  AdmiralBet, StarVegas), mai da Sportium: il prezzo reale va sempre
+  controllato a mano prima di giocare.
+
 - FBref, Understat, FootyStats e WorldFootball non raggiungibili (protezione Cloudflare):
   stime costruite su medie gol segnati/subiti con split casa/trasferta (ultime 10), non su xG puri.
 - 3a giornata: campioni stagionali minimi, alcune medie "ultime 10" contengono ancora la
