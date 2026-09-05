@@ -118,7 +118,33 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
 
   clickNav(app,"Nuova");
   assert.ok(app.textContent.includes("Importa ricevuta Sportium"));
-  assert.ok(app.textContent.includes("Probabilità indipendente congelata"));
+  // La probabilità stimata sta nel form principale accanto alla quota, non
+  // più chiusa dentro "Analisi e dati secondari": è il campo su cui poggiano
+  // Brier, log loss e calibrazione, e da secondario restava sempre vuoto.
+  assert.ok(app.textContent.includes("Probabilità stimata"));
+  assert.ok(!app.textContent.includes("Probabilità indipendente congelata"));
+  // Senza probabilità la riga di supporto dice cosa si sta perdendo.
+  assert.ok(app.textContent.includes("non sarà misurabile"));
+
+  // Quota equa ed EV si aggiornano mentre si digita: e' il motivo per cui la
+  // probabilita' dovrebbe smettere di restare vuota, quindi si verifica che il
+  // calcolo arrivi a schermo, non solo che il campo esista.
+  const inQuota=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="2.30");
+  const inProb=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="52.0");
+  assert.ok(inQuota&&inProb,"quota e probabilità devono stare entrambe nel form principale");
+
+  inProb.value="50"; inProb.listeners.input.call(inProb);
+  inQuota.value="2.30"; inQuota.listeners.input.call(inQuota);
+  const rigaEV=document.getElementById("ev-live").textContent;
+  // p=50% -> quota equa 2.00 ; EV a 2.30 = 0.5 x 2.30 - 1 = +15%
+  assert.ok(rigaEV.includes("2.00"),"quota equa attesa 2.00: "+rigaEV);
+  assert.ok(rigaEV.includes("+15.0%"),"EV atteso +15.0%: "+rigaEV);
+
+  // Prezzo che non copre la stima: p=30% -> quota equa 3.33 contro 2.30
+  inProb.value="30"; inProb.listeners.input.call(inProb);
+  const rigaBassa=document.getElementById("ev-live").textContent;
+  assert.ok(rigaBassa.includes("non copre la tua stima"),"atteso avviso prezzo insufficiente: "+rigaBassa);
+  assert.ok(rigaBassa.includes("-31.0%"),"EV atteso -31.0%: "+rigaBassa);
   clickNav(app,"Tipster");
   assert.ok(app.textContent.includes("Fabrizio Rubino"));
   clickNav(app,"Cassa");
@@ -155,3 +181,4 @@ function clickNav(app,label){
   assert.ok(button,"Pulsante di navigazione non trovato: "+label);
   button.listeners.click();
 }
+

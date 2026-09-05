@@ -65,8 +65,14 @@
     var esito=s.match(/^(1|X|2)(?:\s*\+|\s*$)/);
     var mg=s.match(/MULTIGOL\s+(\d+)-(\d+)/);
     var totale=s.match(/\b(OVER|UNDER)\s*(\d+(?:\.\d+)?)\b/);
-    var noGoal=/\bNO GOAL\b/.test(s);
-    var goal=!noGoal&&/\bGOAL\b/.test(s);
+    // Lo scontrino riporta spesso il NOME del mercato prima della selezione
+    // ("GOAL/NO GOAL | GOAL"). Cercare "NO GOAL" nell'intera stringa fa
+    // scattare il nome invece della scelta, e ogni giocata di questa famiglia
+    // finisce registrata come No Goal, comprese quelle su Goal. Si toglie
+    // quindi l'etichetta del mercato prima di leggere la selezione.
+    var sSel=s.replace(/\bGOAL\s*\/\s*NO GOAL\b/g," ");
+    var noGoal=/\bNO GOAL\b/.test(sSel);
+    var goal=!noGoal&&/\bGOAL\b/.test(sSel);
     if(esito) componenti.push(componente("ESITO_1X2","PARTITA",esito[1],null));
     if(dc) componenti.push(componente("DOPPIA_CHANCE","PARTITA",dc[1],null));
     if(mg) componenti.push(componente("MULTIGOL","PARTITA","Multigol "+mg[1]+"-"+mg[2],mg[1]+"-"+mg[2]));

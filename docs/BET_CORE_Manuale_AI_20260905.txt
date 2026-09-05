@@ -1,0 +1,340 @@
+
+BET CORE
+Come ragiona il sistemaManuale completo per un’altra AI
+Edizione di trasferimento • 5 settembre 2026 • Base metodologica v3.6 + aggiornamenti operativi concordati
+Scopo e ordine di lettura
+Questo documento permette a un’altra AI di continuare il progetto senza ridurlo a una lista di pronostici. BET Core separa previsione, convenienza del prezzo, ricerca sui mercati ed eventuale esecuzione reale. Non è dimostrato, dalle fonti disponibili, che esista già un motore quantitativo addestrato e validato: il framework descrive il metodo da applicare, non certifica performance.
+Leggere prima le sezioni operative di questo manuale; l’Appendice A riporta integralmente il contenuto testuale del Framework v3.6 per non perdere regole o dettagli. Le istruzioni esplicite più recenti di Carmine prevalgono sulle disposizioni operative precedenti. Questo consolidamento non si attribuisce il nome di una nuova versione statistica validata.
+La regola attuale, in una frase
+L’AI analizza il palinsesto, cerca opportunità credibili, presenta SEGNALE DA VALUTARE con mercato e condizioni di prezzo, registra osservazioni e PASS utili e svolge il debrief anche quando Carmine non gioca. Carmine decide se, dove e quanto giocare.
+Mappa del documento
+1. Regole aggiornate e precedenze. 2. Flusso giornaliero e fonti. 3. Probabilità, prezzo e timing. 4. Market Lab. 5. Registro e debrief. 6. Output e istruzioni per l’AI. Appendice A: v3.6 integrale.
+Fonti: documento BET_CORE_FRAMEWORK_v3.6.docx fornito dall’utente; conversazioni del progetto del 4–5 settembre 2026 riportate nel contesto; recupero mirato delle richieste sul modulo AI. Non sono stati verificati in questa attività database, automazioni, quote o risultati sportivi correnti.
+
+1. Regole aggiornate e precedenze
+Tema
+Regola da applicare oggi
+Verdetto pubblico
+SEGNALE DA VALUTARE; decisione finale dell’utente.
+Cassa e stake
+Non bloccano la segnalazione analitica.
+Sportium
+Non è requisito per segnalare; usare benchmark verificabili.
+Prezzo
+Resta essenziale: benchmark, timestamp e soglia orientativa.
+Scouting
+Primo filtro dopo le 12:15 italiane; non sostituisce l’analisi completa.
+Market Lab
+Osservate e PASS misurabili, registrati dall’AI a stake reale zero.
+Debrief
+Sempre sulle analisi; anche sulle giocate reali, se presenti.
+Refresh
+T−25 indicativo sulle candidate; nuova valutazione delle condizioni.
+Cosa è superato e cosa rimane
+La precedente formula «BET PILOT — DA GIOCARE», subordinata a stake sostenibile e disponibilità Sportium, non è più la formula pubblica obbligatoria. Non ripristinare quei blocchi per negare uno scouting o un segnale analitico. Le vecchie etichette BET/Pilot restano utili per leggere lo storico e le classificazioni tecniche.
+La modifica riguarda l’esecuzione, non elimina i controlli su fonti, stima indipendente, incertezza, conflitti, correlazione e convenienza. Un segnale incompleto resta WATCHLIST/HOLD; non diventa una raccomandazione robusta solo perché la cassa non viene valutata.
+Il ¼ Kelly e i controlli di portafoglio della v3.6 rimangono riferimenti del modulo rischio, da usare se viene richiesto un piano di stake. Non sono un prerequisito della segnalazione attuale. Non inventare un cap numerico che il documento non definisce.
+Le pause disciplinari presenti nella cronologia erano decisioni contestuali: non convertirle in divieti permanenti. Non suggerire recuperi delle perdite e non presentare l’AI come autorità che autorizza personalmente l’utente.
+
+2. Flusso giornaliero e fonti
+Scouting e analisi completa
+Dopo le 12:15, fuso Europe/Rome, esplorare il palinsesto e definire l’universo eleggibile: data, competizioni, mercati, incluse ed escluse con motivo. Usare Europe/Rome per gestire CET/CEST, non UTC+1 fisso. Verificare l’identità ufficiale di ogni evento prima delle statistiche.
+Nello scouting usare inizialmente calendario e dati oggettivi. Se si aprono quote, tipster o preview prima del congelamento, segnare la contaminazione per le selezioni coinvolte: una successiva analisi nella stessa sessione non può essere dichiarata retroattivamente blind.
+Fase A: raccogliere dati coerenti su forza, xG/xGA, casa/trasferta, avversari, forma, assenze, portiere, riposo e matchup. Separare fatti, indiscrezioni e inferenze.
+Calcolare solo modelli realmente disponibili; congelare probabilità e timestamp prima di vedere mercato e consensus. Non simulare di avere eseguito Poisson/Elo se manca un calcolo riproducibile.
+Fase B: acquisire quote attuali e vettore coerente; togliere l’overround, poi consultare IlVeggente e Cassandra. Applicare una sola volta lo shrinkage e i filtri.
+Produrre segnali, Market Lab e PASS; registrarli. Eseguire refresh T−25 quando possibile, quindi risultati, debrief e verifica statistica.
+Governance delle evidenze
+Fonti ufficiali per identità/formazioni/squalifiche; provider omogenei per statistiche; bookmaker/exchange per quote; giornalismo qualificato per contesto; pronostici soltanto per consensus. Aprire le pagine: snippet e titoli non bastano. Due ripubblicazioni della stessa origine non sono due conferme.
+Evidence Ledger: fonte e URL, provider/autore, pubblicazione, accesso, fatto estratto, ruolo e stato CONFERMATA / PROBABILE / NON VERIFICATA / CONTRADDETTA. Dati critici mancanti abbassano la classificazione; non riempirli con numeri plausibili.
+IlVeggente.it è prioritario; CassandraPronostici.com è la seconda fonte prioritaria. Verificarle sistematicamente quando disponibili. DOUBLE CORROBORATION dà priorità di approfondimento, non un aumento automatico della probabilità. Registrare indisponibilità e divergenze.
+Movimento quota: stesso operatore e mercato in tempi diversi. Money flow: solo con volumi verificati. CLV: specificare convenzione, ad esempio q_ingresso/q_chiusura−1 per identico mercato; è un indicatore di prezzo, non prova da solo di profitto futuro. Senza closing comparabile: N/D.
+
+3. Probabilità, prezzo e timing
+Una squadra può essere la vincente più probabile e avere una quota non conveniente. Confidence misura l’affidabilità della stima; Value riguarda il margine rispetto al prezzo. Nessuna delle due coincide con una certezza di vincita.
+Quantità
+Definizione
+P_raw
+1 / quota
+P_market,i
+(1 / quota_i) / somma(1 / quota_j), stesso snapshot
+P_independent
+Ensemble oggettivo, congelato prima di quote e consensus
+P_adjusted
+P_market + λ × (P_independent − P_market)
+Raw / Adjusted Edge
+P_independent − P_market / P_adjusted − P_market
+Quota equa
+1 / P_adjusted per un esito senza rimborso
+EV unitario
+P_adjusted × quota disponibile − 1, senza rimborso
+λ, pesi, soglie e score non hanno valori ottimali già dimostrati nelle fonti. Dichiarare ogni parametro provvisorio e il metodo usato; se non è calcolabile, scrivere N/D. Un edge simile all’incertezza non è value robusta. Con dati insufficienti restare nel Lab.
+Mercati con rimborso e combinazioni
+Per DNB o mercati con push: EV = p_vittoria × (q−1) − p_sconfitta; quota equa = (1−p_rimborso) / p_vittoria. Handicap frazionari richiedono la scomposizione delle quote di stake. Le formule binarie semplici non si applicano indiscriminatamente.
+Esempio didattico dalla discussione sul Lyon: stima 62%, quota 1,50 → EV grezzo −7%, quota equa indipendente 1,61. Questo illustra la distinzione, non dimostra un modello validato né sostituisce P_adjusted. La soglia 1,70–1,72 citata allora non è una regola universale.
+Quota iniziale, refresh e closing
+Conservare l’intuizione iniziale con probabilità, quota e timestamp. Se il prezzo scende, l’individuazione iniziale resta valutabile; il nuovo ingresso richiede valore al prezzo attuale. Non alzare la probabilità per inseguire la quota. Una formazione o altra nuova evidenza produce una nuova versione, non sovrascrive lo snapshot.
+
+4. Market Lab: ricerca senza puntate
+Il Market Lab è il registro delle ipotesi misurabili: serve a studiare anche giornate senza giocate. Comprende WATCHLIST, segnali analitici, PASS controfattuali e mercati alternativi. Non è un modo per aggirare un NO BET.
+Cosa registrare
+Selezioni effettivamente valutate prima dell’esito, con mercato esatto, quota osservata, fonte, orario, tesi e motivo dello stato. Conservare p congelata quando esiste; senza p, misurare solo ciò che i dati consentono.
+Registrare l’analisi senza attendere l’inserimento manuale di Carmine. Osservata: stake reale 0 e nessun profitto reale. Non inventare quote eseguibili a partire da range pubblici.
+Non inserire indiscriminatamente tutto il palinsesto; conservare separatamente universo ed esclusioni per rendere visibile il processo di selezione.
+Mercati alternativi
+Il progetto ha richiesto l’esplorazione di corner, cartellini, multigol, combo, tempi e altri mercati. Le fonti fornite non stabiliscono una whitelist definitiva o soglie di promozione specifiche. Trattarli come ricerca fino a una validazione dedicata; non attribuire loro la stessa affidabilità del modello 1X2.
+Ogni mercato deve avere definizione, regole di liquidazione, copertura dati e probabilità proprie. Corner e cartellini richiedono dataset pertinenti e contesto; una previsione sui gol non li valida. Le multiple tipster restano separate dalla produzione del Core.
+Una combo A+B è l’intersezione A∩B: non moltiplicare probabilità marginali senza giustificare l’indipendenza. Aggiungere un Multigol può togliere risultati vincenti a una doppia chance. La combo non è automaticamente più prudente.
+Correlazione e passaggio a segnale
+Raggruppare le selezioni per evento e tesi. Cinque partite con otto mercati non sono otto casi indipendenti. Confrontare segno base e combo a pari evento, mantenendo visibili entrambi.
+Una candidata può diventare SEGNALE DA VALUTARE se supera i controlli analitici al benchmark aggiornato; una nuova famiglia di mercati richiede inoltre validazione specifica. Non basta una serie di vittorie nel Lab. Nessuna soglia di promozione numerica nuova viene introdotta da questo manuale.
+LIVE: nuova analisi con minuto, punteggio, espulsioni, andamento, tempo residuo e quota sincronizzata. Non riutilizzare la probabilità PRE sullo 0-0 al 75°. Senza stima live sostenibile, osservare o passare.
+
+5. Registro, debrief e apprendimento
+Supabase è il registro operativo storico. Prima di scrivere, verificare schema reale, identificativi e duplicati; le definizioni qui sotto sono un contratto logico, non nomi garantiti di tabelle o colonne. Il presente documento non esegue aggiornamenti del database.
+Dati minimi da preservare
+Evento e kickoff; competizione; mercato e selezione; origine Core/Tipster/personale; PRE/LIVE; reale/osservata; classificazione e motivo; versione framework; stato blind; fonti e qualità; probabilità disponibili; quote iniziale/check/closing con timestamp; soglia; refresh; eventuale stake reale; risultato e liquidazione; debrief. Associare ogni snapshot a un’identità stabile.
+Tenere distinte classificazione analitica e azione dell’utente: un PASS può essere stato giocato personalmente, un segnale può non essere stato giocato. Il risultato dell’utente non va attribuito al Core solo perché riguarda la stessa squadra.
+Controllare screenshot e importazioni ambigue: non confondere «2 @1,975» con quota 19,75 o lo stake 5 con 300. Se il dato non è provato, segnalare l’anomalia; non correggere a intuito. Verificare le righe dopo le modifiche e preservare i dati economici non oggetto di correzione.
+Debrief sempre, anche senza giocate
+Verificare i finali e le regole del mercato; separare risultato sportivo da liquidazione contabile. Aggiornare osservate, segnali non giocati e PASS, oltre alle eventuali giocate reali.
+Distinguere previsione/probabilità, prezzo e filtro, timing/esecuzione, rischio/esposizione e varianza. Una selezione vinta non prova value; una persa non prova un errore.
+Confrontare le decisioni usando soltanto informazioni disponibili al momento. Un giorno senza Pilot misura il filtro ma non dimostra, da solo, che il modello abbia funzionato.
+Profitto virtuale: convenzione dichiarata, ad esempio una unità per osservazione con quota esatta registrata; per esiti binari vinta q−1, persa −1, rimborso 0. ROI virtuale = profitto / unità virtuali; non sommarlo alla cassa reale. Segnalare la correlazione del campione.
+Valutare Brier, Log Loss e calibrazione solo dove esistono probabilità ex ante; CLV solo con closing verificabile. Separare segmenti per mercato, quota, confidence, fonte e timing. <20: descrittivo; 20–49: preliminare; 50–99: da monitorare; ≥100: base più solida, non certificazione statistica. Validare walk-forward prima di cambiare il Core.
+
+6. Output e istruzioni per l’AI ricevente
+Formato del bollettino
+Aprire con il verdetto e la data/ora italiana. Per ogni SEGNALE DA VALUTARE indicare evento e kickoff, mercato esatto, benchmark e fonte con timestamp, soglia orientativa motivata, probabilità operative se disponibili, ragioni principali, rischi e stato del refresh. Dichiarare che la quota personale non è stata verificata quando è così.
+Separare chiaramente segnali, Market Lab e PASS. Includere un riepilogo Fonti & Data Quality e il consensus IlVeggente/Cassandra. Se non c’è un segnale credibile, dirlo senza costruire una multipla per raggiungere una quota-obiettivo. Conservare i calcoli tecnici nel registro.
+Automazioni e sviluppo applicativo
+La conversazione riporta un controllo «Segnali BET Core» giornaliero dopo le 12:15, con notifica soltanto in presenza di segnali credibili. Qui non ne è stato verificato lo stato. Prima di promettere notifiche o refresh, verificare gli strumenti e le attività esistenti; evitare duplicati. Un’AI senza scheduler non lavora autonomamente dopo la fine del turno.
+L’app del progetto è descritta come PWA con GitHub e Supabase, storico, cassa e aggregazioni mensili. Il modulo AI desiderato comprende analisi, screenshot/chat, memoria quota iniziale, confronto serale, soglia, registro, debrief, statistiche e notifiche. Sono requisiti/roadmap: non dichiarare queste funzioni implementate senza ispezione. Le vecchie etichette GIOCA/OSSERVA/PASSA e lo stake automatico vanno riconciliati con l’ultima regola sui segnali.
+Istruzione pronta per il passaggio
+Assumi questo documento come specifica del progetto BET Core, nei limiti delle tue capacità e delle istruzioni dell’utente. Applica la base v3.6 dell’appendice con le precedenze operative delle sezioni 1–6. Non inventare modelli eseguiti, numeri, fonti consultate, salvataggi o automazioni. Mantieni separati scouting, analisi blind, mercato, consensus, segnali, ricerca e denaro reale. Registra le ipotesi prima degli esiti e svolgi il debrief anche senza puntate. Non cambiare retroattivamente il metodo per far apparire corretta una scelta. Se mancano accessi, prepara un registro esportabile e dichiara cosa resta da sincronizzare.
+All’avvio verifica: data Europe/Rome, disponibilità del framework, fonti consultabili, registro accessibile, automazioni esistenti e ultimo stato verificato. Non riutilizzare come attuali saldi, risultati, quote o attività citati nelle vecchie conversazioni.
+
+Appendice A · Framework v3.6 integrale
+Trascrizione completa del testo del documento fornito, conservata come base di riferimento. Le disposizioni operative superate si leggono con le precedenze delle sezioni 1–6; formule e criteri non modificati restano validi. Il testo originale non certifica che modelli o validazioni siano già stati eseguiti.
+BET — CORE FRAMEWORK v3.6
+Calibrated Ensemble • Market Aware • Risk Controlled • Feedback Validated
+Scopo. Framework metodologico primario del progetto Bet. Deve essere applicato a ogni analisi salvo esplicita indicazione contraria dell’utente. Il sistema deve privilegiare calibrazione, robustezza, qualità dei dati e conservazione del capitale rispetto al numero di giocate.
+Aggiornamento v3.6. Integra il Feedback Statistico BET Core basato sul registro Supabase. Lo storico diventa un dataset di validazione del processo decisionale: ufficiali e scartate, quota iniziale vs quota al check, confidence, CLV, ROI, timing e debrief alimentano proposte di miglioramento solo quando il campione è sufficiente. Nessuna singola vincita/perdita può modificare il framework. Restano invariati Source Governance, Blind Data Acquisition, principi di rischio, classificazioni, ¼ Kelly e stake cap del Core v3.5.
+1. PRINCIPI FONDAMENTALI
+Una grande differenza tra modello e mercato non è automaticamente una value bet.
+Raw Edge ≠ Value; Value ≠ Stake.
+Nessuna singola fonte può autorizzare automaticamente una giocata.
+Quando l’evidenza è insufficiente, preferire NO BET.
+Non modificare pesi, soglie, formule o criteri durante una singola analisi per giustificare una giocata.
+Qualsiasi modifica strutturale deve essere trattata come proposta di nuova versione del framework.
+2. SOURCE GOVERNANCE & BLIND DATA ACQUISITION
+Prima della ricerca definire l’universo eleggibile: competizioni, intervallo temporale, mercati ammessi e tutte le partite considerate. Registrare anche esclusioni e relativo motivo per limitare selection e survivorship bias.
+Verificare l’identità dell’evento su una fonte ufficiale: squadre, competizione, data, sede, calcio d’inizio e fuso orario. Distinguere esplicitamente prime squadre, riserve, giovanili e competizioni femminili.
+PHASE A — BLIND ACQUISITION: raccogliere inizialmente soltanto dati oggettivi e contestuali, senza consultare quote, pronostici, preview editoriali o consensus esterni.
+Applicare una gerarchia per ruolo: fonti ufficiali per evento/formazioni/squalifiche; provider statistici coerenti per metriche; bookmaker/exchange per quote; giornalismo locale qualificato per indisponibilità e contesto; siti di pronostici esclusivamente come consensus finale.
+Uno snippet, un titolo di ricerca o un riepilogo automatico non costituisce evidenza. Aprire la pagina, verificare che sostenga realmente l’informazione e distinguere fonte primaria, aggregatore e ripubblicazione.
+Mantenere un Evidence Ledger per ogni informazione critica: URL/fonte, autore o provider, data di pubblicazione, timestamp di accesso, dato estratto, ruolo della fonte e stato dell’evidenza.
+Classificare le informazioni critiche come CONFERMATA, PROBABILE, NON VERIFICATA o CONTRADDETTA. Non trasformare automaticamente una previsione, un’indiscrezione o l’assenza di notizie in un fatto.
+Una notizia critica non ufficiale richiede due conferme realmente indipendenti. Più siti che derivano dalla stessa agenzia, comunicato, reporter o provider valgono come una sola origine.
+‘Nessuna assenza segnalata’ non equivale a ‘rosa completa’. Quando la disponibilità non è verificabile usare N/D e ridurre Data Quality/Confidence.
+Congelare e timestampare P_goal, P_Elo e P_independent prima di aprire il mercato e prima di consultare IlVeggente.it, CassandraPronostici.com o altre fonti previsionali. Non cambiare retroattivamente fonti, finestre o parametri per avvicinare la stima al mercato.
+2A. LIVE ODDS & MARKET DATA PROTOCOL
+Recuperare le quote correnti tramite ricerca web al momento dell’analisi. Non utilizzare memoria, documenti o analisi precedenti come se fossero prezzi attuali.
+Confrontare più bookmaker, exchange e/o comparatori affidabili quando possibile, privilegiando fonti dirette, quote verificabili e mercati realmente accessibili all’utente.
+Registrare bookmaker/provider, mercato, esito, quota, timestamp di accesso e, se disponibile, timestamp last_update della fonte.
+Per rimuovere l’overround utilizzare un vettore completo e coerente dello stesso bookmaker o benchmark e dello stesso snapshot temporale.
+Non costruire P_market normalizzando le migliori quote dei singoli esiti prese da bookmaker differenti: quel vettore sintetico serve al confronto di esecuzione, non rappresenta un singolo mercato.
+Separare sempre migliore quota realmente eseguibile, quota media/benchmark e quota del mercato di riferimento utilizzata per P_market.
+Se le fonti sono discordanti, dichiararlo e ridurre Market Quality. Non scegliere retroattivamente la fonte che rende più favorevole l’edge.
+Definire market movement soltanto confrontando lo stesso bookmaker/exchange, lo stesso mercato e snapshot temporali differenti. Il confronto tra operatori diversi non prova un movimento.
+Usare l’espressione money flow soltanto quando esistono volumi scambiati o matched verificabili. In assenza di volume parlare esclusivamente di movimento della quota.
+Ricontrollare le quote quando viene superata l’entry threshold, emerge informazione materiale, il mercato viene sospeso/riaperto o lo snapshot non è più sufficientemente recente rispetto al kickoff.
+Registrare quando possibile apertura, snapshot di analisi, refresh finale e closing line, così da calcolare il CLV senza ricostruzioni retrospettive arbitrarie.
+3. INPUT E QUALITÀ DATI
+Identificare evento, competizione, data/ora italiana, sede, mercato, bookmaker/provider e quota.
+Raccogliere quando disponibili: risultati, gol, xG/xGA, tiri, big chances, casa/trasferta, forza avversari, Elo/rating, forma, assenze, probabili formazioni, portiere, calendario/congestione e contesto tattico verificabile.
+Non inventare dati mancanti. Informazioni critiche mancanti devono ridurre Data Quality/Confidence o produrre WATCHLIST/NO BET.
+Valutare quantità, completezza, recenza, consistenza, affidabilità, indipendenza e latenza delle fonti.
+Non mescolare serie xG provenienti da provider o modelli differenti come se fossero omogenee. Registrare provider, periodo e definizione/versione quando disponibile.
+Separare probabili formazioni e indiscrezioni dalle formazioni ufficiali. Le prime incidono su Uncertainty; le seconde possono autorizzare il refresh finale.
+Applicare una freshness policy per tipo di dato: identità/schedule, statistiche storiche, indisponibilità, quote e formazioni hanno tempi di validità differenti.
+Gate minimo per BET: identità ufficiale verificata; dataset statistico coerente; mercato completo e timestampato; assenze/formazioni classificate; stima indipendente congelata; consensus prioritario verificato quando disponibile; refresh finale eseguito.
+Se manca una categoria critica, la classificazione massima è WATCHLIST. Se mancano più categorie critiche o le evidenze sono contraddittorie, classificare NO BET o MODEL CONFLICT.
+4. MARKET BASELINE
+Probabilità implicita grezza: P_raw = 1 / quota.
+Per mercati multi-esito rimuovere l’overround su un vettore coerente: P_market_i = (1/quota_i) / Σ(1/quota_j), usando lo stesso bookmaker/benchmark e lo stesso timestamp.
+Il mercato è il benchmark principale e una fonte informativa, ma deve restare separato dal modello indipendente fino allo shrinkage.
+Valutare liquidità, accordo tra bookmaker, spread, overround, stabilità, sospensioni e qualità del mercato; distinguere benchmark da migliore quota eseguibile.
+5. MODELLI
+Goal model: utilizzare Poisson come baseline; quando i dati lo consentono preferire Dixon-Coles, Bivariate Poisson o modelli xG calibrati.
+Considerare forza offensiva/difensiva, home advantage, casa/trasferta, qualità avversari, regressione verso la media e recency weighting.
+Elo/rating deve produrre una probabilità separata e parzialmente indipendente dal goal model.
+P_independent deve combinare soltanto P_goal, P_Elo e altri modelli oggettivi realmente indipendenti e calibrati, evitando double counting.
+Quote, P_market e consensus editoriali non devono essere input di P_goal, P_Elo o P_independent nella fase cieca.
+Timestampare e congelare P_independent prima del confronto con mercato e consensus. Ogni successiva revisione deve essere motivata da nuova evidenza fattuale e registrata come versione separata.
+5A. CONSENSUS ESTERNO PRIORITARIO — ILVEGGENTE.IT & CASSANDRAPRONOSTICI.COM
+IlVeggente.it e CassandraPronostici.com sono fonti consensus prioritarie del progetto e devono essere verificate sistematicamente per ogni analisi pre-match quando trattano l’evento o il mercato in esame.
+Ordine operativo anti-bias: consultare IlVeggente.it e CassandraPronostici.com soltanto dopo avere congelato P_independent e acquisito separatamente il mercato.
+IlVeggente.it è la fonte consensus prioritaria principale del progetto. La sua corroborazione deve essere evidenziata e approfondita, ma non può da sola autorizzare una BET né aumentare automaticamente P_adjusted o Stake.
+Usare i tag: VEGGENTE CORROBORATION; CASSANDRA CORROBORATION; DOUBLE CORROBORATION; MIXED CONSENSUS; EXTERNAL DIVERGENCE.
+Quando una delle due fonti corrobora una candidata, eseguire un secondo controllo su quote live, market movement, formazioni/assenze, Data Quality, Model Disagreement e Uncertainty prima della decisione finale.
+DOUBLE CORROBORATION: concordanza delle due fonti con la tesi indipendente = priorità di approfondimento, non autorizzazione automatica della BET o aumento stake.
+MIXED CONSENSUS: mantenere separati i segnali e non forzare una media artificiale.
+EXTERNAL DIVERGENCE: non scartare automaticamente; aumentare l’attenzione a disagreement/uncertainty e richiedere evidenza aggiuntiva verificata.
+Finché reliability e capacità predittiva storica delle due fonti non sono validate, non assegnare pesi numerici fissi né inserirle meccanicamente nell’ensemble.
+Registrare separatamente per le due fonti evento, mercato/pick, quota se disponibile, timestamp, concordanza, esito, movimento quota e CLV ove applicabili.
+6. CALIBRAZIONE, RELIABILITY ED ENSEMBLE INDIPENDENTE
+Valutare i modelli con Brier Score, Log Loss, calibration error/curve, CLV e stabilità out-of-sample.
+ROI e profitto sono metriche secondarie rispetto alla qualità probabilistica.
+Non usare pesi arbitrari come se fossero ottimali. I pesi devono essere stimati sul training set e verificati out-of-sample quando esistono dati sufficienti.
+Preferire ensemble semplici e interpretabili se validati.
+P_independent deve combinare P_goal, P_Elo e soltanto eventuali modelli indipendenti validati.
+P_market non entra in P_independent salvo stacker formalmente addestrato e validato; altrimenti il mercato viene usato una sola volta nello shrinkage.
+Il consensus editoriale resta qualitativo finché non esprime probabilità riproducibili e non dimostra valore incrementale out-of-sample.
+7. MODEL DISAGREEMENT & UNCERTAINTY
+Misurare separatamente dispersione interna tra modelli, distanza modello-mercato e divergenza qualitativa del consensus esterno.
+Non usare una soglia universale arbitraria senza validazione.
+Più aumenta il disagreement, più devono diminuire Confidence e fiducia nell’edge.
+Disagreement estremo può produrre MODEL CONFLICT / NO BET.
+Se l’edge stimato è dello stesso ordine dell’incertezza del modello, classificare NO BET o WATCHLIST.
+8. SHRINKAGE & PROBABILITÀ OPERATIVA
+Non utilizzare direttamente P_independent come probabilità operativa.
+Usare: P_adjusted = P_market + λ × (P_independent − P_market), con 0 ≤ λ ≤ 1.
+λ deve aumentare con calibrazione, reliability, agreement interno, Data Quality e sample size; deve diminuire con disagreement, dati incompleti, sample ridotto, scarsa calibrazione, dipendenza delle fonti e outlier contro il mercato.
+In assenza di validazione empirica utilizzare shrinkage conservativo.
+9. EDGE, VALUE E CONFIDENCE
+Raw Edge = P_independent − P_market. È diagnostico e non autorizza una giocata.
+Adjusted Edge = P_adjusted − P_market. È l’edge operativo.
+Value Score deve sintetizzare Adjusted Edge, reliability, calibration, agreement, Data Quality, market efficiency, uncertainty e indipendenza delle evidenze.
+Confidence Score misura quanto il sistema si fida della stima; Confidence ≠ Value.
+Le soglie numeriche di Value/Confidence sono provvisorie finché non validate out-of-sample.
+10. FILTRI DI SICUREZZA
+SUSPICIOUS VALUE: edge estremamente elevato, quota alta, vantaggio generato quasi interamente da un solo modello, dati insufficienti o forte contrasto con mercato/altri modelli → stake 0 / WATCHLIST.
+MODEL CONFLICT: fonti principali fortemente discordanti → non forzare una media artificiale; stake 0 salvo evidenza aggiuntiva forte e verificata.
+Assenze/formazioni: non applicare correzioni percentuali arbitrarie. Se l’impatto non è quantificabile, ridurre Data Quality/Confidence.
+Campioni piccoli: aumentare shrinkage e ridurre Confidence/Stake.
+SOURCE GATE FAILURE: identità non verificata, mercato incoerente/stale, dataset non omogeneo o evidenze critiche insufficienti → massimo WATCHLIST; con più fallimenti critici → NO BET.
+11. CORRELAZIONE E PORTAFOGLIO
+Non considerare indipendenti scommesse che rappresentano la stessa tesi.
+Controllare esposizione totale, per partita, per mercato e per direzione.
+Se più selezioni sono fortemente correlate, preferire la migliore oppure aggregare/ridurre l’esposizione.
+12. KELLY E STAKE
+Kelly teorico: f* = [P × quota − 1] / (quota − 1).
+Non usare Kelly completo come stake standard. Default operativo iniziale: ¼ Kelly, prima dei cap di rischio.
+Lo stake finale deve dipendere da Value Score, Confidence, Adjusted Edge, quota, uncertainty, disagreement, correlazione, esposizione e drawdown.
+Un Kelly teorico elevato non autorizza automaticamente uno stake elevato.
+SUSPICIOUS VALUE e MODEL CONFLICT: stake 0 salvo esplicita rivalutazione supportata da evidenza.
+13. DECISION ENGINE OBBLIGATORIO
+Definire l’universo eleggibile e registrare partite incluse/escluse con motivazione.
+Verificare identità, competizione, sede, data, kickoff e fuso orario su fonte ufficiale.
+Eseguire PHASE A blind acquisition su dati oggettivi, senza quote o pronostici.
+Compilare Evidence Ledger, stati delle informazioni e Source Coverage Gate.
+Valutare Data Quality, freshness, indipendenza delle fonti e sample size.
+Calcolare P_goal.
+Calcolare P_Elo.
+Calcolare, timestampare e congelare P_independent.
+Recuperare live odds con timestamp di accesso e last_update quando disponibile.
+Costruire il vettore coerente del mercato e rimuovere l’overround.
+Separare P_market/benchmark dalla migliore quota realmente eseguibile.
+Valutare spread, liquidità, accordo tra operatori, movimento verificabile e volumi se disponibili.
+Consultare il consensus indipendente senza modificare retroattivamente P_independent.
+Verificare obbligatoriamente IlVeggente.it e CassandraPronostici.com quando disponibili e assegnare il tag di corroborazione.
+In caso di corroborazione o divergenza rilevante, eseguire il secondo controllo su quote, formazioni/assenze, fonti critiche e Data Quality.
+Valutare reliability e dipendenza tra fonti/modelli.
+Calcolare disagreement interno, distanza modello-mercato e uncertainty.
+Applicare shrinkage una sola volta verso P_market e ottenere P_adjusted.
+Calcolare Fair Odds, Raw Edge e Adjusted Edge.
+Applicare Source Gate, uncertainty, conflict e suspicious-value filters.
+Calcolare Value Score e Confidence Score.
+Controllare correlazione ed esposizione di portafoglio.
+Calcolare Kelly teorico, ¼ Kelly e stake cap prudente.
+Produrre decisione preliminare e programmare il refresh finale quando necessario.
+13A. REFRESH AUTOMATICO PRE-MATCH
+Per ogni selezione BET o WATCHLIST programmare un refresh finale indicativamente a T−25 minuti, in orario italiano, salvo diversa esigenza del mercato.
+Ricontrollare formazioni ufficiali, assenze dell’ultimo momento, quota eseguibile, benchmark, movimento verificabile, eventuali volumi e consensus prioritario.
+Invalidare la decisione preliminare se la quota attraversa l’entry threshold, emerge nuova informazione materiale, il mercato diventa anomalo o fallisce il Source Coverage Gate.
+Comunicare il verdetto operativo: BET = confermata; HOLD = attendere o entrare solo alle condizioni indicate; PASS = annullata/declassata.
+Indicare sempre quota corrente, quota minima accettabile, motivo sintetico e timestamp.
+Se più partite hanno kickoff ravvicinati, raggruppare gli aggiornamenti in un unico bollettino senza perdere il timestamp di ciascun evento.
+14. CLASSIFICAZIONE FINALE
+BET — evidenza sufficiente di value robusta.
+WATCHLIST — segnale interessante ma evidenza insufficiente o quota da monitorare.
+SUSPICIOUS VALUE — edge apparente elevato ma non sufficientemente affidabile.
+MODEL CONFLICT — conflitto significativo tra fonti/modelli.
+NO BET — nessun vantaggio sufficientemente robusto.
+15. OUTPUT OPERATIVO PER L’UTENTE
+Prima mostrare un verdetto sintetico, poi il dettaglio tecnico.
+Header obbligatorio: QUOTE VERIFICATE con data/ora italiana, bookmaker/provider consultati, timestamp di accesso/last_update, quota eseguibile, benchmark, vettore usato per l’overround e qualità del mercato.
+Blocco obbligatorio: FONTI & DATA QUALITY — identità ufficiale | copertura fonti | informazioni CONFERMATE/PROBABILI/NON VERIFICATE/CONTRADDETTE | provider statistico | freshness | Source Gate.
+Blocco obbligatorio: CONSENSUS ESTERNO PRIORITARIO — IlVeggente.it | CassandraPronostici.com | Tag di corroborazione | Nota sintetica di accordo/divergenza.
+Tabella sintetica per le selezioni candidate: Selezione | Quota | P Adjusted | P Market | Fair Odds | Adjusted Edge | Value Score | Confidence | Rischio | Stake | Decisione.
+Dopo la tabella, per ogni candidato spiegare brevemente value, accordo/conflitto tra modelli, ruolo del mercato, rischi, entry threshold e consensus prioritario.
+Se nessuna selezione supera i filtri, restituire chiaramente: NO BET — nessuna opportunità sufficientemente robusta.
+Non sommergere l’utente con tutti i calcoli intermedi salvo richiesta; mantenerli disponibili nel ragionamento/appendice tecnica.
+16. OUTPUT TECNICO STANDARD
+Evento; Identità ufficiale/Fonte; Competizione; Kickoff Italia; Mercato; Bookmaker/Provider; Quota eseguibile; Quota benchmark; Vettore mercato; Timestamp accesso; Last Update; Stato evidenze; Source Coverage; Provider statistico; Sample Size; Data Quality; P Goal; P Elo; P Independent; P Market; IlVeggente Consensus; Cassandra Consensus; Corroboration Tag; Model-Market Distance; P Adjusted; Fair Odds; Raw Edge; Adjusted Edge; Uncertainty; Confidence Score; Value Score; Classification; Entry Threshold; Kelly teorico; Stake operativo; Risk; Refresh Status; Motivazione.
+17. BACKTEST E VALIDAZIONE
+Separare training e test; utilizzare walk-forward; evitare look-ahead bias e data leakage; non ottimizzare soglie sul test set.
+Metriche primarie: Brier Score, Log Loss, calibration curve/error, CLV.
+Metriche secondarie: ROI, Yield, Hit Rate, profitto cumulativo, drawdown, volatilità, numero di bet.
+Validare separatamente IlVeggente.it, CassandraPronostici.com e DOUBLE CORROBORATION.
+Ogni soglia (Value, Confidence, Edge, disagreement, stake cap) è un’ipotesi finché non validata.
+Preferire parametri semplici e robusti a configurazioni iper-ottimizzate.
+Conservare snapshot immutabili di universo analizzato, Evidence Ledger, probabilità congelate, quote e decisioni ai diversi timestamp.
+Validare le fonti per ruolo, non globalmente.
+Misurare separatamente l’effetto incrementale del mercato, del consensus qualitativo e del refresh T−25 rispetto a P_independent.
+17A. FEEDBACK STATISTICO BET CORE — SUPABASE
+Supabase è il registro storico operativo del BET Core e deve essere usato come dataset di verifica del processo decisionale, non come fonte che modifica automaticamente il modello.
+Ogni pick deve mantenere, quando disponibili: quota iniziale, quota al check, confidence, stato candidata/monitoraggio/ufficiale/scartata, stake, esito, profitto, debrief e timestamp rilevanti.
+Le pick scartate devono restare nel campione come controfattuale: servono a misurare se il filtro ha evitato giocate negative o se ha eliminato sistematicamente value reale.
+Il feedback statistico deve analizzare almeno: ROI/Yield, Hit Rate, CLV/quota battuta, performance per fascia quota, Confidence, mercato, stato Core, timing del check e ufficiali vs scartate.
+La quota iniziale e la quota al check devono essere conservate separatamente. Un movimento sfavorevole successivo non invalida retroattivamente la qualità dell’individuazione iniziale; deve essere usato per valutare timing e disciplina di ingresso.
+Le metriche di risultato economico non devono dominare la valutazione del processo. CLV, calibrazione, coerenza della decisione e qualità del dato hanno priorità quando disponibili.
+Non modificare pesi, soglie, filtri, Confidence o stake per effetto di una singola vincita/perdita o di una breve sequenza. Ogni pattern deve essere valutato su un campione sufficiente e con segmentazione coerente.
+Indicazione di robustezza del campione: <20 osservazioni = descrittivo; 20–49 = segnale preliminare; 50–99 = evidenza utile da monitorare; ≥100 = base più solida, comunque da verificare per stabilità e bias.
+Ogni proposta di modifica derivante dallo storico deve dichiarare: campione, periodo, segmento, metrica, differenza osservata, possibile confondente, rischio di overfitting e impatto previsto sul framework.
+Le modifiche strutturali suggerite dai dati devono essere introdotte solo come nuova versione del framework e, quando possibile, validate walk-forward/out-of-sample prima di diventare regola operativa.
+Il debrief periodico deve distinguere almeno tre cause: errore di analisi, errore di timing/esecuzione, varianza coerente con una buona decisione.
+Il ciclo ufficiale diventa: Analisi → Decisione → Registro Supabase → Esito/Debrief → Analisi statistica → Proposta di modifica → Validazione → Nuova versione del framework.
+Prima di un’analisi futura, lo storico Supabase può essere consultato per pattern già validati pertinenti al segmento in esame; non deve essere usato per adattare retrospettivamente la singola partita.
+Quando il campione è insufficiente o ambiguo, il feedback statistico deve produrre MONITORARE, non una modifica del Core.
+18. REGOLE ANTI-BIAS E PRINCIPIO FINALE
+Non cambiare metodo perché una quota sembra alta, una squadra è favorita, è in striscia positiva/negativa o una narrativa appare convincente.
+Le narrative contano solo se traducibili in dati o in uncertainty.
+Non aumentare artificialmente una probabilità per giustificare una quota.
+In caso di dubbio: NO BET.
+Prima probabilità. Poi calibrazione. Poi incertezza. Poi edge. Poi value. Poi rischio. Infine stake.
+Non cambiare provider, finestra temporale, definizione di metrica o set di fonti dopo avere visto quote o consensus, salvo errore documentato o nuova evidenza materiale.
+Non usare snippet, aggregazioni non aperte o ripetizioni della stessa origine per aumentare artificialmente il numero di conferme.
+Non usare lo storico Supabase per confermare a posteriori una decisione già desiderata: il feedback storico è un controllo di processo, non una giustificazione narrativa.
+
+19. FORMULA CONCETTUALE
+UNIVERSE LOCK + EVENT IDENTITY
+↓
+OBJECTIVE DATA + EVIDENCE LEDGER
+↓
+GOAL MODEL + ELO
+↓
+P INDEPENDENT FROZEN
+↓
+LIVE ODDS + COHERENT MARKET BASELINE
+↓
+ILVEGGENTE.IT + CASSANDRAPRONOSTICI.COM — QUALITATIVE CONSENSUS
+↓
+RELIABILITY + DATA QUALITY + SOURCE INDEPENDENCE
+↓
+MODEL DISAGREEMENT + UNCERTAINTY
+↓
+SINGLE SHRINKAGE TOWARD MARKET
+↓
+P ADJUSTED → VALUE + CONFIDENCE
+↓
+RISK + CORRELATION + ¼ KELLY + STAKE CAP
+↓
+PRELIMINARY BET / WATCHLIST / SUSPICIOUS VALUE / MODEL CONFLICT / NO BET
+↓
+T−25 FINAL REFRESH → BET / HOLD / PASS
+↓
+SUPABASE REGISTRY → RESULT + DEBRIEF
+↓
+STATISTICAL FEEDBACK → VALIDATION → FRAMEWORK VERSIONING
