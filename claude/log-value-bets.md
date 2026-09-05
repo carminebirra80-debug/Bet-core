@@ -141,6 +141,52 @@ Per entrambe: nessuna delle condizioni di invalidazione elencate stamattina si
 e' verificata. Il criterio resta quello dichiarato: tiene la notizia, non il
 numero del modello (vedi avvertenza sotto).
 
+### VERIFICA T-25 (ore 15:35, sezione 13A del manuale)
+
+Secondo controllo, 25 minuti dal fischio d'inizio. Oggetto: il prezzo, non
+piu' l'informazione (quella era il controllo delle 15:00).
+
+**LIMITAZIONE DA DICHIARARE ESPLICITAMENTE** (manuale §2A: "se le fonti sono
+discordanti, dichiararlo e ridurre Market Quality"): non sono riuscito a
+verificare una quota realmente LIVE a T-25. Le fonti raggiungibili (agimeg.it,
+sportsgambler) restituivano valori con timestamp di 2-3 giorni fa (rilevati
+il 2-3 settembre), identici a quelli di stamattina; ESPN e Oddspedia non
+erano raggiungibili (403 / pagina vuota). Non posso quindi dichiarare "nessun
+movimento" con la stessa certezza di un vero controllo Odds Live - posso solo
+dire che non ho trovato ALCUNA evidenza di movimento, il che e' diverso da
+averlo escluso attivamente. Da manuale, questo classifica la Market Quality
+di questo refresh come ridotta, non piena.
+
+**Nottingham Forest-Tottenham | NO GOL | VERDETTO: BET (confermata)**
+- Quota di riferimento (nessuna variazione rilevata, dato non live): 2.05
+- Formazione Tottenham: coerente fra le fonti (Kinsky; Porro, Van Hecke, Van
+  de Ven, Udogie; Bentancur, Gallagher, Tonali; Savio, Tel; Marmoush) - nessun
+  rientro a sorpresa dei quattro assenti gia' noti.
+- Formazione Forest: fonti IN CONFLITTO sulla punta centrale (Jesus vs Delap).
+  Non e' un'informazione che invalida la tesi (riguarda l'attacco Forest, non
+  la difesa ne' l'attacco Tottenham), ma resta un'incertezza non risolta.
+- Nessuna notizia flash nell'ultima ora oltre quanto gia' noto alle 15:00.
+
+**Fulham-Crystal Palace | 1 (Fulham) | VERDETTO: BET (confermata)**
+- Quota di riferimento (nessuna variazione rilevata, dato non live): 2.32
+  (Marathonbet) / 2.30 (AdmiralBet, StarVegas)
+- Formazione Palace piu' convergente tra le fonti ora: Henderson; Canvot,
+  Disasi, Richards; Khalaili, Wharton, Timber, Mitchell; Kamada, Pino;
+  Nketiah. **Mateta in panchina, Sarr fuori dai convocati/indisponibile**:
+  CONFERMA diretta della tesi, non piu' solo "probabile assenza".
+
+**Cronologia prezzo per il registro (sezione 17A - da tenere separata)**
+
+| Pick | Quota iniziale (mattina) | Check T-60 (15:00) | Refresh T-25 (15:35) |
+|---|---|---|---|
+| Forest-Tottenham NoGol | 2.05 | 2.05 (nessuna riverifica quote, solo formazioni) | 2.05 (nessun movimento rilevato, dato non live) |
+| Fulham 1 | 2.32 / 2.30 | 2.32 / 2.30 (idem) | 2.32 / 2.30 (idem) |
+
+**Verdetto finale pre-match: entrambe BET, quota minima accettabile invariata
+rispetto a stamattina** (2.05 e 2.30 sui book nominati). Nessuna delle due
+richiede attesa (HOLD) o annullamento (PASS): nessuna notizia ha invalidato le
+tesi, anzi la seconda e' stata rinforzata dalla formazione Palace.
+
 ### Note metodologiche della sessione
 - FBref, Understat, FootyStats e WorldFootball non raggiungibili (protezione Cloudflare):
   stime costruite su medie gol segnati/subiti con split casa/trasferta (ultime 10), non su xG puri.
