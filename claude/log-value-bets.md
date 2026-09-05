@@ -196,8 +196,14 @@ del metodo Core (origine Tipster, non Core).
 
 | Multipla | Quota | Stake | Esito |
 |---|---|---|---|
-| Fabrizio Rubino #1 | 5,00 | €5,00 | da verificare |
-| Fabrizio Rubino #2 | 2,00 | €5,00 | da verificare |
+| Fabrizio Rubino #1 (5 gambe, giocata 13:32) | 5,70 | €5,00 | **PERSA** (Paderborn-Friburgo GOAL e Grotta-Volsungur Over2.5 perse) |
+| Fabrizio Rubino #2 (5 gambe, giocata 12:18) | 5,00 | €5,00 | **PERSA** (Dunajska Streda-Slovan Bratislava Over2.5 persa) |
+
+**Correzione rispetto al debrief delle 23:30**: le quote segnate ieri sera (5,00 e 2,00)
+erano una stima/ricordo approssimativo, non i dati reali. Le schermate Sportium reali
+(05/09/2026, "Giocata"/ADM) mostrano quote 5,70 e 5,00, entrambe **DA NON PAGARE**
+(perse) — ogni multipla e' saltata per un solo leg su cinque, nessun leg annullato/rimborsato.
+Liquidazione: -€5,00 ciascuna, -€10,00 totali sulle due.
 
 Stake fisso €5 su entrambe, indipendentemente dalla quota: comportamento
 reale confermato dall'utente, diverso dal suggerimento a fasce dell'app
@@ -331,3 +337,35 @@ cassa e il riepilogo di giornata riflettano i numeri veri.
   (`analytics/RISULTATI.md`): il fatto che una delle due pick di oggi abbia
   vinto non lo riabilita, dato che la decisione non si e' basata sul suo
   numero di value.
+
+### Riconciliazione conto Sportium vs cassa app (aggiunta dopo le schermate reali)
+
+Netto reale certo di oggi, dalle 3 schermate Sportium + risultato Fulham-Palace gia' confermato:
+
+| Giocata | Quota reale | Stake | Esito reale | Movimento |
+|---|---|---|---|---|
+| Multipla Fabrizio #1 (5 gambe) | 5,70 | €5,00 | Persa | -€5,00 |
+| Multipla Fabrizio #2 (5 gambe) | 5,00 | €5,00 | Persa | -€5,00 |
+| Forest-Tottenham NOGOAL | 2,10 | €5,00 | Vinta (PAGATO, vincita 10,50) | +€5,50 |
+| Fulham-Crystal Palace 1 | 2,18 | €5,00 | Persa (2-3) | -€5,00 |
+| **Netto reale giornata** | | | | **-€9,50** |
+
+Questi 4 movimenti, se registrati nell'app con le stesse quote/esiti, tornano
+esatti: nessuna delle due multiple Fabrizio genera scarto (sono perse, e su
+una persa il profitto e' -stake a prescindere dalla quota inserita — vedi
+`index.html` riga 1752). L'unico scarto verificabile col codice e' sulla
+NOGOAL: se in app la quota e' rimasta 2,05 (quella citata nell'analisi
+mattutina) invece di 2,10 (quella reale a cui e' stata giocata), l'app calcola
+un profitto di +€5,25 invece di +€5,50 -> **app sottostima di €0,25**, nella
+direzione giusta (conto reale > cassa app) ma non abbastanza a coprire l'1,6
+segnalato.
+
+**Non risolto**: i restanti ~€1,35 non si spiegano con questi 4 movimenti
+presi singolarmente. Serve uno dei due dati seguenti per chiudere:
+1. La quota/esito effettivamente salvati in app per ciascuna delle 4 giocate
+   (uno screenshot della lista picks in Bet Core, da confrontare 1:1 con le
+   schermate Sportium).
+2. Se il residuo e' precedente a oggi (drift accumulato su giocate passate,
+   scollegato dalla giornata del 5 settembre) oppure se c'e' un movimento sul
+   conto Sportium di oggi non legato a una giocata (bonus, cashback,
+   arrotondamento della vincita) che l'app non puo' conoscere.
