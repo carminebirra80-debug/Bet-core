@@ -49,3 +49,18 @@ assert.equal(T.faseCampione(50).codice,"EVIDENZA_UTILE");
 assert.equal(T.faseCampione(100).codice,"BASE_SOLIDA");
 
 console.log("market-taxonomy: ok");
+
+// Lo scontrino antepone il nome del mercato alla selezione. Cercare "NO GOAL"
+// nell'intera stringa faceva scattare il nome del mercato invece della scelta,
+// e ogni Goal veniva registrato come No Goal: la famiglia restava giusta, la
+// selezione no, quindi i test che controllavano solo la famiglia passavano.
+assert.equal(T.classifica("GOAL/NO GOAL | GOAL [1.55]","SINGOLA",[]).selezione,"Goal");
+assert.equal(T.classifica("VEE GOAL/NO GOAL | GOAL [1.57]","SINGOLA",[]).selezione,"Goal");
+assert.equal(T.classifica("GOAL/NO GOAL | NO GOAL","SINGOLA",[]).selezione,"No Goal");
+assert.equal(T.classifica("GOAL/NO GOAL | GOAL","SINGOLA",[]).famiglia,"GOAL_NO_GOAL");
+assert.equal(T.classifica("Goal","SINGOLA",[]).selezione,"Goal");
+assert.equal(T.classifica("No Goal","SINGOLA",[]).selezione,"No Goal");
+assert.equal(T.classifica("BTTS NO","SINGOLA",[]).selezione,"No Goal");
+assert.equal(T.classifica("BTTS SI","SINGOLA",[]).selezione,"Goal");
+// Senza selezione dichiarata non si indovina.
+assert.notEqual(T.classifica("GOAL/NO GOAL","SINGOLA",[]).famiglia,"GOAL_NO_GOAL");
