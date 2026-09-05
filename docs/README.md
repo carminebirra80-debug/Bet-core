@@ -93,6 +93,23 @@ va sempre controllato a mano (screenshot o apertura diretta dell'app);
 un `HOLD`/`BET` calcolato su un'altra quota non garantisce che la stessa
 convenienza esista su Sportium.
 
+**Verificato anche con un browser reale** (5 settembre 2026): un Chromium
+headless vero (playwright-core) restituisce `ERR_CONNECTION_RESET` su
+Sportium — bloccato più duramente di curl (che riceve almeno un 403 con
+pagina), segno di un blocco deliberato sull'impronta di rete del browser,
+non un limite risolvibile cambiando strumento.
+
+**Workflow adottato**: ad ogni controllo T-60/T-25 la quota reale su
+Sportium viene chiesta esplicitamente a chi gioca, non stimata. La coppia
+(quota citata, quota Sportium) va registrata con
+`analytics/sportium_gap.py add <data> <campionato> <partita> <mercato>
+<quota_citata> <fonte> <quota_sportium>`, che scrive su
+`claude/sportium-quotes.csv` (registro persistente, mai troncato). Con
+`analytics/sportium_gap.py report` si vede lo scarto medio accumulato; sotto
+20 coppie resta descrittivo (stessa soglia del manuale, sez. 17A), poi ha
+senso valutare uno sconto calibrato invece di scoprire lo scarto a sorpresa
+ogni volta, come il -6% trovato su Fulham-Crystal Palace il 5 settembre.
+
 ## Cosa manca rispetto alla specifica
 
 - **P_Elo** (§5): non implementato. Senza un secondo modello davvero
