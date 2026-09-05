@@ -64,13 +64,47 @@ Motivo: servono 4-5 gambe da partite diverse, ne sono state trovate 2 sopra sogl
 | Lens-Lorient | 1 / Over 2.5 | 1.46 / 1.65 | quota equa Lens 1.57, Over -1% |
 | Maritimo-Benfica | 2 / NoGol | 1.18 / 1.71 | quota equa Benfica 1.35 |
 
+### AVVERTENZA AGGIUNTA A POSTERIORI (5 settembre 2026, ore 12:27)
+
+I due "value" dichiarati sopra (+11.9% e +7.7%) sono stati calcolati con un
+modello Poisson che, nello stesso pomeriggio, e' stato validato su dati storici
+e BOCCIATO. Vedi analytics/RISULTATI.md per i numeri completi. In sintesi:
+
+- Backtest walk-forward contro le quote di chiusura: log-loss del modello
+  peggiore di quello del mercato in tutti i campionati testati (1.0132 contro
+  0.9624 in Serie A), e ROI -21% su 500 scommesse.
+- Griglia su peso del modello, soglia di edge e campione minimo: nessuna
+  combinazione in utile; il log-loss peggiora in modo monotono man mano che si
+  sposta peso dal mercato al modello, in tutti e quattro i campionati.
+- Il difetto e' strutturale: lo shrinkage appiattisce le stime, quindi il
+  modello sottovaluta i favoriti e sopravvaluta pareggi e outsider. Le due
+  selezioni di oggi sono entrambe su squadre non favorite, cioe' esattamente
+  dove il modello sbaglia di piu'.
+
+Conseguenza pratica: le percentuali di value qui sopra NON sono affidabili e
+non vanno riportate come se lo fossero. Cio' che regge di queste due selezioni
+e' il ragionamento sulle notizie di formazione (Tottenham a secco e senza
+quattro attaccanti; Palace senza Mateta e Sarr), non l'aritmetica.
+
+Riscontro parziale: il modello ricostruito su dati reali (xG di
+football-data.co.uk, non medie lette nelle anteprime) mette il Fulham al 44.1%
+contro il 40.8% del consenso de-vigato. Stessa direzione, ma scarto troppo
+piccolo per essere un segnale.
+
+Da trattare quindi come scommesse basate su un'intuizione informata, non come
+value bet certificate. Il criterio della verifica delle 15:00 e' "la notizia
+regge?", non "il modello dice +7.7%".
+
 ### Note metodologiche della sessione
 - FBref, Understat, FootyStats e WorldFootball non raggiungibili (protezione Cloudflare):
   stime costruite su medie gol segnati/subiti con split casa/trasferta (ultime 10), non su xG puri.
 - 3a giornata: campioni stagionali minimi, alcune medie "ultime 10" contengono ancora la
   stagione precedente o serie inferiori per le neopromosse -> bande di stima larghe e uso
   sistematico del limite inferiore.
-- Arbitri non designati/non reperiti -> Confidence massima raggiungibile: B.
+- Arbitri non reperiti al momento dell'analisi -> Confidence massima raggiungibile: B.
+  CORREZIONE della stessa giornata: erano invece disponibili in fixtures.csv di
+  football-data.co.uk (Forest-Tottenham: C Pawson; Fulham-Palace: S Barrott).
+  Dalle prossime analisi l'arbitro non e' piu' un limite alla Confidence.
 - Nessun movimento quota osservabile in automatico (OddsPortal e volumi Betfair Exchange
   richiedono JavaScript/login) -> Timing sempre "Monitorare".
 - Pattern del giorno: tutti i favoriti corti in value negativo (Bayern, Benfica, Leverkusen,
