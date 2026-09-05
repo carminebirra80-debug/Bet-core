@@ -19,13 +19,13 @@ in 1.80-2.20 sarebbe servita una gamba sotto soglia (Forest-Tottenham Under 3.5 
 Motivo: servono 4-5 gambe da partite diverse, ne sono state trovate 2 sopra soglia.
 
 **Selezioni in value (giocabili come singole):**
-- Nottingham Forest-Tottenham (Premier League, 16:00) | NO GOL | 2.05 (Marathonbet / AdmiralBet / StarVegas) | Value +11.9% | ★★ | Confidence B | ESITO: da verificare
-- Fulham-Crystal Palace (Premier League, 16:00) | 1 (Fulham) | 2.32 (Marathonbet) / 2.30 (AdmiralBet, StarVegas) | Value +7.7% | ★ | Confidence B | ESITO: da verificare
+- Nottingham Forest-Tottenham (Premier League, 16:00) | NO GOL | 2.05 (Marathonbet / AdmiralBet / StarVegas) | Value +11.9% | ★★ | Confidence B | ESITO: VINTA (0-0)
+- Fulham-Crystal Palace (Premier League, 16:00) | 1 (Fulham) | 2.32 (Marathonbet) / 2.30 (AdmiralBet, StarVegas) | Value +7.7% | ★ | Confidence B | ESITO: PERSA (2-3 Palace)
 
-**Doppia opzionale** (fuori banda Raddoppio, entrambe le gambe sopra soglia): 2.05 x 2.32 = 4.76 | ESITO: da verificare
+**Doppia opzionale** (fuori banda Raddoppio, entrambe le gambe sopra soglia): 2.05 x 2.32 = 4.76 | ESITO: PERSA (una gamba persa annulla la combinazione)
 
 **Alternativa segnalata ma non combinabile** (stessa partita del pick 1, correlata):
-- Nottingham Forest-Tottenham | Under 2.5 | 1.83 (Marathonbet / AdmiralBet / StarVegas) | Value +9.1% | ★★ | ESITO: da verificare
+- Nottingham Forest-Tottenham | Under 2.5 | 1.83 (Marathonbet / AdmiralBet / StarVegas) | Value +9.1% | ★★ | ESITO: VINTA (0-0, mai giocata)
 
 ### Motivazioni sintetiche
 - **Forest-Tottenham NoGol**: Tottenham a secco in campionato (0-3 a Brentford, 0-2 col
@@ -228,3 +228,106 @@ modifica al codice richiesta finche' l'utente non chiede un default diverso.
 - Pattern del giorno: tutti i favoriti corti in value negativo (Bayern, Benfica, Leverkusen,
   Villarreal, Lens). Gli unici edge reali su squadre in crisi offensiva conclamata, dove il
   mercato e' piu' lento ad aggiornarsi rispetto alle assenze.
+
+---
+
+## DEBRIEF — 5 settembre 2026, ore 23:30 (sezione 17/17A del manuale)
+
+### Risultato sportivo (fonte pulita, verificato dopo il conflitto iniziale)
+
+**Nottingham Forest 0-0 Tottenham.** Due fonti indipendenti convergono (VAVEL:
+"late goal ruled out in tense draw"; NBC Sports/altre: gol Forest annullato al
+67' per fallo di mano sulla linea di porta dopo revisione VAR). Il conflitto
+segnalato nella prima ricerca (una fonte diceva "Tottenham 0-3 Forest") non
+regge al controllo con fonte pulita: era un risultato sbagliato o di un'altra
+partita, scartato. **0-0 confermato, nessuna delle due squadre ha segnato.**
+
+**Fulham 2-3 Crystal Palace** (ESPN). Nessun conflitto, fonte unica solida
+gia' dalla prima ricerca.
+
+### Esito e liquidazione, pick per pick
+
+| Pick | Mercato | Quota Sportium reale | Stake | Risultato sportivo | Esito | Liquidazione |
+|---|---|---|---|---|---|---|
+| Forest-Tottenham | NO GOL | 2.10 | €5 | 0-0 | **VINTA** | +€5,50 (incasso €10,50) |
+| Fulham-Crystal Palace | 1 (Fulham) | 2.18 | €5 | 2-3 Palace | **PERSA** | −€5,00 |
+
+**Netto Core: +€0,50 su €10 giocati** (una vinta, una persa; le quote usate
+sono quelle reali Sportium registrate in `claude/sportium-quotes.csv`, non
+quelle citate nell'analisi mattutina — 2.05→2.10 e 2.32→2.18).
+
+### Lettura per pick (criterio: ha tenuto LA TESI sulle notizie, non il numero del modello — gia' bocciato, vedi RISULTATI.md)
+
+**Forest-Tottenham NO GOL — decisione buona, tesi confermata, non solo varianza.**
+La tesi centrale era l'attacco Tottenham azzerato (Kulusevski, Xavi Simons,
+Odobert gia' fuori + Maddison aggiunto a T-60): lo Spurs non ha segnato,
+esattamente come previsto dalla notizia, non da un numero di modello. Il
+fatto che anche il Forest sia rimasto a secco (compreso un gol annullato al
+67') non era la parte pronosticata della tesi, ma e' coerente con una partita
+tesa e con poche occasioni nitide, non un colpo di fortuna scollegato dal
+ragionamento. Classificazione: **tesi confermata, vittoria coerente con
+un'analisi corretta**, non un caso limite da manuale.
+
+**Fulham 1 — persa, ma la tesi sulle notizie non e' stata smentita da un
+errore di analisi o di timing; e' il caso in cui l'assenza di attaccanti
+avversari non garantisce comunque il risultato.**
+Le assenze Palace (Mateta, Sarr, Riad) erano confermate correttamente sia a
+T-60 sia a T-25: non c'e' stato un errore di timing/esecuzione, l'informazione
+usata per decidere era giusta e aggiornata fino al fischio d'inizio. Il Palace
+ha comunque segnato 3 gol senza i suoi tre attaccanti titolari, e il Fulham
+ne ha subiti 3 in casa. Questo e' il punto reale da annotare: **la tesi
+"attacco indebolito -> meno gol -> favorito in casa vince" e' incompleta**,
+perche' non tiene conto della qualita' dei sostituti ne' della tenuta
+difensiva di chi gioca in casa (Fulham ha subito 3 gol in casa, un dato che
+l'analisi di stamattina non ha pesato abbastanza, concentrata solo sulle
+assenze avversarie). Non e' pero' un errore dimostrato con un solo caso:
+puo' essere normale varianza (una squadra indebolita puo' comunque vincere
+una partita su cinque) oppure un buco reale nel metodo (guardare solo le
+assenze offensive avversarie, mai la tenuta difensiva di chi si gioca).
+**Descrittivo, non un pattern**: un solo caso non basta per cambiare la
+regola (manuale, sez. 17A e 18) — ma vale la pena tenerlo d'occhio nelle
+prossime giornate: quando la tesi si basa solo su "squadra X senza i suoi
+attaccanti", verificare anche i gol subiti in trasferta/casa di chi si
+gioca, non solo le assenze altrui.
+
+### Multiple Fabrizio Rubino (Tipster, fuori conteggio Core) — non chiudibili ora
+
+Mancano le gambe delle due multiple (quota 5,00 e quota 2,00, €5 di stake
+ciascuna): non fornite dall'utente finora, e non leggibili da questa sessione
+(nessun accesso a Supabase/app). **Non vengono indovinate.** Restano "da
+verificare" finche' l'utente non condivide gli eventi che le compongono, o
+il loro esito diretto (vinta/persa/rimborsata).
+
+### Multipla J4F (Roma-Atalanta Under 2.5 + Hull-Aston Villa 2 + Villarreal 1, quota Codere 5.47)
+
+Non e' confermato se sia stata effettivamente giocata. Se giocata, l'esito e
+l'eventuale quota reale ottenuta vanno chiesti all'utente: se fornita una
+quota reale (anche su book diverso da Sportium), va comunque registrata in
+`analytics/sportium_gap.py` come J4F, per regola gia' concordata.
+
+### Nota per l'app (Supabase)
+
+Il riepilogo giornaliero (`riepilogoGiornaliero()`, aggiunto oggi in
+`index.html`) mostra i numeri reali solo se le giocate vengono registrate
+nell'app stessa. Questa sessione non ha e non deve avere credenziali
+Supabase: gli esiti di oggi (Forest-Tottenham vinta, Fulham persa, + le
+multiple di Fabrizio quando note) vanno inseriti a mano nell'app perche' la
+cassa e il riepilogo di giornata riflettano i numeri veri.
+
+### Conclusione della giornata
+
+- **Core**: 1 vinta, 1 persa, netto +€0,50 su €10. Campione di 2 pick:
+  descrittivo, non un pattern (manuale sez. 17A/18) — nessuna modifica al
+  metodo o alle soglie viene proposta sulla base di oggi.
+- **Lezione da annotare, non da regola**: una tesi costruita solo su
+  "assenze offensive dell'avversario" ha retto per una partita (Forest-Tottenham)
+  e non per l'altra (Fulham-Palace, dove il Palace ha segnato comunque 3 gol
+  senza i suoi titolari). Da tenere d'occhio nelle prossime analisi: pesare
+  anche la tenuta difensiva della squadra su cui si punta, non solo le
+  assenze di chi si affronta.
+- **Tipster (Fabrizio) e J4F**: esiti ancora aperti, in attesa di dati
+  dall'utente — non entrano comunque nel conteggio Core in nessun caso.
+- Il modello Poisson resta bocciato dal backtest di stamattina
+  (`analytics/RISULTATI.md`): il fatto che una delle due pick di oggi abbia
+  vinto non lo riabilita, dato che la decisione non si e' basata sul suo
+  numero di value.
