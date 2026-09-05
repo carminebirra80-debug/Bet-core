@@ -140,6 +140,33 @@ inoltre due categorie diverse mischiate insieme: "so che non c'è valore" e
   `sportium_gap.py` — a meno che venga comunque fornita una quota reale, nel
   qual caso si registra comunque, ma segnalata come J4F nel log.
 
+## Quote realmente live: The Odds API
+
+Risolve il buco specifico trovato ai controlli T-60/T-25 del 5 settembre
+2026: le fonti raggiungibili in automatico restituivano quote vecchie di
+2-3 giorni, mai davvero live. The Odds API (**the-odds-api.com**, con i
+trattini — esiste un sito impostore senza trattini, non affiliato, verificare
+sempre l'URL prima di inserire dati di pagamento) da' accesso a quote
+realmente fresche (nell'ordine dei minuti) su oltre 40 bookmaker per i
+campionati principali, incluso Marathon Bet (gia' citato tutto il giorno via
+aggregatori) e Betfair/Betfair Sportsbook (anche nel pannello storico di
+football-data.co.uk, quindi live e storico tornano confrontabili per quei
+due libri specifici).
+
+Non risolve Sportium: non e' fra i bookmaker coperti, come nessun
+aggregatore lo copre (vedi sezione precedente). Il prezzo Sportium reale
+resta da chiedere a chi gioca.
+
+```
+export ODDS_API_KEY="..."     # mai scritta in un file, solo env var di sessione
+python3 analytics/live_odds.py E0 "Nott'm Forest" Tottenham
+```
+
+`analytics/live_odds.py` legge la chiave solo da `os.environ`, non la scrive
+mai su disco. Cache locale di 5 minuti per non consumare quota inutilmente
+(piano gratuito: 500 richieste/mese, una chiamata per campionato ne costa
+poche unita').
+
 ## Cosa manca rispetto alla specifica
 
 - **P_Elo** (§5): non implementato. Senza un secondo modello davvero
