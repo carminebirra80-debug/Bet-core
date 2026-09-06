@@ -241,6 +241,29 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.equal(modificata.evento,"","il titolo della giocata storica non va riscritto");
   assert.equal(modificata.nota,"Multipla storica senza gambe","la nota deve restare intatta");
 
+  // Un versamento successivo non deve esistere retroattivamente nel saldo.
+  // Con 10 versati, +40, -30 e altri 10 versati dopo, il massimo documentato
+  // e' 50 e il saldo finale 30: il vecchio calcolo inventava un picco di 60.
+  const sorgenteAndamento=html.match(/(function andamento\(chiuse\)\{[\s\S]*?\n  \})\n\n  \/\/ Quanto pesa/);
+  assert.ok(sorgenteAndamento,"funzione andamento non trovata nel sorgente");
+  const provaContesto={
+    S:{versamenti:[
+      {id:10,data:"2026-08-01",importo:10},
+      {id:11,data:"2026-09-01",importo:10}
+    ]},
+    risultato:null
+  };
+  vm.runInNewContext(sorgenteAndamento[1]+`; risultato=andamento([
+    {id:20,data:"2026-08-02",profitto:40},
+    {id:21,data:"2026-08-03",profitto:-30}
+  ]);`,provaContesto);
+  const provaAndamento=provaContesto.risultato;
+  assert.equal(provaAndamento.picco,50,"il versamento futuro non deve gonfiare il picco passato");
+  assert.equal(provaAndamento.drawdown,20,"drawdown atteso 20 dal massimo documentato di 50");
+  assert.equal(provaAndamento.pct,40,"percentuale di drawdown attesa 40%");
+  assert.equal(provaAndamento.dataPicco,"2026-08-02","data del picco documentato errata");
+  assert.ok(html.includes("dal massimo documentato di"),"la UI deve dichiarare il limite del dato storico");
+
   console.log("app smoke: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

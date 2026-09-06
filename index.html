@@ -1098,20 +1098,30 @@ textarea{width:100%;min-height:78px;resize:vertical}
     });
   }
 
-  // Ricostruisce la cassa nel tempo per trovare il massimo raggiunto
+  // Ricostruisce il saldo documentato a fine giornata. I versamenti entrano
+  // nella loro data reale: usare subito il totale versato fino a oggi
+  // sposterebbe all'indietro i versamenti futuri e inventerebbe falsi picchi.
+  // Lo storico legacy non conserva l'ora di liquidazione di tutte le giocate,
+  // quindi il massimo intraday non e' ricostruibile con sufficiente precisione.
   function andamento(chiuse){
-    var ord = chiuse.slice().sort(function(a,b){
-      if(a.data === b.data) return a.id - b.id;
-      return a.data < b.data ? -1 : 1;
-    });
-    var versato = totaleVersato();
-    var corrente = versato, picco = versato;
-    for(var i=0;i<ord.length;i++){
-      corrente += ord[i].profitto;
-      if(corrente > picco) picco = corrente;
+    var giorni={};
+    function aggiungi(data,delta){
+      var d=String(data||"0000-00-00");
+      giorni[d]=(giorni[d]||0)+(Number(delta)||0);
     }
-    var giu = picco - corrente;
-    return { picco:picco, drawdown:giu, pct: picco>0 ? (giu/picco)*100 : 0 };
+    S.versamenti.forEach(function(v){
+      aggiungi(v.data,v.importo);
+    });
+    chiuse.forEach(function(g){
+      aggiungi(g.data,g.profitto);
+    });
+    var corrente=0,picco=0,dataPicco="";
+    Object.keys(giorni).sort().forEach(function(d){
+      corrente+=giorni[d];
+      if(corrente>picco){picco=corrente;dataPicco=d;}
+    });
+    var giu=Math.max(0,picco-corrente);
+    return {picco:picco,drawdown:giu,pct:picco>0?(giu/picco)*100:0,dataPicco:dataPicco};
   }
 
   // Quanto pesa il campione: senza questo un ROI e solo rumore
@@ -1266,7 +1276,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         : "\u00A0"}),
       a.drawdown > 0.004
         ? el("p",{"class":"sotto tab","style":{color:"#C8873A"},
-            "text":"\u2193 "+euro(a.drawdown)+" dal massimo di "+euro(a.picco)+
+            "text":"\u2193 "+euro(a.drawdown)+" dal massimo documentato di "+euro(a.picco)+
                    " ("+a.pct.toFixed(0)+"%)"})
         : (c.chiuse.length ? el("p",{"class":"sotto tab","text":"sei al massimo storico"}) : null),
       S.errore ? el("p",{"class":"errore","text":S.errore}) : null
