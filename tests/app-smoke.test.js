@@ -62,7 +62,10 @@ const picks=[
   {id:1,data:"2026-08-31",tipster:"io",evento:"Roma - Lecce",mercato:"2 + Over 1.5",nota:"",quota:1.60,quotaChiusura:1.50,probabilitaStimata:.70,probabilitaTimestamp:"2026-08-31T12:00:00Z",quotaCheck:null,confidence:3,debrief:"ok",statoCore:"ufficiale",stake:2,osservata:false,bookmaker:"Sportium",faseIngresso:"PRE",classificazione:"BET PILOT",ticketId:"ABC1",orarioIngresso:"2026-08-31T12:10:00Z",tipoSchedina:"SINGOLA",gambe:[],esito:"vinta",profitto:1.20},
   {id:2,data:"2026-08-31",tipster:"io",evento:"Roma - Lecce",mercato:"2 + Over 1.5",nota:"",quota:1.55,quotaChiusura:1.50,probabilitaStimata:.70,probabilitaTimestamp:"2026-08-31T12:00:00Z",quotaCheck:null,confidence:3,debrief:"ok",statoCore:"ufficiale",stake:1,osservata:false,bookmaker:"Sportium",faseIngresso:"LIVE",classificazione:"BET PILOT",ticketId:"ABC2",orarioIngresso:"2026-08-31T12:11:00Z",tipoSchedina:"SINGOLA",gambe:[],esito:"vinta",profitto:.55},
   {id:3,data:"2026-08-31",tipster:"io",evento:"Barcellona vs Rayo",mercato:"MULTIGOAL 3-5 CASA + MULTIGOAL 0-1 OSPITE",nota:"",quota:2,quotaCheck:null,confidence:3,debrief:"",statoCore:"ufficiale",stake:5,osservata:false,bookmaker:"Sportium",faseIngresso:"PRE",classificazione:"PERSONALE",ticketId:"ABC3",orarioIngresso:"2026-08-31T21:09:00Z",tipoSchedina:"SINGOLA",gambe:[],esito:"aperta",profitto:0},
-  {id:4,data:"2026-08-30",tipster:"io",evento:"Storico",mercato:"",nota:"",quota:2,quotaCheck:null,confidence:3,debrief:"",statoCore:"scartata",stake:0,osservata:true,bookmaker:"Sportium",faseIngresso:"PRE",classificazione:"SCARTATA",ticketId:"",orarioIngresso:"",tipoSchedina:"SINGOLA",gambe:[],esito:"persa",profitto:0}
+  {id:4,data:"2026-08-30",tipster:"io",evento:"Storico",mercato:"",nota:"",quota:2,quotaCheck:null,confidence:3,debrief:"",statoCore:"scartata",stake:0,osservata:true,bookmaker:"Sportium",faseIngresso:"PRE",classificazione:"SCARTATA",ticketId:"",orarioIngresso:"",tipoSchedina:"SINGOLA",gambe:[],esito:"persa",profitto:0},
+  // Multipla inserita a mano prima che esistesse il campo gambe: nel registro
+  // reale ce ne sono 20 su 71, ed erano tutte impossibili da correggere.
+  {id:5,data:"2026-08-27",tipster:"io",evento:"",mercato:"MULTIPLA",nota:"Multipla storica senza gambe",quota:5.31,quotaCheck:null,confidence:3,debrief:"",statoCore:"ufficiale",stake:3.50,osservata:false,bookmaker:"Sportium",faseIngresso:"PRE",classificazione:"PERSONALE",ticketId:"",orarioIngresso:"",tipoSchedina:"MULTIPLA",gambe:[],esito:"vinta",profitto:15.08}
 ];
 const storage={
   "registro-tipster-v1":JSON.stringify({giocate:picks,versamenti:[{id:1,data:"2026-08-01",importo:10}],tetti:{sabato:10,domenica:10,feriali:5},budgetMese:200}),
@@ -151,19 +154,19 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(app.textContent.includes("Riepilogo mensile"));
 
   // Tetto come percentuale della cassa. Cassa attesa dai dati di prova:
-  // 10 versati + 1.20 + 0.55 di profitti chiusi = 11.75 (la pick aperta e
-  // quella osservata non contano). Al 50% il tetto e' 5.875, arrotondato ai
-  // 50 centesimi = 6.00.
+  // 10 versati + 1.20 + 0.55 + 15.08 di profitti chiusi = 26.83 (la pick
+  // aperta e quella osservata non contano). Al 50% fa 13.415, arrotondato ai
+  // 50 centesimi = 13.50; al 25% fa 6.7075 -> 6.50.
   const bottonePct=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="% della cassa");
   assert.ok(bottonePct,"Selettore '% della cassa' non trovato nelle impostazioni");
   bottonePct.listeners.click();
   const testoPct=app.textContent;
   // Ancorato all'etichetta: un semplice includes("€6,00") passava anche con
   // la percentuale sbagliata, perche' quella cifra compare altrove.
-  assert.ok(testoPct.includes("Sabato= €6,00")&&testoPct.includes("Domenica= €6,00"),
-    "Tetto atteso €6,00 (50% di €11,75) non mostrato accanto al giorno");
-  assert.ok(testoPct.includes("Lun–ven= €3,00"),
-    "Tetto feriali atteso €3,00 (25% di €11,75)");
+  assert.ok(testoPct.includes("Sabato= €13,50")&&testoPct.includes("Domenica= €13,50"),
+    "Tetto atteso €13,50 (50% di €26,83) non mostrato accanto al giorno");
+  assert.ok(testoPct.includes("Lun–ven= €6,50"),
+    "Tetto feriali atteso €6,50 (25% di €26,83)");
   assert.ok(testoPct.includes("Tetto ai versamenti del mese"),
     "Il budget mensile deve dichiarare che riguarda i versamenti, non le giocate");
   assert.ok(testoPct.includes("I tetti seguono la cassa"),
@@ -193,6 +196,43 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.equal(picksUpsert.rows[0].legacy_id,"ticket:ABC1");
   assert.equal(picksUpsert.rows[0].famiglia_mercato,"COMBO");
   assert.equal(calls.filter(x=>x.azione==="delete").length,0,"La sync non deve cancellare tabelle");
+
+  // Regressione: una multipla storica senza gambe registrate non si riusciva a
+  // modificare. Il controllo "almeno due gambe" usciva prima ancora di leggere
+  // la puntata, e l'errore veniva scritto in cima alla pagina — fuori dalla
+  // vista di chi aveva appena premuto Salva in fondo a un form lungo. Dal lato
+  // dell'utente l'app sembrava semplicemente non salvare, senza dire perche'.
+  clickNav(app,"Registro");
+  const rigaStorica=findElement(app,x=>x.tagName==="LI"&&x.textContent.includes("Multipla storica senza gambe"));
+  assert.ok(rigaStorica,"riga della multipla storica non trovata nel registro");
+  const bottoneModifica=findElement(rigaStorica,x=>x.tagName==="BUTTON"&&x.textContent==="Modifica");
+  assert.ok(bottoneModifica,"pulsante Modifica non trovato sulla multipla storica");
+  bottoneModifica.listeners.click();
+
+  // Il campo si cerca per struttura e non con getElementById: nell'app il suo
+  // id e' assegnato come proprieta' (inStake.id=...) e non come attributo,
+  // quindi il Document finto di questo test non lo indicizza.
+  const bloccoStake=findElement(app,x=>x.children.some(c=>c.tagName==="LABEL"&&c.textContent==="Punto invece"));
+  assert.ok(bloccoStake,"blocco 'Punto invece' assente nel form di modifica");
+  const campoStake=bloccoStake.children.find(c=>c.tagName==="INPUT");
+  assert.ok(campoStake,"campo puntata assente nel form di modifica");
+  campoStake.value="3.00"; campoStake.listeners.input.call(campoStake);
+
+  const bottoneSalva=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Salva modifica");
+  assert.ok(bottoneSalva,"pulsante Salva modifica non trovato");
+  bottoneSalva.listeners.click();
+
+  const modificata=JSON.parse(storage["registro-tipster-v1"]).giocate.find(x=>String(x.id)==="5");
+  assert.equal(modificata.stake,3,"la puntata corretta deve essere salvata, non respinta");
+  // Su una vinta il profitto va ricalcolato sulla nuova puntata: 3 x 5.31 - 3
+  assert.ok(Math.abs(modificata.profitto-12.93)<0.005,
+    "profitto atteso 12.93 dopo la correzione, trovato "+modificata.profitto);
+  assert.equal(modificata.gambe.length,0,"la multipla storica resta senza gambe, non ne acquisisce di vuote");
+  // Il titolo non deve diventare "Multipla · 0 gambe": per le giocate vecchie
+  // il nome visibile e' la nota, e la correzione della puntata non deve
+  // cancellarlo.
+  assert.equal(modificata.evento,"","il titolo della giocata storica non va riscritto");
+  assert.equal(modificata.nota,"Multipla storica senza gambe","la nota deve restare intatta");
 
   console.log("app smoke: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});

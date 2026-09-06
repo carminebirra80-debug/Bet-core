@@ -576,6 +576,17 @@ textarea{width:100%;min-height:78px;resize:vertical}
     }
     return nomi[Number(m)]||"";
   }
+  // L'avviso di errore vive in cima alla pagina, il pulsante di salvataggio in
+  // fondo a un form lungo. Senza riportare la vista in alto, un salvataggio
+  // rifiutato e' indistinguibile da uno riuscito: la pagina si ridisegna
+  // uguale e il messaggio resta fuori schermo. E' cosi' che una modifica
+  // bloccata sembrava "non salvare" senza dire perche'.
+  function bloccaConErrore(messaggio){
+    S.errore = messaggio;
+    disegna();
+    if(window.scrollTo) window.scrollTo(0,0);
+  }
+
   function euro(n){ return (n<0?"-":"")+"\u20AC"+Math.abs(n).toFixed(2).replace(".",","); }
   function segnato(n){ return (n>=0?"+":"-")+"\u20AC"+Math.abs(n).toFixed(2).replace(".",","); }
   function trova(id){
@@ -1444,23 +1455,40 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var bottone=el("button",{"class":"principale","text":inEdit?"Salva modifica":(ufficialeUI?"Registra giocata":"Salva nel Core"),"onclick":function(){
       var q=parseFloat(S.form.quota);
-      if(!q || q<=1){S.errore="Inserisci una quota valida.";disegna();return;}
+      if(!q || q<=1){bloccaConErrore("Inserisci una quota valida.");return;}
       var qClose=S.form.quotaChiusura?parseFloat(S.form.quotaChiusura):null;
-      if(qClose!==null && (!qClose || qClose<=1)){S.errore="La quota di chiusura deve essere maggiore di 1.";disegna();return;}
+      if(qClose!==null && (!qClose || qClose<=1)){bloccaConErrore("La quota di chiusura deve essere maggiore di 1.");return;}
       var prob=S.form.probabilitaStimata?parseFloat(S.form.probabilitaStimata):null;
-      if(prob!==null && (!prob || prob<=0 || prob>=100)){S.errore="La probabilità stimata deve essere compresa tra 0 e 100.";disegna();return;}
+      if(prob!==null && (!prob || prob<=0 || prob>=100)){bloccaConErrore("La probabilità stimata deve essere compresa tra 0 e 100.");return;}
       var gambe=normalizzaGambe(S.form.gambe);
-      if(S.form.tipoSchedina==="SINGOLA" && (!(S.form.evento||"").trim() || !(S.form.mercato||"").trim())){S.errore="Completa evento e mercato.";disegna();return;}
-      if(S.form.tipoSchedina==="MULTIPLA" && (gambe.length<2 || gambe.some(function(x){return !x.evento.trim() || !x.mercato.trim();}))){S.errore="Completa almeno due gambe della multipla.";disegna();return;}
+      var gambeCompilate=gambe.filter(function(x){return x.evento.trim() || x.mercato.trim();});
+      if(S.form.tipoSchedina==="SINGOLA" && (!(S.form.evento||"").trim() || !(S.form.mercato||"").trim())){bloccaConErrore("Completa evento e mercato.");return;}
+      // Le multiple inserite a mano prima che esistesse il campo gambe non ne
+      // hanno nessuna registrata. Pretenderle anche in modifica rende
+      // incorreggibili quelle giocate — nel registro reale sono 20 su 71 — e
+      // il salvataggio esce in silenzio prima ancora di leggere la puntata.
+      // La regola serve a non CREARE multiple vuote: si applica alla
+      // creazione, e in modifica solo se almeno una gamba e' stata compilata.
+      if(inEdit && S.form.tipoSchedina==="MULTIPLA" && gambeCompilate.length===0){
+        gambe=[]; // resta senza gambe, invece di salvarne due vuote
+      }else if(S.form.tipoSchedina==="MULTIPLA" && (gambe.length<2 || gambe.some(function(x){return !x.evento.trim() || !x.mercato.trim();}))){
+        bloccaConErrore("Completa almeno due gambe della multipla.");return;
+      }
       var ticket=(S.form.ticketId||"").trim().toUpperCase();
       if(ticket){
         var doppio=S.giocate.some(function(x){return String(x.id)!==String(S.editingId||"") && String(x.ticketId||"").toUpperCase()===ticket;});
-        if(doppio){S.errore="Questo ticket ADM è già presente nel registro.";disegna();return;}
+        if(doppio){bloccaConErrore("Questo ticket ADM è già presente nel registro.");return;}
       }
       var sNow=propostaStake(S.form.data,S.form.quota,libera);
       var s=ufficialeUI?(parseFloat(S.form.stake)||sNow):0;
-      if(ufficialeUI && !S.form.osservata && (!s || s<=0)){S.errore="Inserisci la puntata reale.";disegna();return;}
-      var evento=S.form.tipoSchedina==="MULTIPLA"?"Multipla · "+gambe.length+" gambe":(S.form.evento||"").trim();
+      if(ufficialeUI && !S.form.osservata && (!s || s<=0)){bloccaConErrore("Inserisci la puntata reale.");return;}
+      // Su una multipla storica senza gambe il titolo automatico diventerebbe
+      // "Multipla · 0 gambe", cancellando il nome con cui la giocata e' sempre
+      // stata in registro (per quelle vecchie il titolo e' la nota). Si
+      // rinomina solo quando le gambe ci sono davvero.
+      var evento=(S.form.tipoSchedina==="MULTIPLA" && gambe.length)
+        ? "Multipla · "+gambe.length+" gambe"
+        : (S.form.evento||"").trim();
       var mercato=S.form.tipoSchedina==="MULTIPLA"?"MULTIPLA":(S.form.mercato||"").trim();
       var dati={data:S.form.data,tipster:S.form.tipster,evento:evento,mercato:mercato,nota:(S.form.nota||"").trim(),quota:q,
         quotaCheck:parseFloat(S.form.quotaCheck)||null,quotaChiusura:qClose,
