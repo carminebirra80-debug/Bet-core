@@ -21,6 +21,7 @@ from __future__ import annotations
 import csv
 import io
 import os
+import sys
 import time
 import urllib.request
 from dataclasses import dataclass, field
@@ -66,7 +67,18 @@ LEAGUES: dict[str, str] = {
 
 
 def _fetch(url: str, cache_name: str, ttl: int) -> str:
-    """Scarica url, servendo dalla cache se il file e' piu' recente di ttl."""
+    """
+    Scarica url, servendo dalla cache se il file e' piu' recente di ttl.
+
+    Se il download fallisce ma una copia locale esiste, la usa comunque
+    dichiarandone l'eta' su stderr invece di far fallire l'intera pipeline.
+    Verificato necessario il 6 settembre 2026: football-data.co.uk ha
+    risposto 503 su ogni URL (homepage inclusa, con qualunque user-agent),
+    cioe' un'interruzione del servizio, non un blocco verso di noi. I
+    risultati storici sono immutabili, quindi una copia del giorno prima
+    resta valida per tutto tranne le partite giocate nel frattempo: meglio
+    lavorare con dati datati e saperlo, che non lavorare affatto.
+    """
     os.makedirs(CACHE_DIR, exist_ok=True)
     path = os.path.join(CACHE_DIR, cache_name)
 
@@ -75,8 +87,17 @@ def _fetch(url: str, cache_name: str, ttl: int) -> str:
             return fh.read()
 
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=45) as resp:
-        raw = resp.read().decode("utf-8-sig", errors="replace")
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            raw = resp.read().decode("utf-8-sig", errors="replace")
+    except Exception as errore:
+        if not os.path.exists(path):
+            raise
+        eta_ore = (time.time() - os.path.getmtime(path)) / 3600
+        print(f"  [{cache_name}: download fallito ({errore}), uso la copia "
+              f"locale di {eta_ore:.1f} ore fa]", file=sys.stderr)
+        with open(path, encoding="utf-8-sig", errors="replace") as fh:
+            return fh.read()
 
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(raw)
