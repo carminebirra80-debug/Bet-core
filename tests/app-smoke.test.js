@@ -149,6 +149,36 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(app.textContent.includes("Fabrizio Rubino"));
   clickNav(app,"Cassa");
   assert.ok(app.textContent.includes("Riepilogo mensile"));
+
+  // Tetto come percentuale della cassa. Cassa attesa dai dati di prova:
+  // 10 versati + 1.20 + 0.55 di profitti chiusi = 11.75 (la pick aperta e
+  // quella osservata non contano). Al 50% il tetto e' 5.875, arrotondato ai
+  // 50 centesimi = 6.00.
+  const bottonePct=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="% della cassa");
+  assert.ok(bottonePct,"Selettore '% della cassa' non trovato nelle impostazioni");
+  bottonePct.listeners.click();
+  const testoPct=app.textContent;
+  // Ancorato all'etichetta: un semplice includes("€6,00") passava anche con
+  // la percentuale sbagliata, perche' quella cifra compare altrove.
+  assert.ok(testoPct.includes("Sabato= €6,00")&&testoPct.includes("Domenica= €6,00"),
+    "Tetto atteso €6,00 (50% di €11,75) non mostrato accanto al giorno");
+  assert.ok(testoPct.includes("Lun–ven= €3,00"),
+    "Tetto feriali atteso €3,00 (25% di €11,75)");
+  assert.ok(testoPct.includes("Tetto ai versamenti del mese"),
+    "Il budget mensile deve dichiarare che riguarda i versamenti, non le giocate");
+  assert.ok(testoPct.includes("I tetti seguono la cassa"),
+    "Manca la spiegazione del modo percentuale");
+
+  // Tornando a cifra fissa il comportamento precedente deve restare identico:
+  // i tetti seminati valgono 10/10/5, quindi la proiezione mensile e'
+  // (10+10+5) x 52 / 12 = 108.33.
+  const bottoneFisso=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Cifra fissa");
+  assert.ok(bottoneFisso,"Selettore 'Cifra fissa' non trovato");
+  bottoneFisso.listeners.click();
+  assert.ok(app.textContent.includes("€108,33"),
+    "In modo fisso la proiezione mensile deve restare quella di prima");
+  assert.ok(!app.textContent.includes("I tetti seguono la cassa"),
+    "La spiegazione percentuale non deve comparire in modo fisso");
   clickNav(app,"?");
   assert.ok(app.textContent.includes("Market Lab"));
   clickNav(app,"Dati");

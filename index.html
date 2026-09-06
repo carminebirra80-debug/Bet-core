@@ -57,7 +57,10 @@ nav button.nav-aiuto{flex:0 0 44px;font-size:14px}
 .tre{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .scelta{padding:12px 4px;border:1px solid var(--bordo);border-radius:4px;
   color:var(--tenue2);font-size:14px;text-align:center}
-.scelta.on{color:var(--testo)}
+/* Lo stato attivo cambiava solo il colore del testo, differenza troppo
+   debole per capire a colpo d'occhio quale opzione e selezionata: il bordo
+   nell'accento gia in uso lo rende evidente restando dentro la palette. */
+.scelta.on{color:var(--testo);border-color:var(--oro)}
 .scelta.pic{font-size:11px;padding:9px 2px}
 
 .riquadro{border:1px solid var(--bordo);border-radius:4px;overflow:hidden;margin-bottom:20px}
@@ -222,9 +225,22 @@ textarea{width:100%;min-height:78px;resize:vertical}
   var CLOUD = { user:null, email:"", stato:"", busy:false, syncEnabled: localStorage.getItem("registro-tipster-cloud-sync")==="1", timer:null, pending:false, ultimaSyncOk:null, remoteCount:null, lastDownloadCount:null};
   var OCR = { stato:"idle", progresso:0, fase:"", messaggio:"", risultato:null, libreria:null };
   var OCR_CDN = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
+  // Percentuali di default del tetto, in un posto solo: erano duplicate fra
+  // l'inizializzatore e il fallback di carica(), e quello di carica() vinceva
+  // in silenzio — cambiarne una sola non aveva alcun effetto visibile.
+  var PCT_DEFAULT = { sabato:50, domenica:50, feriali:25 };
+
   var S = {
     giocate:[], versamenti:[], budgetMese:200,
     tetti:{ sabato:20, domenica:20, feriali:10 },
+    // Il tetto del periodo puo' essere una cifra fissa oppure una percentuale
+    // della cassa reale. Il default resta "fisso" per non cambiare sotto i
+    // piedi il comportamento a chi non tocca nulla; in percentuale il tetto
+    // scende da solo quando scende la cassa, che e' il punto: uno stake fisso
+    // su una cassa che cala e' il modo in cui una serie storta si trasforma
+    // in un azzeramento.
+    tettiModo:"fisso",
+    tettiPct:{ sabato:PCT_DEFAULT.sabato, domenica:PCT_DEFAULT.domenica, feriali:PCT_DEFAULT.feriali },
     vista:"registro", filtro:"tutti", coreAnno:"", coreMese:"", coreStagione:"", errore:null, editingId:null,
     form:formVuoto(oggi(),"io")
   };
@@ -586,8 +602,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var q = parseFloat(quota);
     var p = periodoDi(data);
     var residuo = Math.max(0, p.tetto - p.giocato);
-    if(!q || q<=1) return "La puntata si calcola sul limite "+p.etichetta.toLowerCase()+
-      " di "+euro(p.tetto)+". Inserisci la quota.";
+    // In percentuale il numero da solo non dice niente: va mostrato da dove
+    // esce, altrimenti sembra un limite fisso calato dall'alto che pero'
+    // cambia da un giorno all'altro.
+    var origine = S.tettiModo === "percentuale"
+      ? "il "+(Number(S.tettiPct[p.chiave])||0)+"% della cassa ("+euro(bankrollCorrente())+
+        ") = "+euro(p.tetto)
+      : "il limite "+p.etichetta.toLowerCase()+" di "+euro(p.tetto);
+    if(!q || q<=1) return "La puntata si calcola su "+origine+". Inserisci la quota.";
     var fascia = q<=2 ? "fino a 2.00" : q<=3.5 ? "2.00\u20133.50" : q<=6 ? "3.50\u20136.00" : "oltre 6.00";
     var v = vincoloAttivo(data, q, disponibile);
     if(v && v.tipo === "cassa"){
@@ -598,7 +620,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       return "Fascia "+fascia+": spetterebbero "+euro(v.ideale)+
         ", ma nel periodo restano solo "+euro(v.valore)+".";
     }
-    return "Fascia "+fascia+" sul limite di "+euro(p.tetto)+
+    return "Fascia "+fascia+" su "+origine+
       ". Restano "+euro(residuo)+" nel periodo.";
   }
 
@@ -657,6 +679,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
         }
         S.tetti = d.tetti || { sabato:20, domenica:20, feriali:10 };
         S.budgetMese = (d.budgetMese != null) ? d.budgetMese : 200;
+        S.tettiModo = d.tettiModo === "percentuale" ? "percentuale" : "fisso";
+        S.tettiPct = d.tettiPct || { sabato:PCT_DEFAULT.sabato,
+          domenica:PCT_DEFAULT.domenica, feriali:PCT_DEFAULT.feriali };
       }
     }catch(e){}
   }
@@ -666,7 +691,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       S.giocate=deduplicaGiocate(S.giocate);
       localStorage.setItem(CHIAVE, JSON.stringify({
         giocate:S.giocate, versamenti:S.versamenti,
-        tetti:S.tetti, budgetMese:S.budgetMese
+        tetti:S.tetti, budgetMese:S.budgetMese,
+        tettiModo:S.tettiModo, tettiPct:S.tettiPct
       }));
       S.errore = null;
       if(!soloLocale && CLOUD.syncEnabled && CLOUD.user) pianificaCloud();
@@ -728,7 +754,24 @@ textarea{width:100%;min-height:78px;resize:vertical}
         if(r4.error) throw r4.error;
       }
       var imp={user_id:CLOUD.user.id,budget_mensile:Number(S.budgetMese),limite_sabato:Number(S.tetti.sabato),limite_domenica:Number(S.tetti.domenica),limite_feriali:Number(S.tetti.feriali),updated_at:new Date().toISOString()};
-      var r5=await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"}); if(r5.error) throw r5.error;
+      // Le colonne del tetto in percentuale sono state aggiunte dopo: se il
+      // database non e' ancora stato migrato, si sincronizza tutto il resto
+      // invece di far fallire l'intera sync per quattro campi. Il modo
+      // percentuale continua a funzionare in locale, semplicemente non
+      // segue su altri dispositivi finche' le colonne non esistono.
+      if(!CLOUD.senzaColonnePct){
+        imp.tetti_modo = S.tettiModo;
+        imp.pct_sabato = Number(S.tettiPct.sabato);
+        imp.pct_domenica = Number(S.tettiPct.domenica);
+        imp.pct_feriali = Number(S.tettiPct.feriali);
+      }
+      var r5=await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"});
+      if(r5.error && !CLOUD.senzaColonnePct && /column|schema cache|PGRST204/i.test(r5.error.message||"")){
+        CLOUD.senzaColonnePct = true;
+        delete imp.tetti_modo; delete imp.pct_sabato; delete imp.pct_domenica; delete imp.pct_feriali;
+        r5 = await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"});
+      }
+      if(r5.error) throw r5.error;
       await aggiornaConteggioCloud();
       CLOUD.stato="Cloud aggiornato alle "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+" · "+S.giocate.length+" pick";
       return true;
@@ -798,7 +841,17 @@ textarea{width:100%;min-height:78px;resize:vertical}
       CLOUD.lastDownloadCount=remotePicks.length;
       S.giocate=riconciliaCloudPicks(remotePicks);
       S.versamenti=(b.data||[]).map(function(v){return {id:v.legacy_id||v.id,cloudLegacyId:v.legacy_id||null,data:v.data,importo:Number(v.importo),nota:v.nota||""};});
-      if(c.data){S.budgetMese=Number(c.data.budget_mensile);S.tetti={sabato:Number(c.data.limite_sabato),domenica:Number(c.data.limite_domenica),feriali:Number(c.data.limite_feriali)};}
+      if(c.data){
+        S.budgetMese=Number(c.data.budget_mensile);
+        S.tetti={sabato:Number(c.data.limite_sabato),domenica:Number(c.data.limite_domenica),feriali:Number(c.data.limite_feriali)};
+        // Colonne aggiunte dopo: su un database non ancora migrato arrivano
+        // undefined, e in quel caso si tiene quanto gia' impostato in locale
+        // invece di riportare tutto a "fisso" ad ogni scaricamento.
+        if(c.data.tetti_modo) S.tettiModo = c.data.tetti_modo === "percentuale" ? "percentuale" : "fisso";
+        if(c.data.pct_domenica != null){
+          S.tettiPct={sabato:Number(c.data.pct_sabato),domenica:Number(c.data.pct_domenica),feriali:Number(c.data.pct_feriali)};
+        }
+      }
       CLOUD.syncEnabled=true; localStorage.setItem("registro-tipster-cloud-sync","1"); salva();
       CLOUD.stato="Scaricate "+CLOUD.lastDownloadCount+" pick dal cloud · Registro locale: "+S.giocate.length;
       ok=true;
@@ -1081,6 +1134,30 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return d.toISOString().slice(0,10);
   }
 
+  // Cassa corrente senza costruire le liste di conti(): versamenti piu'
+  // profitti delle giocate chiuse. Serve al tetto in percentuale, che viene
+  // ricalcolato piu' volte per ogni disegno.
+  function bankrollCorrente(){
+    var tot = 0, i;
+    for(i=0;i<S.versamenti.length;i++) tot += Number(S.versamenti[i].importo)||0;
+    for(i=0;i<S.giocate.length;i++){
+      var g = S.giocate[i];
+      if(g.osservata || (g.statoCore && g.statoCore!=="ufficiale")) continue;
+      if(g.esito !== "aperta") tot += Number(g.profitto)||0;
+    }
+    return tot;
+  }
+
+  // Il tetto di un periodo: cifra fissa, oppure percentuale della cassa.
+  // In percentuale si usa la cassa piena e non quella disponibile: la
+  // percentuale esprime quanto rischiare, mentre i soldi effettivamente
+  // liberi sono un vincolo a parte, gia' applicato da propostaStake.
+  function tettoDi(chiave){
+    if(S.tettiModo !== "percentuale") return Number(S.tetti[chiave])||0;
+    var pct = Number(S.tettiPct[chiave])||0;
+    return Math.max(0, Math.round(bankrollCorrente()*pct/100*2)/2);
+  }
+
   // Il periodo di riferimento della data: sabato e domenica hanno un tetto
   // proprio, i feriali condividono un budget unico da lunedi a venerdi
   function periodoDi(data){
@@ -1090,24 +1167,27 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(g === 6){
       for(i=0;i<S.giocate.length;i++)
         if(S.giocate[i].data === data && conta(S.giocate[i])) tot += S.giocate[i].stake;
-      return { etichetta:"Sabato", tetto:S.tetti.sabato, giocato:tot };
+      return { etichetta:"Sabato", tetto:tettoDi("sabato"), giocato:tot, chiave:"sabato" };
     }
     if(g === 0){
       for(i=0;i<S.giocate.length;i++)
         if(S.giocate[i].data === data && conta(S.giocate[i])) tot += S.giocate[i].stake;
-      return { etichetta:"Domenica", tetto:S.tetti.domenica, giocato:tot };
+      return { etichetta:"Domenica", tetto:tettoDi("domenica"), giocato:tot, chiave:"domenica" };
     }
     var lun = lunediDi(data), ven = piuGiorni(lun, 4);
     for(i=0;i<S.giocate.length;i++){
       var d = S.giocate[i].data;
       if(d >= lun && d <= ven && conta(S.giocate[i])) tot += S.giocate[i].stake;
     }
-    return { etichetta:"Lun\u2013ven", tetto:S.tetti.feriali, giocato:tot };
+    return { etichetta:"Lun\u2013ven", tetto:tettoDi("feriali"), giocato:tot, chiave:"feriali" };
   }
 
-  // Quanto costerebbe un mese pieno con questi tetti
+  // Quanto costerebbe un mese pieno con questi tetti. In percentuale la cifra
+  // e' quella di oggi: i tetti seguono la cassa, quindi la proiezione vale
+  // finche' la cassa resta questa, non e' un impegno fisso come nel modo a
+  // cifra fissa.
   function proiezioneMese(){
-    var sett = S.tetti.sabato + S.tetti.domenica + S.tetti.feriali;
+    var sett = tettoDi("sabato") + tettoDi("domenica") + tettoDi("feriali");
     return sett * 52 / 12;
   }
 
@@ -2168,17 +2248,43 @@ textarea{width:100%;min-height:78px;resize:vertical}
       S.budgetMese = parseFloat(this.value)||0; salva(); disegna();
     });
 
+    var inPercentuale = S.tettiModo === "percentuale";
+
+    // Selettore del modo. In percentuale i tetti seguono la cassa da soli:
+    // se la cassa cala calano anche le puntate, che e' il punto di tutta la
+    // modifica.
+    var selModo = el("div",{"class":"due","style":{marginBottom:"12px"}});
+    [["fisso","Cifra fissa"],["percentuale","% della cassa"]].forEach(function(x){
+      selModo.appendChild(el("button",{
+        "class": "scelta"+(S.tettiModo===x[0] ? " on" : ""),
+        "text": x[1],
+        "onclick": function(){ S.tettiModo = x[0]; salva(); disegna(); }
+      }));
+    });
+
     var campiTetti = el("div",{"class":"tre","style":{marginBottom:"8px"}});
     [["sabato","Sabato"],["domenica","Domenica"],["feriali","Lun\u2013ven"]].forEach(function(x){
       var inp = el("input",{"type":"number","inputmode":"decimal","class":"tab",
-        "step":"5","value":S.tetti[x[0]]});
+        "step": inPercentuale ? "5" : "5",
+        "value": inPercentuale ? S.tettiPct[x[0]] : S.tetti[x[0]]});
       inp.addEventListener("change",function(){
-        S.tetti[x[0]] = Math.max(0, parseFloat(this.value)||0); salva(); disegna();
+        var v = Math.max(0, parseFloat(this.value)||0);
+        if(inPercentuale) S.tettiPct[x[0]] = Math.min(100, v);
+        else S.tetti[x[0]] = v;
+        salva(); disegna();
       });
-      campiTetti.appendChild(el("div",null,[
+      // In percentuale il numero da solo non dice quanto si sta rischiando:
+      // accanto va la cifra che ne esce oggi.
+      var sotto = inPercentuale
+        ? el("p",{"class":"avviso","style":{margin:"4px 0 0",fontSize:"11px"},
+            "text": "= "+euro(tettoDi(x[0]))})
+        : null;
+      var blocco = [
         el("label",{"class":"etich","style":{display:"block",marginBottom:"6px"},"text":x[1]}),
         inp
-      ]));
+      ];
+      if(sotto) blocco.push(sotto);
+      campiTetti.appendChild(el("div",null,blocco));
     });
 
     var proiez = proiezioneMese();
@@ -2187,18 +2293,35 @@ textarea{width:100%;min-height:78px;resize:vertical}
     pag.appendChild(el("div",{"style":{marginTop:"28px","paddingTop":"20px",
       "borderTop":"1px solid #22303C"}},[
       el("div",{"class":"gruppo"},[
-        el("label",{"text":"Budget mensile (\u20AC)"}), inBudget
+        el("label",{"text":"Tetto ai versamenti del mese (\u20AC)"}), inBudget,
+        el("p",{"class":"avviso","style":{marginTop:"6px"},
+          "text":"Quanto puoi versare in un mese, non quanto puoi giocare. "+
+            "E l'unico limite che regge se, quando manca capienza, si versa "+
+            "per coprire il piano."})
       ]),
       el("div",{"class":"gruppo"},[
-        el("label",{"text":"Limiti di gioco (\u20AC)"}),
+        el("label",{"text":"Limiti di gioco"}),
+        selModo,
         campiTetti,
-        el("p",{"class":"avviso","text":
-          "Sabato e domenica hanno un tetto ciascuno. Da lunedi a venerdi il tetto e "+
-          "unico per tutta la settimana."}),
+        el("p",{"class":"avviso","text": inPercentuale
+          ? "I tetti seguono la cassa: se scende scendono anche le puntate, "+
+            "se una giornata chiude in utile si apre spazio per quella dopo. "+
+            "Sabato e domenica hanno una percentuale ciascuno, da lunedi a "+
+            "venerdi la percentuale e unica per tutta la settimana."
+          : "Sabato e domenica hanno un tetto ciascuno. Da lunedi a venerdi il tetto e "+
+            "unico per tutta la settimana."}),
+        // Volume giocato e versamenti sono grandezze diverse: giocare \u20ac156 in
+        // un mese non significa perderne \u20ac156. Se pero' il volume supera cio'
+        // che si puo' versare, la differenza puo' arrivare solo dalle vincite
+        // rigiocate \u2014 ed e' quello che dice la riga, invece di dichiarare un
+        // superamento che confronterebbe mele con pere.
         el("p",{"class":"avviso","style":{color: sfondaBudget ? "#D4635F" : "#4A5A68"},
-          "text": "A pieno regime: "+euro(proiez)+" al mese"+
-            (sfondaBudget ? " \u2014 sopra il budget di "+euro(proiez - S.budgetMese)
-                          : " \u2014 dentro il budget")})
+          "text": "A pieno regime: "+euro(proiez)+" giocati al mese"+
+            (inPercentuale ? " con la cassa di adesso ("+euro(bankrollCorrente())+")" : "")+
+            (sfondaBudget
+              ? " \u2014 con "+euro(S.budgetMese)+" di versamenti, almeno "+
+                euro(proiez - S.budgetMese)+" devono arrivare dalle vincite rigiocate"
+              : " \u2014 coperti dai versamenti anche senza vincere nulla")})
       ])
     ]));
 
