@@ -401,6 +401,28 @@ presi singolarmente. Serve uno dei due dati seguenti per chiudere:
    conto Sportium di oggi non legato a una giocata (bonus, cashback,
    arrotondamento della vincita) che l'app non puo' conoscere.
 
+**CHIUSA il 6 settembre 2026 — la causa non e' nel registro.** Ricalcolati
+tutti i profitti dall'export CSV completo (71 righe, 61 giocate che incidono
+sui soldi) con la formula `stake x quota - stake` per le vinte e `-stake`
+per le perse: **nessuna riga incoerente**. I totali mensili ricostruiti
+(agosto +14,84 su 207,90 giocati, ROI +7,1%; settembre -46,20 su 64,45,
+ROI -71,7%) coincidono al centesimo con quelli mostrati dall'app, e la somma
+dei profitti (-31,36) su 40 euro versati da esattamente gli 8,64 di cassa.
+
+Quindi lo scarto (~1,36, stabile) ha una causa **esterna al registro**, non
+distinguibile dal CSV: una giocata fatta su Sportium e mai inserita, un
+bonus/cashback accreditato dal book, oppure una giocata registrata con
+quota o importo diversi da quelli reali (coerente dentro l'app ma sbagliata
+rispetto al conto). Per identificarla servirebbe lo storico movimenti di
+Sportium, da incrociare con le 61 giocate.
+
+Decisione presa: **non inseguirlo**, sono 1,36 euro su 20 e allineare la
+cassa con un versamento fittizio sporcherebbe sia il rendimento sul versato
+sia il tetto mensile ai versamenti. Si tiene come scarto noto e costante.
+**Il segnale da sorvegliare non e' il valore ma la sua stabilita'**: se resta
+1,36 e' un residuo storico innocuo, se cresce allora qualcosa viene perso in
+modo sistematico e a quel punto va cercato sul serio.
+
 **Aggiornamento dopo il registro reale**: le 4 giocate Core+Tipster su
 Sportium (NOGOAL, Fulham, Multipla FR 5,70, Multipla FR 5,00) risultano
 in app con la stessa quota ed esito delle schermate reali — nessuno scarto
