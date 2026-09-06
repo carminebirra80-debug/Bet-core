@@ -75,6 +75,62 @@ il 5%**. Da manuale (sez. 15) si dichiara e non si costruisce nulla.
 Le due multiple di Fabrizio Rubino restano fuori da questo conteggio, come
 sempre: origine Tipster, non Core.
 
+### Finestra 2, ore 17:31 — controllo con formazioni ufficiali
+
+Il promemoria era stato scritto stamattina dando per scontate delle pick da
+verificare: non essendone state prodotte, il controllo T-60 non aveva
+oggetto. Verificata invece la fascia serale, dove l'informazione nuova
+rispetto alle 13:55 erano le formazioni ufficiali.
+
+**Nessun movimento di mercato in oltre tre ore**, su nessuna delle tre
+partite serali:
+
+| Partita | 1 | X | 2 |
+|---|---|---|---|
+| Juventus-Milan | 44,3 → 44,9% | 29,1 → 29,2% | 26,6 → 25,9% |
+| Espanyol-Sevilla | 41,9 → 41,9% | 29,2 → 29,1% | 28,8 → 29,1% |
+| Marseille-Paris FC | 50,2 → 50,9% | 25,1 → 25,2% | 24,8 → 23,9% |
+
+Formazioni ufficiali Juventus-Milan identiche alle probabili di stamattina,
+con la sola eccezione di Estupinan al posto di Bartesaghi: una rotazione, non
+una notizia. Coerente col fatto che il mercato non si sia mosso.
+
+Edge migliore su tutta la fascia serale: **+1,9%**, molto sotto la soglia del
+5%. Nessuna giocata.
+
+### Scoperta strutturale: Codere e' sistematicamente sotto il consenso
+
+Confrontando per la prima volta il prezzo di Codere (IT) — l'unico book ADM
+italiano leggibile — con il consenso de-vigato di 39-41 bookmaker, su tutte
+e quindici le quote della fascia serale:
+
+| Partita | Mercato | Consenso | Codere | Scarto |
+|---|---|---|---|---|
+| Juventus-Milan | Under 2.5 | 55,6% | 1,64 | **−8,9%** |
+| Juventus-Milan | Over 2.5 | 44,4% | 2,09 | −7,1% |
+| Espanyol-Sevilla | Under 2.5 | 55,3% | 1,63 | **−9,9%** |
+| Marseille-Paris FC | Over 2.5 | 54,3% | 1,69 | −8,2% |
+| (1X2, tutte) | — | — | — | da −4,0% a −5,6% |
+
+**Nessuna eccezione: Codere e' sotto il consenso su tutte e quindici.** Da
+−4% sull'1X2 fino a −10% sui gol.
+
+Il significato operativo e' pesante e va oltre la giornata di oggi: per
+giocare con edge ≥5% su un book che parte gia' 5-10 punti sotto il consenso,
+bisognerebbe trovare un errore di prezzo del mercato di 10-15 punti. Non
+capita quasi mai — e quando sembra capitare, di norma e' un errore della
+nostra stima, non del mercato.
+
+**Da verificare al piu' presto la stessa cosa su Sportium**, dove le giocate
+avvengono davvero. Il registro di `claude/sportium-quotes.csv` ha finora due
+sole coppie (−6,03% e +2,44%): troppo poche per concludere, ma il −6% e' nello
+stesso ordine di grandezza di Codere. Se anche Sportium risultasse
+strutturalmente sotto il consenso, il metodo Core avrebbe uno svantaggio di
+partenza che nessuna qualita' di analisi puo' compensare, e la conseguenza
+non sarebbe analizzare meglio: sarebbe cambiare book o smettere di cercare
+edge sui mercati principali. E' la domanda piu' importante aperta sul
+progetto.
+
 Storico delle selezioni prodotte con il protocollo `calcio-value-bets` (v3.1).
 Serve per il debrief post-partita: aggiornare il campo ESITO (vinto / perso / push)
 dopo le gare, prima di trarre conclusioni. Proporre aggiustamenti alle regole solo
