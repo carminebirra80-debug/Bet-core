@@ -59,7 +59,11 @@ SPORT_KEY = {
 # Libri che contano davvero per questo progetto: quelli gia' citati oggi
 # (Marathon Bet) e quelli nel pannello storico di football-data.co.uk
 # (Betfair/Betfair Sportsbook), cosi' live e storico restano confrontabili.
-LIBRI_PRIORITARI = {"Marathon Bet", "Betfair", "Betfair Sportsbook", "Pinnacle", "William Hill"}
+# "Codere (IT)" aggiunto il 6 settembre 2026: e' l'unico book ADM italiano
+# coperto (verificato: Sportium, Snai, Eurobet, Lottomatica, Sisal, Goldbet
+# NON compaiono), con aggiornamenti live veri (0 minuti nei test) - vedi
+# docs/README.md.
+LIBRI_PRIORITARI = {"Marathon Bet", "Betfair", "Betfair Sportsbook", "Pinnacle", "William Hill", "Codere (IT)"}
 
 
 def _api_key() -> str:

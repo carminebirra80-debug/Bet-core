@@ -157,10 +157,30 @@ Non risolve Sportium: non e' fra i bookmaker coperti, come nessun
 aggregatore lo copre (vedi sezione precedente). Il prezzo Sportium reale
 resta da chiedere a chi gioca.
 
+**Eccezione trovata il 6 settembre 2026: Codere (IT) e' coperto, live vero.**
+Verificato con una chiamata reale su Serie A: fra i ~40 bookmaker restituiti
+compare `"Codere (IT)"`, con `last_update` a 0 minuti dal momento della
+chiamata su tutte le partite testate. Nessun altro book ADM italiano compare
+(controllati esplicitamente: Sportium, Snai, Eurobet, Lottomatica, Sisal,
+Goldbet — nessuno presente). Quindi se una giocata reale viene fatta su
+Codere, per la prima volta abbiamo un prezzo live vero da confrontare, senza
+dover chiedere a chi gioca come per Sportium. Aggiunto a
+`LIBRI_PRIORITARI` in `live_odds.py`.
+
 ```
 export ODDS_API_KEY="..."     # mai scritta in un file, solo env var di sessione
 python3 analytics/live_odds.py E0 "Nott'm Forest" Tottenham
+python3 analytics/live_odds.py I1 Juventus "AC Milan"   # include Codere (IT) se disponibile
 ```
+
+**La chiave non va mai scritta in nessun file del repository**, nemmeno in
+un documento di sola lettura: la cronologia git e' permanente, quindi una
+volta committata la chiave resta recuperabile per sempre anche se rimossa in
+un commit successivo, ed espone una chiave live a chiunque abbia accesso al
+repository (o lo avesse in futuro). Va sempre passata come variabile
+d'ambiente di sessione (`export ODDS_API_KEY=...`), da re-impostare ad ogni
+nuova sessione — e' l'unico modo per usarla senza lasciarla nella
+cronologia del progetto.
 
 `analytics/live_odds.py` legge la chiave solo da `os.environ`, non la scrive
 mai su disco. Cache locale di 5 minuti per non consumare quota inutilmente
