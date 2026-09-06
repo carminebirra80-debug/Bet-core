@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.20 · Market Lab</title>
+<title>Registro BET Core v4.21 · Market Lab</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -684,9 +684,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
         });
         S.giocate=deduplicaGiocate(S.giocate);
         S.versamenti = d.versamenti || [];
+        S.versamenti.forEach(function(v){ v.tipoMovimento = tipoMovimento(v); });
         // Migrazione dalla vecchia "cassa iniziale"
         if(!S.versamenti.length && d.cassaIniziale){
-          S.versamenti = [{ id:1, data: d.primaData || oggi(), importo: d.cassaIniziale }];
+          S.versamenti = [{ id:1, data: d.primaData || oggi(),
+            importo: d.cassaIniziale, tipoMovimento:"versamento" }];
         }
         S.tetti = d.tetti || { sabato:20, domenica:20, feriali:10 };
         S.budgetMese = (d.budgetMese != null) ? d.budgetMese : 200;
@@ -732,7 +734,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
       selezione_normalizzata:g.selezioneNormalizzata||null, linea_mercato:g.lineaMercato||null,
       componenti_mercato:Array.isArray(g.componentiMercato)?g.componentiMercato:[], versione_tassonomia:g.versioneTassonomia||"v0.1" };
   }
-  function versaCloud(v){ return {user_id:CLOUD.user.id, legacy_id:String(v.cloudLegacyId||v.id), data:v.data, importo:Number(v.importo), nota:v.nota||null}; }
+  function versaCloud(v){ return {user_id:CLOUD.user.id,
+    legacy_id:String(v.cloudLegacyId||v.id), data:v.data, importo:Number(v.importo),
+    nota:v.nota||null, tipo_movimento:tipoMovimento(v)}; }
   function pianificaCloud(){
     if(!CLOUD.syncEnabled || !CLOUD.user) return;
     CLOUD.pending=true;
@@ -851,7 +855,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
       CLOUD.remoteCount=remotePicks.length;
       CLOUD.lastDownloadCount=remotePicks.length;
       S.giocate=riconciliaCloudPicks(remotePicks);
-      S.versamenti=(b.data||[]).map(function(v){return {id:v.legacy_id||v.id,cloudLegacyId:v.legacy_id||null,data:v.data,importo:Number(v.importo),nota:v.nota||""};});
+      S.versamenti=(b.data||[]).map(function(v){return {
+        id:v.legacy_id||v.id,cloudLegacyId:v.legacy_id||null,data:v.data,
+        importo:Number(v.importo),nota:v.nota||"",
+        tipoMovimento:v.tipo_movimento||"versamento"
+      };});
       if(c.data){
         S.budgetMese=Number(c.data.budget_mensile);
         S.tetti={sabato:Number(c.data.limite_sabato),domenica:Number(c.data.limite_domenica),feriali:Number(c.data.limite_feriali)};
@@ -937,17 +945,33 @@ textarea{width:100%;min-height:78px;resize:vertical}
     }catch(e){}
   }
 
-  function totaleVersato(){
+  function tipoMovimento(v){
+    if(v && v.tipoMovimento === "rettifica") return "rettifica";
+    if(v && /^rettifica contabile/i.test(String(v.nota||""))) return "rettifica";
+    return "versamento";
+  }
+  function totaleMovimenti(){
     var t = 0;
-    for(var i=0;i<S.versamenti.length;i++) t += S.versamenti[i].importo;
+    for(var i=0;i<S.versamenti.length;i++) t += Number(S.versamenti[i].importo||0);
     return t;
   }
+  function totaleVersato(){
+    var t = 0;
+    for(var i=0;i<S.versamenti.length;i++){
+      if(tipoMovimento(S.versamenti[i]) === "versamento") t += Number(S.versamenti[i].importo||0);
+    }
+    return t;
+  }
+  function totaleRettifiche(){ return totaleMovimenti() - totaleVersato(); }
 
-  // Quanto e stato versato nel mese in corso
+  // Solo i depositi reali consumano il budget mensile.
   function versatoQuestoMese(){
     var mese = oggi().slice(0,7), t = 0;
     for(var i=0;i<S.versamenti.length;i++){
-      if(String(S.versamenti[i].data).slice(0,7) === mese) t += S.versamenti[i].importo;
+      if(String(S.versamenti[i].data).slice(0,7) === mese &&
+          tipoMovimento(S.versamenti[i]) === "versamento"){
+        t += Number(S.versamenti[i].importo||0);
+      }
     }
     return t;
   }
@@ -964,9 +988,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
     for(i=0;i<chiuse.length;i++) profitto += chiuse[i].profitto;
     for(i=0;i<aperte.length;i++) impegnato += aperte[i].stake;
     var versato = totaleVersato();
-    var bankroll = versato + profitto;
+    var rettifiche = totaleRettifiche();
+    var bankroll = totaleMovimenti() + profitto;
     return { chiuse:chiuse, aperte:aperte, profitto:profitto, versato:versato,
-      bankroll:bankroll, impegnato:impegnato, disponibile:bankroll-impegnato };
+      rettifiche:rettifiche, bankroll:bankroll, impegnato:impegnato,
+      disponibile:bankroll-impegnato };
   }
 
   // Tutte le giocate chiuse, comprese quelle solo osservate
@@ -2082,17 +2108,20 @@ textarea{width:100%;min-height:78px;resize:vertical}
       if(!mesi[m]) mesi[m]={mese:m,n:0,giocato:0,profitto:0};
       mesi[m].n++; mesi[m].giocato+=Number(g.stake||0); mesi[m].profitto+=Number(g.profitto||0);
     });
-    var versPerMese={};
+    var versPerMese={}, rettPerMese={};
     for(i=0;i<S.versamenti.length;i++){
       var vm=String(S.versamenti[i].data||"").slice(0,7);
-      if(vm) versPerMese[vm]=(versPerMese[vm]||0)+Number(S.versamenti[i].importo||0);
+      if(!vm) continue;
+      var destinazione=tipoMovimento(S.versamenti[i])==="rettifica" ? rettPerMese : versPerMese;
+      destinazione[vm]=(destinazione[vm]||0)+Number(S.versamenti[i].importo||0);
     }
-    var chiavi=Object.keys(mesi).concat(Object.keys(versPerMese));
+    var chiavi=Object.keys(mesi).concat(Object.keys(versPerMese),Object.keys(rettPerMese));
     var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
     return uniche.sort().reverse().map(function(m){
       var d=mesi[m]||{mese:m,n:0,giocato:0,profitto:0};
       return {mese:m,n:d.n,giocato:d.giocato,profitto:d.profitto,
-        roi:d.giocato?(d.profitto/d.giocato)*100:0,versato:versPerMese[m]||0};
+        roi:d.giocato?(d.profitto/d.giocato)*100:0,
+        versato:versPerMese[m]||0,rettifica:rettPerMese[m]||0};
     });
   }
 
@@ -2112,18 +2141,21 @@ textarea{width:100%;min-height:78px;resize:vertical}
       else if(esito==="persa") giorni[d].perse++;
       else if(esito==="rimborsata") giorni[d].rimborsate++;
     });
-    var versPerGiorno={};
+    var versPerGiorno={}, rettPerGiorno={};
     for(i=0;i<S.versamenti.length;i++){
       var vd=String(S.versamenti[i].data||"");
-      if(vd) versPerGiorno[vd]=(versPerGiorno[vd]||0)+Number(S.versamenti[i].importo||0);
+      if(!vd) continue;
+      var destinazione=tipoMovimento(S.versamenti[i])==="rettifica" ? rettPerGiorno : versPerGiorno;
+      destinazione[vd]=(destinazione[vd]||0)+Number(S.versamenti[i].importo||0);
     }
-    var chiavi=Object.keys(giorni).concat(Object.keys(versPerGiorno));
+    var chiavi=Object.keys(giorni).concat(Object.keys(versPerGiorno),Object.keys(rettPerGiorno));
     var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
     return uniche.sort().reverse().map(function(d){
       var x=giorni[d]||{giorno:d,n:0,vinte:0,perse:0,rimborsate:0,giocato:0,profitto:0};
       return {giorno:d,n:x.n,vinte:x.vinte,perse:x.perse,rimborsate:x.rimborsate,
         giocato:x.giocato,profitto:x.profitto,
-        roi:x.giocato?(x.profitto/x.giocato)*100:0,versato:versPerGiorno[d]||0};
+        roi:x.giocato?(x.profitto/x.giocato)*100:0,
+        versato:versPerGiorno[d]||0,rettifica:rettPerGiorno[d]||0};
     });
   }
 
@@ -2159,7 +2191,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
         "style":{color: c.profitto>=0 ? "#4FB286" : "#D4635F"}}),
       el("p",{"class":"verdetto-nota",
         "text": c.versato > 0
-          ? "Hai versato "+euro(c.versato)+", in cassa hai "+euro(c.bankroll)+"."
+          ? "Hai versato "+euro(c.versato)+
+            (c.rettifiche ? " e registrato rettifiche "+segnato(c.rettifiche) : "")+
+            "; in cassa hai "+euro(c.bankroll)+"."
           : "Registra il primo versamento per iniziare."}),
       c.versato > 0
         ? el("p",{"class":"verdetto-nota","style":{marginTop:"4px"},
@@ -2206,7 +2240,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
             el("span",{"text": m.n
               ? m.n+(m.n===1?" ticket reale":" ticket reali")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
               : "nessuna giocata"}),
-            el("span",{"class":"tab","text": m.versato>0 ? "versati "+euro(m.versato) : ""})
+            el("span",{"class":"tab","text":
+              (m.versato>0 ? "versati "+euro(m.versato) : "")+
+              (m.rettifica ? (m.versato>0 ? " · " : "")+"rettifica "+segnato(m.rettifica) : "")})
           ])
         ]));
       });
@@ -2239,7 +2275,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
             el("span",{"text": g.n
               ? dettaglio+" · ROI "+(g.roi>=0?"+":"")+g.roi.toFixed(0)+"%"
               : dettaglio}),
-            el("span",{"class":"tab","text": g.versato>0 ? "versati "+euro(g.versato) : ""})
+            el("span",{"class":"tab","text":
+              (g.versato>0 ? "versati "+euro(g.versato) : "")+
+              (g.rettifica ? (g.versato>0 ? " · " : "")+"rettifica "+segnato(g.rettifica) : "")})
           ])
         ]));
       });
@@ -2257,7 +2295,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("button",{"class":"principale","text":"Registra versamento","onclick":function(){
         var v = parseFloat(inImporto.value);
         if(!v || v<=0) return;
-        S.versamenti.push({ id:Date.now(), data:inDataV.value||oggi(), importo:v });
+        S.versamenti.push({ id:Date.now(), data:inDataV.value||oggi(),
+          importo:v, tipoMovimento:"versamento" });
         salva(); disegna();
       }})
     ]));
@@ -2269,13 +2308,15 @@ textarea{width:100%;min-height:78px;resize:vertical}
         return a.data < b.data ? 1 : -1;
       }).forEach(function(v){
         lista.appendChild(el("li",{"class":"vers"},[
-          el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},"text":breve(v.data)}),
-          el("span",{"class":"tab","style":{fontSize:"14px"},"text":euro(v.importo)}),
+          el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},
+            "text":breve(v.data)+" · "+(tipoMovimento(v)==="rettifica" ? "rettifica" : "versamento")}),
+          el("span",{"class":"tab","style":{fontSize:"14px"},
+            "text":tipoMovimento(v)==="rettifica" ? segnato(v.importo) : euro(v.importo)}),
           el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E",
             "textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})
         ]));
       });
-      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px"},"text":"Storico versamenti"}));
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px"},"text":"Storico movimenti"}));
       pag.appendChild(lista);
     }
 
