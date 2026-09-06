@@ -1,5 +1,80 @@
 # Log Value Bets
 
+---
+
+## 2026-09-06 (domenica) — Finestra 1, analisi delle 13:55
+
+**Raddoppio: NON PRODOTTO. Multipla Quota 5: NON PRODOTTA.**
+Nessuna selezione raggiunge la soglia. Di seguito il perche', con i numeri.
+
+### Come e' stata fatta
+
+Quote live da The Odds API (39-43 bookmaker per partita, aggiornate al
+momento della chiamata), consenso de-vigato calcolato sul primo libro con
+vettore 1X2 completo, stima indipendente dal modello Dixon-Coles su tre
+stagioni di storico. 15 partite nei cinque campionati con storico
+disponibile (Serie A, Premier, Bundesliga, La Liga, Ligue 1).
+
+**Limite dichiarato**: football-data.co.uk risponde 503 dal 5 settembre, quindi
+lo storico e' la copia locale di ~26 ore prima. Valido per i risultati passati
+(immutabili) ma privo delle partite di ieri. Serie B, Eredivisie, Championship
+e Liga Portugal restano senza storico: escluse dall'analisi, non valutate.
+
+### Divergenze modello/mercato e verifica sulle notizie
+
+| Partita | Segnale modello | Notizie | Esito |
+|---|---|---|---|
+| Bologna-Sassuolo | Sassuolo 2 +9,3% | Sassuolo 5 assenti (Boloca, Cande', Pieragnolo, Kone', Walukiewicz), Bologna solo Orsolini | **contraddetto** |
+| Alaves-Osasuna | Over 2.5 +10,7% | entrambe da 1-0, Osasuna senza Oroz (rifinitore), Herrando, Rosier | **contraddetto** |
+| Espanyol-Sevilla | Espanyol 1 +4,5%, Over +4,4% | Espanyol senza entrambe le punte (Kike Garcia, Puado) | **contraddetto** |
+| Juventus-Milan | Milan 2 +5,0% | Juve senza Yildiz e Thuram, ma operati e fuori da mesi | **gia' nel prezzo** |
+| Frosinone-Venezia | Under 2.5 +11,4% | Venezia 5 assenti e zero punti, Frosinone solido in casa | coerente, ma prezzo assente (vedi sotto) |
+| Valencia-Barcelona | Valencia 1 +21,2% | — | **artefatto** noto del modello sulle sfavorite |
+
+Su cinque segnali verificati con le notizie, quattro sono risultati
+contraddetti o gia' prezzati. Il modello ha funzionato per quello che serve
+(indicare dove guardare), non come generatore di selezioni: coerente con
+`analytics/RISULTATI.md`.
+
+### Il caso Frosinone-Venezia, l'unico dove la tesi reggeva
+
+La notizia era coerente col segnale, ma il prezzo non paga:
+
+- Under 2.5 miglior quota **2,48** = 40,3% implicito, contro un consenso
+  de-vigato di **39,4%**. Edge reale **−2,2%**, non +11 come diceva il modello.
+- Il +11 nasceva da una lambda del Frosinone costruita su **una sola partita
+  casalinga** nello storico — lo stesso artefatto da neopromossa gia'
+  annotato il 5 settembre.
+
+### Scansione completa dei prezzi
+
+Cercando edge ≥5% del miglior prezzo contro il consenso su tutte le 15
+partite, **esclusi gli exchange** (Smarkets, Betfair, Matchbook: prezzi al
+lordo di commissione e comunque non giocabili), restano solo tre voci, tutte
+di **un unico bookmaker svedese** fuori linea rispetto agli altri quaranta:
+
+| Selezione | Best | Consenso | "Edge" |
+|---|---|---|---|
+| Valencia 1 | 11,50 Unibet (SE) | 10,6% | +21,3% |
+| Valencia X | 6,75 Unibet (SE) | 15,8% | +6,9% |
+| Arsenal-Chelsea 2 | 5,25 Unibet (SE) | 20,1% | +5,3% |
+
+Sono esattamente il pattern che il backtest ha misurato in perdita
+(`RISULTATI.md` sez. 3: ROI −7% a soglia 0, che **peggiora** alzando la
+soglia, perche' gli esiti su cui i libri divergono di piu' sono quelli su cui
+il consenso stesso e' meno affidabile). Un solo libro fuori linea su quote
+alte non e' un edge: e' rumore, o una quota ferma. In piu' nessuna e'
+eseguibile su Sportium.
+
+### Conclusione
+
+Il mercato oggi e' efficiente su tutto il palinsesto analizzato: escludendo
+exchange e outlier di singolo libro, **nessuna selezione eseguibile raggiunge
+il 5%**. Da manuale (sez. 15) si dichiara e non si costruisce nulla.
+
+Le due multiple di Fabrizio Rubino restano fuori da questo conteggio, come
+sempre: origine Tipster, non Core.
+
 Storico delle selezioni prodotte con il protocollo `calcio-value-bets` (v3.1).
 Serve per il debrief post-partita: aggiornare il campo ESITO (vinto / perso / push)
 dopo le gare, prima di trarre conclusioni. Proporre aggiustamenti alle regole solo
