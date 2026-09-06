@@ -110,6 +110,54 @@ Sportium viene chiesta esplicitamente a chi gioca, non stimata. La coppia
 senso valutare uno sconto calibrato invece di scoprire lo scarto a sorpresa
 ogni volta, come il -6% trovato su Fulham-Crystal Palace il 5 settembre.
 
+## Preparazione dati statici (sabato e domenica, automatica)
+
+Regola concordata il 6 settembre 2026. I dati di una giornata hanno due
+scadenze diverse, e trattarli allo stesso modo spreca l'attesa:
+
+- **Deperibili**: formazioni, infortuni dell'ultima ora, quote. Cambiano fino
+  al fischio d'inizio. Vanno raccolti il piu' tardi possibile — e' il motivo
+  per cui l'analisi si fa ~90 minuti prima del primo kickoff della fascia,
+  non la mattina.
+- **Statici**: medie gol casa/trasferta, forma recente, precedenti, arbitro
+  designato. Sono identici alle 9 del mattino e alle 13:30. Aspettare non li
+  migliora di un centesimo.
+
+`analytics/prepara_giornata.py` prepara solo i secondi e scrive
+`snapshots/<data>/dossier.md`:
+
+```
+python3 analytics/prepara_giornata.py --salva          # oggi
+python3 analytics/prepara_giornata.py 2026-09-06       # una data specifica
+python3 analytics/prepara_giornata.py --divs=I1,E0     # solo alcuni campionati
+```
+
+Cosi' quando arriva il momento dell'analisi il tempo si spende sulle notizie
+invece che sullo scraping.
+
+**Nessuna quota viene letta in questa fase**, deliberatamente: lo script usa
+`load_fixtures_blind()`, che le quote non le contiene proprio. Guardare il
+mercato mentre si prepara ancorerebbe la stima prima ancora di formularla,
+che e' esattamente cio' che vieta la blind acquisition (manuale sez. 2/13).
+
+**Automazione**: una routine ricorrente gira ogni sabato e domenica alle 07:00
+UTC (09:00 italiane in ora legale, 08:00 in ora solare), esegue lo script,
+committa il dossier e propone i due orari di analisi calcolati sul palinsesto
+reale di quel giorno — gli orari non sono fissi, dipendono dai kickoff, che
+cambiano ogni weekend. La routine si ferma li': **non lancia mai l'analisi
+senza conferma esplicita**, per richiesta dell'utente.
+
+Due trappole gia' incontrate e risolte nello script, da non reintrodurre:
+
+- **Fuso orario**: football-data.co.uk pubblica gli orari in ora UK, un'ora
+  indietro rispetto a quella italiana su cui e' costruito il protocollo. Su
+  controlli a T-60 e T-25 un'ora di scarto non e' un dettaglio. Lo script
+  converte e lo dichiara in testa al dossier.
+- **Campioni minuscoli**: a inizio stagione una "media" puo' poggiare su una
+  partita sola (il 6 settembre il Frosinone risultava "0.0 gol fatti in casa"
+  su una gara). Sotto le 3 partite lo script segnala invece di presentare il
+  numero come statistica.
+
 ## Multipla J4F — solo su richiesta, mai proposta di default
 
 Regola concordata il 5 settembre 2026, dopo aver scartato l'idea di
