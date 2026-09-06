@@ -152,6 +152,13 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(app.textContent.includes("Fabrizio Rubino"));
   clickNav(app,"Cassa");
   assert.ok(app.textContent.includes("Riepilogo mensile"));
+  // I due ticket ABC1 e ABC2 hanno la stessa data, lo stesso evento e lo
+  // stesso mercato. In Cassa devono restare due giocate reali distinte:
+  // raggrupparli come una sola ipotesi e' corretto solo nelle metriche Core.
+  assert.ok(app.textContent.includes("3 ticket reali · ROI +259%"),
+    "Il riepilogo mensile deve contare i ticket reali, non i gruppi analitici");
+  assert.ok(app.textContent.includes("2 vinte · ROI +58%"),
+    "Il riepilogo giornaliero deve contare entrambi i ticket dello stesso mercato");
 
   // Tetto come percentuale della cassa. Cassa attesa dai dati di prova:
   // 10 versati + 1.20 + 0.55 + 15.08 di profitti chiusi = 26.83 (la pick
@@ -251,4 +258,3 @@ function clickNav(app,label){
   assert.ok(button,"Pulsante di navigazione non trovato: "+label);
   button.listeners.click();
 }
-

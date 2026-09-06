@@ -2060,16 +2060,17 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return pag;
   }
 
-  // Riepilogo finanziario mensile. Conta le pick analitiche reali una volta,
-  // ma somma stake e profitto di tutti i ticket che le compongono.
+  // La scheda Cassa descrive movimenti reali: ogni riga ufficiale chiusa e'
+  // un ticket, anche quando due multiple hanno lo stesso titolo generico.
+  // Il raggruppamento per ipotesi analitica resta confinato alla scheda Core.
   function riepilogoMensile(){
     var mesi={}, i;
-    var logiche=gruppiCore(chiuseTutte()).filter(function(g){return g.reale;});
-    logiche.forEach(function(g){
+    var reali=chiuseTutte().filter(rigaRealeCore);
+    reali.forEach(function(g){
       var m=String(g.data||"").slice(0,7);
       if(!m) return;
       if(!mesi[m]) mesi[m]={mese:m,n:0,giocato:0,profitto:0};
-      mesi[m].n++; mesi[m].giocato+=g.stake; mesi[m].profitto+=g.profitto;
+      mesi[m].n++; mesi[m].giocato+=Number(g.stake||0); mesi[m].profitto+=Number(g.profitto||0);
     });
     var versPerMese={};
     for(i=0;i<S.versamenti.length;i++){
@@ -2090,14 +2091,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // totale, cosi' il debrief giornaliero non deve ricontarle a mano.
   function riepilogoGiornaliero(){
     var giorni={}, i;
-    var logiche=gruppiCore(chiuseTutte()).filter(function(g){return g.reale;});
-    logiche.forEach(function(g){
+    var reali=chiuseTutte().filter(rigaRealeCore);
+    reali.forEach(function(g){
       var d=String(g.data||"");
       if(!d) return;
       if(!giorni[d]) giorni[d]={giorno:d,n:0,vinte:0,perse:0,rimborsate:0,giocato:0,profitto:0};
-      giorni[d].n++; giorni[d].giocato+=g.stake; giorni[d].profitto+=g.profitto;
-      var righeReali=(g.righe||[]).filter(rigaRealeCore);
-      var esito=righeReali.length?righeReali[0].esito:null;
+      giorni[d].n++; giorni[d].giocato+=Number(g.stake||0); giorni[d].profitto+=Number(g.profitto||0);
+      var esito=g.esito;
       if(esito==="vinta") giorni[d].vinte++;
       else if(esito==="persa") giorni[d].perse++;
       else if(esito==="rimborsata") giorni[d].rimborsate++;
@@ -2194,7 +2194,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           ]),
           el("div",{"class":"mese-riga"},[
             el("span",{"text": m.n
-              ? m.n+(m.n===1?" pick reale":" pick reali")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
+              ? m.n+(m.n===1?" ticket reale":" ticket reali")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
               : "nessuna giocata"}),
             el("span",{"class":"tab","text": m.versato>0 ? "versati "+euro(m.versato) : ""})
           ])
