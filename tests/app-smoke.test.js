@@ -68,7 +68,10 @@ const picks=[
   {id:5,data:"2026-08-27",tipster:"io",evento:"",mercato:"MULTIPLA",nota:"Multipla storica senza gambe",quota:5.31,quotaCheck:null,confidence:3,debrief:"",statoCore:"ufficiale",stake:3.50,osservata:false,bookmaker:"Sportium",faseIngresso:"PRE",classificazione:"PERSONALE",ticketId:"",orarioIngresso:"",tipoSchedina:"MULTIPLA",gambe:[],esito:"vinta",profitto:15.08}
 ];
 const storage={
-  "registro-tipster-v1":JSON.stringify({giocate:picks,versamenti:[{id:1,data:"2026-08-01",importo:10}],tetti:{sabato:10,domenica:10,feriali:5},budgetMese:200}),
+  "registro-tipster-v1":JSON.stringify({giocate:picks,versamenti:[
+    {id:1,data:"2026-08-01",importo:10,tipoMovimento:"versamento"},
+    {id:2,data:"2026-08-31",importo:3.50,tipoMovimento:"rettifica",nota:"Rettifica contabile"}
+  ],tetti:{sabato:10,domenica:10,feriali:5},budgetMese:200}),
   "registro-tipster-cloud-sync":"1",
   "registro-tipster-guided-v1":"1"
 };
@@ -152,6 +155,10 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(app.textContent.includes("Fabrizio Rubino"));
   clickNav(app,"Cassa");
   assert.ok(app.textContent.includes("Riepilogo mensile"));
+  assert.ok(app.textContent.includes("Hai versato €10,00 e registrato rettifiche +€3,50; in cassa hai €30,33."),
+    "La rettifica deve aumentare la cassa senza essere mostrata come versamento");
+  assert.ok(app.textContent.includes("rettifica +€3,50"),
+    "La rettifica deve essere riconoscibile nei riepiloghi");
   // I due ticket ABC1 e ABC2 hanno la stessa data, lo stesso evento e lo
   // stesso mercato. In Cassa devono restare due giocate reali distinte:
   // raggrupparli come una sola ipotesi e' corretto solo nelle metriche Core.
@@ -161,19 +168,20 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
     "Il riepilogo giornaliero deve contare entrambi i ticket dello stesso mercato");
 
   // Tetto come percentuale della cassa. Cassa attesa dai dati di prova:
-  // 10 versati + 1.20 + 0.55 + 15.08 di profitti chiusi = 26.83 (la pick
-  // aperta e quella osservata non contano). Al 50% fa 13.415, arrotondato ai
-  // 50 centesimi = 13.50; al 25% fa 6.7075 -> 6.50.
+  // 10 versati + 3.50 di rettifica + 1.20 + 0.55 + 15.08 di profitti
+  // chiusi = 30.33 (la pick
+  // aperta e quella osservata non contano). Al 50% fa 15.165, arrotondato ai
+  // 50 centesimi = 15.00; al 25% fa 7.5825 -> 7.50.
   const bottonePct=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="% della cassa");
   assert.ok(bottonePct,"Selettore '% della cassa' non trovato nelle impostazioni");
   bottonePct.listeners.click();
   const testoPct=app.textContent;
   // Ancorato all'etichetta: un semplice includes("€6,00") passava anche con
   // la percentuale sbagliata, perche' quella cifra compare altrove.
-  assert.ok(testoPct.includes("Sabato= €13,50")&&testoPct.includes("Domenica= €13,50"),
-    "Tetto atteso €13,50 (50% di €26,83) non mostrato accanto al giorno");
-  assert.ok(testoPct.includes("Lun–ven= €6,50"),
-    "Tetto feriali atteso €6,50 (25% di €26,83)");
+  assert.ok(testoPct.includes("Sabato= €15,00")&&testoPct.includes("Domenica= €15,00"),
+    "Tetto atteso €15,00 (50% di €30,33) non mostrato accanto al giorno");
+  assert.ok(testoPct.includes("Lun–ven= €7,50"),
+    "Tetto feriali atteso €7,50 (25% di €30,33)");
   assert.ok(testoPct.includes("Tetto ai versamenti del mese"),
     "Il budget mensile deve dichiarare che riguarda i versamenti, non le giocate");
   assert.ok(testoPct.includes("I tetti seguono la cassa"),
