@@ -74,6 +74,7 @@ fatta una modifica:
 
 ```bash
 for t in tests/*.test.js; do node "$t"; done
+for t in tests/*.test.py; do python3 "$t"; done
 ```
 
 E per le modifiche che si vedono, **guardare davvero il risultato** con uno
