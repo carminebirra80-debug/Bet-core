@@ -125,6 +125,26 @@ conclusione a cui era arrivato lui. Il metodo era sbagliato, non il numero.
 - Lo scarto di ~€2 sul saldo delle 19:55 (€16,01 invece dei €18 attesi):
   probabilmente la seconda multipla di Fabrizio, da confermare.
 
+**Chiuso il 7 settembre**, con il canale di lettura diretto sui dati reali
+dell'app (non piu' CSV o screenshot):
+
+- **J4F: mai giocata**, confermato da Carmine. Ha vinto solo sulla carta —
+  zero impatto sulla cassa reale, e quindi non c'entra nulla con lo scarto
+  di cassa che stavamo inseguendo: quella pista si chiude qui.
+- La multipla Fabrizio a quota 5,62 (stake €2): **PERSA**, confermato dal
+  registro.
+- C'era anche una **seconda** multipla Fabrizio, quota 5,26 (stake €2), non
+  annotata sopra perche' non ancora nota: **PERSA** anch'essa — e spiega lo
+  scarto di ~€2 sul saldo delle 19:55 ipotizzato al punto precedente.
+- Una terza giocata reale del 6 settembre, anch'essa non annotata sopra:
+  multipla personale a 2 gambe, quota 3,10 (stake €2), **VINTA**, +€4,20.
+  Non e' la J4F (quota diversa: 3,10 contro 2,76) ed e' fuori conteggio
+  Core/consigli come le altre due.
+- **Netto reale della giornata**: +€0,20 su €6 giocati (+4,20 personale,
+  −2,00 e −2,00 le due multiple Fabrizio). Core a zero perche' nessuna
+  selezione ha superato la soglia — bilancio della giornata comunque
+  leggermente positivo nel complesso.
+
 ### Finestra 2, ore 17:31 — controllo con formazioni ufficiali
 
 Il promemoria era stato scritto stamattina dando per scontate delle pick da
