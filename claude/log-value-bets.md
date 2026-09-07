@@ -696,3 +696,45 @@ API) resta aperta e promettente — il blocco di Sportium non e' quello che
 sembrava dal cloud — ma nessun candidato e' ancora abbastanza stabile da
 diventare un lettore automatico affidabile. Da riprendere con piu' tempo,
 non in coda a una sessione gia' lunga.
+
+### Understat: il blocco documentato non c'è più
+
+Verificato lo stesso giro dei book, sulle fonti statistiche xG citate in
+CLAUDE.md come bloccate da Cloudflare. Tre di quattro **invariate**:
+FBref, FootyStats, WorldFootball ancora `403`. **Understat invece risponde
+`200`, con contenuto vero** — non era cosi' quando e' stato documentato il
+blocco.
+
+Con `curl` la pagina arriva pero' piu' piccola del previsto (18KB, senza le
+variabili `teamsData`/`datesData` che le guide di scraping si aspettano):
+non un blocco travestito, verificato con Chrome vero che rende la stessa
+pagina a 154KB con gli stessi identici xG — il sito ha semplicemente
+smesso di incorporare i dati in una variabile JS unica, li disegna
+direttamente nella pagina. Struttura pulita, non offuscata:
+
+```html
+<div class="calendar-game">
+  <div class="team-title"><a href="team/Cagliari/2026">Cagliari</a></div>
+  <a class="match-info" data-isresult="true" href="match/31588">
+    <div class="teams-goals">1 – 0</div>
+    <div class="teams-xG">1.92 – 0.45</div>
+  </a>
+  <div class="team-title"><a href="team/Lecce/2026">Lecce</a></div>
+</div>
+```
+
+**Limite strutturale, non tecnico**: `data-isresult="true"` c'e' solo sulle
+partite gia' giocate — l'xG si calcola dagli eventi reali, non esiste prima
+del fischio d'inizio. Quindi non sostituisce una fonte di quote pre-partita:
+serve per costruire la forma reale delle squadre (xG fatto/subito sulle
+ultime N gare), dato piu' solido di quello che il dossier statico usa oggi
+(spesso "su 1 gara" per mancanza di storico piu' profondo).
+
+**Non ancora costruito un lettore.** Prossimo passo naturale: uno script che
+apra la pagina di lega, scorra le partite `data-isresult="true"` degli
+ultimi N turni per squadra, e restituisca l'xG medio fatto/subito — da
+integrare in `analytics/prepara_giornata.py` al posto (o accanto) ai numeri
+attuali. Richiede lo stesso Chrome con finestra visibile usato per Sportium,
+non ancora provato in headless su Understat (probabile che headless funzioni
+qui, visto che gia' `curl` non viene bloccato — a differenza di Sportium
+dove il blocco era specifico dell'headless).
