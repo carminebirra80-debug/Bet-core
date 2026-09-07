@@ -640,3 +640,11 @@ settembre (drift accumulato su quote inserite e mai corrette su giocate
 passate) o riguarda un movimento di conto non legato a una giocata. Non
 persguito oltre su richiesta indiretta dell'utente (la conversazione e'
 passata al debrief generale della giornata).
+
+**CHIUSA per davvero il 7 settembre 2026.** Primo debrief con il canale di
+lettura diretto sui dati reali dell'app (non piu' CSV ne' screenshot):
+cassa ricostruita dal registro **€17,19**, confermata da Carmine identica
+al saldo vero su Sportium. Lo scarto residuo si e' azzerato da solo — non
+e' stato "trovato" un errore preciso, ma con il registro sempre allineato
+in tempo reale d'ora in poi un residuo che torna a comparire sara' visibile
+subito, invece di accumularsi per giorni prima di essere notato.
