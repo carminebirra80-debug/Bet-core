@@ -91,13 +91,24 @@ const db={
   },
   from:table=>({
     upsert:async(rows,options)=>{calls.push({azione:"upsert",table,rows,options});return {error:null};},
-    select:()=>({eq:async()=>({error:null,count:picks.length})}),
+    select:()=>{
+      const result={error:null,data:table==="impostazioni"?null:[],count:table==="picks"?picks.length:0};
+      const chain={
+        eq:()=>chain,
+        order:async()=>result,
+        maybeSingle:async()=>result,
+        then:(resolve,reject)=>Promise.resolve(result).then(resolve,reject)
+      };
+      return chain;
+    },
     delete:()=>{calls.push({azione:"delete",table});return {eq:()=>({eq:async()=>({error:null})})};},
     update:()=>({eq:()=>({eq:async()=>({error:null})})})
   })
 };
 const window={
   BetCoreMarketTaxonomy:require("../market-taxonomy.js"),
+  BetCoreMarketMetrics:require("../market-metrics.js"),
+  BetCoreSyncMerge:require("../sync-merge.js"),
   BetCoreReceiptParser:require("../receipt-parser.js"),
   supabase:{createClient:()=>db},
   addEventListener:()=>{},scrollTo:()=>{},confirm:()=>true,alert:()=>{}
@@ -117,7 +128,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   clickNav(app,"Core");
 
   const text=app.textContent;
-  for(const expected of ["Market Lab v0.1","Combo","1 chiuse · 1 aperte","CLV chiusura","Brier 0.090","Osservazione"]){
+  for(const expected of ["Market Lab v0.2","Combo · PRE","1 chiuse · 1 aperte","CLV chiusura","Brier 0.090","Log Loss","Shrink 50/50","Osservazione"]){
     assert.ok(text.includes(expected),"Testo UI mancante: "+expected);
   }
   assert.ok(!text.includes("Core — errore di visualizzazione"));

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.21 · Market Lab</title>
+<title>Registro BET Core v4.22 · Market Lab</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -194,6 +194,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
 <body>
 <div id="app"></div>
 <script src="./market-taxonomy.js"></script>
+<script src="./market-metrics.js"></script>
+<script src="./sync-merge.js"></script>
 <script src="./receipt-parser.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
@@ -222,7 +224,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   var SUPABASE_URL = "https://sfcqxlerijeptejryruk.supabase.co";
   var SUPABASE_KEY = "sb_publishable_gMT-w8cCqiMMKWOnNCA5DA_MDLIvTUe";
   var DB = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
-  var CLOUD = { user:null, email:"", stato:"", busy:false, syncEnabled: localStorage.getItem("registro-tipster-cloud-sync")==="1", timer:null, pending:false, ultimaSyncOk:null, remoteCount:null, lastDownloadCount:null};
+  var CLOUD = { user:null, email:"", stato:"", busy:false, syncEnabled: localStorage.getItem("registro-tipster-cloud-sync")==="1", timer:null, pending:false, ultimaSyncOk:null, remoteCount:null, lastDownloadCount:null, settingsDirty:false};
   var OCR = { stato:"idle", progresso:0, fase:"", messaggio:"", risultato:null, libreria:null };
   var OCR_CDN = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
   // Percentuali di default del tetto, in un posto solo: erano duplicate fra
@@ -760,13 +762,42 @@ textarea{width:100%;min-height:78px;resize:vertical}
     try{
       await utenteCloudVerificato();
       S.giocate=deduplicaGiocate(S.giocate);
-      if(S.giocate.length){
-        var r2=await DB.from("picks").upsert(S.giocate.map(pickCloud),{onConflict:"user_id,legacy_id"});
+      // Prima si legge il cloud. Una sync generica non deve piu riscrivere
+      // tutte le righe locali: i record remoti prevalgono, salvo quelli che
+      // l'utente ha appena modificato su questo dispositivo.
+      var lettura=await DB.from("picks").select("*").eq("user_id",CLOUD.user.id);
+      if(lettura.error) throw lettura.error;
+      var remote=(lettura.data||[]).map(daCloudPick);
+      var piano=window.BetCoreSyncMerge.pianifica(S.giocate,remote,legacyCloud);
+      var invio=piano.invio,unite=piano.uniti;
+      if(invio.length){
+        var r2=await DB.from("picks").upsert(invio.map(pickCloud),{onConflict:"user_id,legacy_id"});
         if(r2.error) throw r2.error;
+        invio.forEach(function(g){g.cloudDirty=false;g.cloudSynced=true;});
       }
-      if(S.versamenti.length){
-        var r4=await DB.from("versamenti").upsert(S.versamenti.map(versaCloud),{onConflict:"user_id,legacy_id"});
+      S.giocate=deduplicaGiocate(unite);
+
+      var letturaV=await DB.from("versamenti").select("*").eq("user_id",CLOUD.user.id);
+      if(letturaV.error) throw letturaV.error;
+      var remotiV=(letturaV.data||[]).map(function(r){return {
+        id:r.legacy_id||r.id,cloudLegacyId:r.legacy_id||null,data:r.data,
+        importo:Number(r.importo),nota:r.nota||"",tipoMovimento:r.tipo_movimento||"versamento",cloudSynced:true};
+      });
+      var pianoV=window.BetCoreSyncMerge.pianifica(S.versamenti,remotiV,function(v){return String(v.cloudLegacyId||v.id);});
+      var invioV=pianoV.invio,unitiV=pianoV.uniti;
+      if(invioV.length){
+        var r4=await DB.from("versamenti").upsert(invioV.map(versaCloud),{onConflict:"user_id,legacy_id"});
         if(r4.error) throw r4.error;
+        invioV.forEach(function(v){v.cloudDirty=false;v.cloudSynced=true;});
+      }
+      S.versamenti=unitiV;
+      var letturaI=await DB.from("impostazioni").select("*").eq("user_id",CLOUD.user.id).maybeSingle();
+      if(letturaI.error) throw letturaI.error;
+      if(letturaI.data&&!CLOUD.settingsDirty){
+        S.budgetMese=Number(letturaI.data.budget_mensile);
+        S.tetti={sabato:Number(letturaI.data.limite_sabato),domenica:Number(letturaI.data.limite_domenica),feriali:Number(letturaI.data.limite_feriali)};
+        if(letturaI.data.tetti_modo)S.tettiModo=letturaI.data.tetti_modo==="percentuale"?"percentuale":"fisso";
+        if(letturaI.data.pct_domenica!=null)S.tettiPct={sabato:Number(letturaI.data.pct_sabato),domenica:Number(letturaI.data.pct_domenica),feriali:Number(letturaI.data.pct_feriali)};
       }
       var imp={user_id:CLOUD.user.id,budget_mensile:Number(S.budgetMese),limite_sabato:Number(S.tetti.sabato),limite_domenica:Number(S.tetti.domenica),limite_feriali:Number(S.tetti.feriali),updated_at:new Date().toISOString()};
       // Le colonne del tetto in percentuale sono state aggiunte dopo: se il
@@ -780,15 +811,19 @@ textarea{width:100%;min-height:78px;resize:vertical}
         imp.pct_domenica = Number(S.tettiPct.domenica);
         imp.pct_feriali = Number(S.tettiPct.feriali);
       }
-      var r5=await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"});
-      if(r5.error && !CLOUD.senzaColonnePct && /column|schema cache|PGRST204/i.test(r5.error.message||"")){
-        CLOUD.senzaColonnePct = true;
-        delete imp.tetti_modo; delete imp.pct_sabato; delete imp.pct_domenica; delete imp.pct_feriali;
-        r5 = await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"});
+      if(!letturaI.data||CLOUD.settingsDirty){
+        var r5=await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"});
+        if(r5.error && !CLOUD.senzaColonnePct && /column|schema cache|PGRST204/i.test(r5.error.message||"")){
+          CLOUD.senzaColonnePct = true;
+          delete imp.tetti_modo; delete imp.pct_sabato; delete imp.pct_domenica; delete imp.pct_feriali;
+          r5 = await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"});
+        }
+        if(r5.error) throw r5.error;
+        CLOUD.settingsDirty=false;
       }
-      if(r5.error) throw r5.error;
       await aggiornaConteggioCloud();
-      CLOUD.stato="Cloud aggiornato alle "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+" · "+S.giocate.length+" pick";
+      salva(true);
+      CLOUD.stato="Cloud verificato alle "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+" · "+S.giocate.length+" pick · "+invio.length+" modificate";
       return true;
     }catch(e){
       CLOUD.stato="Sync non riuscita: "+(e.message||e);
@@ -796,13 +831,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
       return false;
     }finally{
       CLOUD.busy=false;
-      if(CLOUD.stato.indexOf("Cloud aggiornato")===0) CLOUD.ultimaSyncOk=true;
+      if(CLOUD.stato.indexOf("Cloud verificato")===0) CLOUD.ultimaSyncOk=true;
       disegna();
       if(CLOUD.pending && CLOUD.syncEnabled && CLOUD.user) pianificaCloud();
     }
   }
   function daCloudPick(g){
-    var pick={id:g.legacy_id||g.id,cloudLegacyId:g.legacy_id||null,data:g.data,tipster:g.tipster,evento:g.evento||"",mercato:g.mercato||"",nota:g.nota||"",
+    var pick={id:g.legacy_id||g.id,cloudLegacyId:g.legacy_id||null,cloudSynced:true,data:g.data,tipster:g.tipster,evento:g.evento||"",mercato:g.mercato||"",nota:g.nota||"",
       quota:Number(g.quota),quotaCheck:g.quota_check==null?null:Number(g.quota_check),confidence:g.confidence,debrief:g.debrief||"",
       quotaChiusura:g.quota_chiusura==null?null:Number(g.quota_chiusura),
       probabilitaStimata:g.probabilita_stimata==null?null:Number(g.probabilita_stimata),probabilitaTimestamp:g.probabilita_timestamp||"",
@@ -858,7 +893,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       S.versamenti=(b.data||[]).map(function(v){return {
         id:v.legacy_id||v.id,cloudLegacyId:v.legacy_id||null,data:v.data,
         importo:Number(v.importo),nota:v.nota||"",
-        tipoMovimento:v.tipo_movimento||"versamento"
+        tipoMovimento:v.tipo_movimento||"versamento",cloudSynced:true
       };});
       if(c.data){
         S.budgetMese=Number(c.data.budget_mensile);
@@ -1057,71 +1092,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return {n:gruppi.length,stake:stake,profitto:profitto,roi:stake?(profitto/stake)*100:0};
   }
 
-  // Market Lab: una stessa lettura distribuita su piu ticket vale una sola
-  // osservazione statistica. Stake e profitto restano invece la somma reale.
-  function statisticheMercati(righeChiuse,righePeriodo){
-    var mappa={};
-    function famigliaGruppo(gruppo){
-      var righe=gruppo.righe||[], scelta=null;
-      for(var i=0;i<righe.length;i++){
-        aggiornaTassonomia(righe[i]);
-        if(rigaRealeCore(righe[i])){scelta=righe[i];break;}
-        if(!scelta) scelta=righe[i];
-      }
-      return scelta&&scelta.famigliaMercato?scelta.famigliaMercato:"NON_CLASSIFICATO";
-    }
-    function voce(famiglia){
-      if(!mappa[famiglia]) mappa[famiglia]={famiglia:famiglia,n:0,vinte:0,perse:0,rimborsate:0,
-        stake:0,profitto:0,quotaSomma:0,quotaN:0,clvSomma:0,clvN:0,brierSomma:0,brierN:0,
-        aperte:0,osservate:0};
-      return mappa[famiglia];
-    }
-
-    gruppiCore(righeChiuse).filter(function(g){return g.reale;}).forEach(function(gruppo){
-      var d=voce(famigliaGruppo(gruppo)), reali=(gruppo.righe||[]).filter(rigaRealeCore);
-      d.n++; d.stake+=Number(gruppo.stake||0); d.profitto+=Number(gruppo.profitto||0);
-      if(gruppo.profitto>0) d.vinte++; else if(gruppo.profitto<0) d.perse++; else d.rimborsate++;
-
-      var quotaPesata=0,pesoQuota=0,quotaSemplice=0,quotaSempliceN=0;
-      var clvPesato=0,pesoClv=0,clvSemplice=0,clvSempliceN=0;
-      var probPesata=0,pesoProb=0,probSemplice=0,probSempliceN=0;
-      reali.forEach(function(r){
-        var q=Number(r.quota||0),peso=Math.max(0,Number(r.stake||0));
-        if(q>1){quotaSemplice+=q;quotaSempliceN++;if(peso){quotaPesata+=q*peso;pesoQuota+=peso;}}
-        var qc=Number(r.quotaChiusura||0);
-        if(q>1&&qc>1){var valore=(q/qc-1)*100;clvSemplice+=valore;clvSempliceN++;if(peso){clvPesato+=valore*peso;pesoClv+=peso;}}
-        var p=Number(r.probabilitaStimata);
-        if(p>0&&p<1&&r.probabilitaTimestamp){probSemplice+=p;probSempliceN++;if(peso){probPesata+=p*peso;pesoProb+=peso;}}
-      });
-      if(quotaSempliceN){d.quotaSomma+=pesoQuota?quotaPesata/pesoQuota:quotaSemplice/quotaSempliceN;d.quotaN++;}
-      if(clvSempliceN){d.clvSomma+=pesoClv?clvPesato/pesoClv:clvSemplice/clvSempliceN;d.clvN++;}
-      if(probSempliceN&&gruppo.profitto!==0){
-        var pGruppo=pesoProb?probPesata/pesoProb:probSemplice/probSempliceN;
-        var risultato=gruppo.profitto>0?1:0;
-        d.brierSomma+=Math.pow(pGruppo-risultato,2);d.brierN++;
-      }
-    });
-
-    gruppiCore((righePeriodo||[]).filter(function(g){return g.esito==="aperta";})).forEach(function(gruppo){
-      var d=voce(famigliaGruppo(gruppo));
-      if(gruppo.reale) d.aperte++; else d.osservate++;
-    });
-    gruppiCore((righePeriodo||[]).filter(function(g){return g.esito!=="aperta";})).forEach(function(gruppo){
-      if(!gruppo.reale) voce(famigliaGruppo(gruppo)).osservate++;
-    });
-
-    return Object.keys(mappa).map(function(k){
-      var d=mappa[k];
-      d.roi=d.stake?d.profitto/d.stake*100:0;
-      d.quotaMedia=d.quotaN?d.quotaSomma/d.quotaN:null;
-      d.clv=d.clvN?d.clvSomma/d.clvN:null;
-      d.brier=d.brierN?d.brierSomma/d.brierN:null;
-      return d;
-    }).sort(function(a,b){
-      if(a.famiglia==="NON_CLASSIFICATO"&&b.famiglia!=="NON_CLASSIFICATO") return 1;
-      if(b.famiglia==="NON_CLASSIFICATO"&&a.famiglia!=="NON_CLASSIFICATO") return -1;
-      return b.n-a.n || b.aperte-a.aperte || a.famiglia.localeCompare(b.famiglia);
-    });
+  // Il modulo v0.2 usa l'esito esplicito (mai il profitto), include le
+  // osservate a stake zero, separa PRE/LIVE e deduplica le letture correlate.
+  // Il benchmark mercato usa 1/quota senza fingere di conoscere il margine
+  // completo; lo shrink 50/50 e' diagnostico, non un peso addestrato.
+  function statisticheMercati(_righeChiuse,righePeriodo){
+    (righePeriodo||[]).forEach(aggiornaTassonomia);
+    var metriche=window.BetCoreMarketMetrics;
+    return metriche&&metriche.calcola?metriche.calcola(righePeriodo||[]):[];
   }
 
   // Ricostruisce il saldo documentato a fine giornata. I versamenti entrano
@@ -1535,10 +1513,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
         bookmaker:S.form.bookmaker||"Sportium",faseIngresso:S.form.faseIngresso||"PRE",classificazione:S.form.classificazione,
         ticketId:ticket,orarioIngresso:isoDaDataOraLocale(S.form.orarioIngresso),tipoSchedina:S.form.tipoSchedina,gambe:S.form.tipoSchedina==="MULTIPLA"?gambe:[]};
       if(inEdit){
-        S.giocate.forEach(function(g){if(String(g.id)===String(S.editingId)){Object.keys(dati).forEach(function(k){g[k]=dati[k];});if(g.esito==="vinta")g.profitto=g.stake*g.quota-g.stake;else if(g.esito==="persa")g.profitto=-g.stake;}});
+        S.giocate.forEach(function(g){if(String(g.id)===String(S.editingId)){Object.keys(dati).forEach(function(k){g[k]=dati[k];});g.cloudDirty=true;if(g.esito==="vinta")g.profitto=g.stake*g.quota-g.stake;else if(g.esito==="persa")g.profitto=-g.stake;}});
         S.editingId=null;
       }else{
-        dati.id=Date.now();dati.esito="aperta";dati.profitto=0;S.giocate.unshift(dati);
+        dati.id=Date.now();dati.esito="aperta";dati.profitto=0;dati.cloudDirty=true;S.giocate.unshift(dati);
       }
       S.errore=null;salva();
       S.form=formVuoto(S.form.data,S.form.tipster);OCR.stato="idle";OCR.risultato=null;S.vista="registro";disegna();window.scrollTo(0,0);
@@ -1756,6 +1734,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           if(g.classificazione==="CANDIDATA" || g.classificazione==="WATCHLIST" || g.classificazione==="SCARTATA")
             g.classificazione=g.tipster==="io"?"PERSONALE":"TIPSTER";
         }
+        g.cloudDirty=true;
         salva(); disegna();
       }
       function apriModifica(){
@@ -1997,10 +1976,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var tassonomia=window.BetCoreMarketTaxonomy;
       var lab=el("div",{"class":"scheda"});
       lab.appendChild(el("div",{"class":"scheda-top"},[
-        el("span",{"class":"serif scheda-nome","text":"Market Lab v0.1"}),
-        el("span",{"class":"badge-meta","text":marketStats.length+" famiglie"})
+        el("span",{"class":"serif scheda-nome","text":"Market Lab v0.2"}),
+        el("span",{"class":"badge-meta","text":marketStats.length+" campioni famiglia/fase"})
       ]));
-      lab.appendChild(el("p",{"class":"lab-intro","text":"Confronta i mercati senza modificare automaticamente il Core. Ogni pick conta una volta; stake e profitto sommano i ticket reali. Le soglie sono: <20 descrittivo, 20–49 preliminare, 50–99 utile, 100+ più solido."}));
+      lab.appendChild(el("p",{"class":"lab-intro","text":"Confronto prospettico per famiglia e fase PRE/LIVE. Brier e Log Loss usano l'esito esplicito e includono anche PASS/Watchlist a stake zero; il mercato e' il benchmark grezzo 1/quota. Shrink 50/50 e' solo diagnostico e non modifica il Core."}));
       if(!marketStats.length){
         lab.appendChild(el("p",{"class":"lab-intro","text":"Nessun mercato disponibile nel periodo selezionato."}));
       }else marketStats.forEach(function(d){
@@ -2012,7 +1991,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         if(d.osservate) stato.push(d.osservate+" osservate");
         lab.appendChild(el("div",{"class":"lab-riga"},[
           el("div",{"class":"lab-riga-top"},[
-            el("span",{"class":"lab-riga-nome","text":nome+(d.famiglia==="NON_CLASSIFICATO"?" · storico non inferito":"")}),
+            el("span",{"class":"lab-riga-nome","text":nome+" · "+d.fase+(d.famiglia==="NON_CLASSIFICATO"?" · storico non inferito":"")}),
             el("span",{"class":"lab-riga-roi tab","style":{color:d.n?(d.roi>=0?"#4FB286":"#D4635F"):"#6D7F8E"},"text":roiTesto})
           ]),
           el("div",{"class":"lab-metriche"},[
@@ -2021,7 +2000,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
             el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Stake / P&L"}),el("p",{"class":"v tab","text":euro(d.stake)+" · "+segnato(d.profitto)})]),
             el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Quota media"}),el("p",{"class":"v tab","text":d.quotaMedia?"@"+d.quotaMedia.toFixed(2):"—"})]),
             el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"CLV chiusura"}),el("p",{"class":"v tab","text":d.clvN?((d.clv>=0?"+":"")+d.clv.toFixed(1)+"% · "+d.clvN+"/"+d.n):"— · 0/"+d.n})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Calibrazione"}),el("p",{"class":"v tab","text":d.brierN?"Brier "+d.brier.toFixed(3)+" · "+d.brierN+"/"+d.n:"— · 0/"+d.n})])
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Modello"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.brier.toFixed(3)+" · LL "+d.logLoss.toFixed(3):"— · 0/"+d.n})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Mercato grezzo"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.marketBrier.toFixed(3)+" · LL "+d.marketLogLoss.toFixed(3):"—"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Shrink 50/50"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.shrinkBrier.toFixed(3)+" · LL "+d.shrinkLogLoss.toFixed(3):"—"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Calibrazione / edge"}),el("p",{"class":"v tab","text":d.scoreN?("gap "+(d.calibrationGap*100).toFixed(1)+"% · edge "+(d.edgeMedio>=0?"+":"")+(d.edgeMedio*100).toFixed(1)+"%"):"—"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Copertura"}),el("p",{"class":"v tab","text":d.scoreN+"/"+d.n+" misurabili · "+d.missingP+" senza p · "+d.missingTimestamp+" senza ora"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Esclusi"}),el("p",{"class":"v tab","text":d.rimborsate+" push · "+d.conflitti+" conflitti · "+d.missingQuote+" senza quota"})])
           ]),
           el("div",{"class":"lab-fase"},[
             el("span",{"text":fase.etichetta}),el("span",{"text":fase.nota})
@@ -2296,7 +2280,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         var v = parseFloat(inImporto.value);
         if(!v || v<=0) return;
         S.versamenti.push({ id:Date.now(), data:inDataV.value||oggi(),
-          importo:v, tipoMovimento:"versamento" });
+          importo:v, tipoMovimento:"versamento", cloudDirty:true });
         salva(); disegna();
       }})
     ]));
@@ -2324,7 +2308,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var inBudget = el("input",{"type":"number","inputmode":"decimal","class":"tab",
       "step":"10","value":S.budgetMese});
     inBudget.addEventListener("change",function(){
-      S.budgetMese = parseFloat(this.value)||0; salva(); disegna();
+      S.budgetMese = parseFloat(this.value)||0; CLOUD.settingsDirty=true; salva(); disegna();
     });
 
     var inPercentuale = S.tettiModo === "percentuale";
@@ -2337,7 +2321,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       selModo.appendChild(el("button",{
         "class": "scelta"+(S.tettiModo===x[0] ? " on" : ""),
         "text": x[1],
-        "onclick": function(){ S.tettiModo = x[0]; salva(); disegna(); }
+        "onclick": function(){ S.tettiModo = x[0]; CLOUD.settingsDirty=true; salva(); disegna(); }
       }));
     });
 
@@ -2350,6 +2334,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         var v = Math.max(0, parseFloat(this.value)||0);
         if(inPercentuale) S.tettiPct[x[0]] = Math.min(100, v);
         else S.tetti[x[0]] = v;
+        CLOUD.settingsDirty=true;
         salva(); disegna();
       });
       // In percentuale il numero da solo non dice quanto si sta rischiando:
@@ -2487,7 +2472,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       if(!esito.ok.length){S.errore="Nessuna riga valida trovata nel file.";disegna();return;}
       if(!window.confirm("Trovate "+esito.ok.length+" giocate valide. Importarle senza cancellare quelle presenti?")) return;
       var esistenti={}; S.giocate.forEach(function(g){esistenti[chiavePick(g)]=true;}); var aggiunte=0;
-      esito.ok.forEach(function(g){var k=chiavePick(g);if(esistenti[k])return;esistenti[k]=true;S.giocate.push(g);aggiunte++;});
+      esito.ok.forEach(function(g){var k=chiavePick(g);if(esistenti[k])return;esistenti[k]=true;g.cloudDirty=true;S.giocate.push(g);aggiunte++;});
       salva(); S.errore=null; disegna(); window.alert(aggiunte+" giocate importate.");
     };
     lettore.readAsText(file,"utf-8");
