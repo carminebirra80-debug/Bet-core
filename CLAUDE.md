@@ -46,6 +46,19 @@ fare.
   segnale credibile, dirlo (manuale sez. 15). Il valore di una giornata sta
   anche nelle partite scartate.
 
+## Registrare i consigli mentre si danno
+
+Ogni pick proposto va scritto in `claude/consigli.csv` **durante l'analisi**,
+non dopo: è l'unica traccia di cosa era stato consigliato prima di sapere
+com'è finita, e senza di essa il debrief non può separare il rendimento del
+metodo da quello delle giocate fatte per altri motivi. Anche le giornate
+senza selezioni vanno registrate, con una riga `NESSUNA_SELEZIONE`: a
+posteriori "analizzato, niente da giocare" e "non analizzato" sono
+indistinguibili.
+
+Nomi delle partite con separatore spaziato — `Juventus - Milan` — e note che
+contengono virgole fra virgolette.
+
 ## Quote e bookmaker
 
 - **Sportium**, dove le giocate vengono fatte davvero, non è leggibile in
