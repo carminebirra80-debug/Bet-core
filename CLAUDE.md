@@ -97,16 +97,21 @@ tentare aggiramenti, chiedere a Carmine di completarlo.
 
 ## Non siamo soli sul progetto
 
-Sul repository e sullo **stesso database Supabase** lavora anche ChatGPT, con
-una credenziale propria che questa sessione non ha. Due conseguenze pratiche.
+Sul repository e sullo **stesso database Supabase** lavora anche ChatGPT
+(Codex), con una credenziale propria — un connettore Supabase autenticato
+lato OpenAI — che questa sessione non ha e non deve avere.
 
-**Il branch `betcore-audit-traceability` è una fotografia vecchia.** Fermo al
-5 settembre: non contiene `analytics/`, `claude/`, `docs/`, `CLAUDE.md` né la
-migrazione del canale di lettura, e il suo `index.html` è 16 KB più corto di
-quello su main — gli mancano lo sblocco della modifica delle multiple, i
-tetti percentuali e la separazione rettifiche/versamenti. **Non fonderlo e
-non ripristinare file da lì** senza confrontare le date: si riporterebbero
-indietro giorni di correzioni. Se serve qualcosa, si prende il singolo file.
+**Regola di convivenza, decisa da Carmine il 7 settembre: coesistere, non
+integrarsi.** Ognuno lavora sul proprio branch. **Nessuno fonde il branch
+dell'altro su main senza il via libera esplicito di Carmine** — nemmeno per
+recuperare un singolo file, nemmeno se il branch sembra aggiornato. Lo stato
+di un branch altrui va sempre riverificato sul momento (`git log`, `git diff`
+contro `origin/main`): il branch `betcore-audit-traceability`, per esempio,
+è stato "una fotografia vecchia, ferma al 5 settembre" fino alla mattina del
+7 — poi Codex l'ha aggiornato in pochi minuti aggiungendo scope nuovo
+(riscrittura della sincronizzazione cloud in `sync-merge.js`, nuovo
+`market-metrics.js`). Una descrizione dello stato di un branch scritta qui è
+una fotografia, non una garanzia: verificarla, non fidarsi.
 
 **Lo stato del database non si deduce più dalle migrazioni del repository.**
 Sono attive tabelle di audit — `betcore_pick_history` (journal con prima e
