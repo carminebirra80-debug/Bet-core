@@ -6,6 +6,7 @@ per fare il debrief senza export CSV ne' screenshot.
     python3 analytics/leggi_app.py stato               # verifica il canale
     python3 analytics/leggi_app.py debrief 2026-09-06  # giornata specifica
     python3 analytics/leggi_app.py debrief             # oggi
+    python3 analytics/leggi_app.py storico <pick_id>   # journal di una giocata
 
 Come funziona. Le tabelle sono protette da Row Level Security: con la chiave
 pubblica che sta in index.html una richiesta non autenticata vede zero righe
@@ -199,6 +200,50 @@ def cassa(dati: dict) -> dict:
                    if conta(p) and p.get("esito") != "aperta")
     return {"versato": versato, "rettifiche": rettifiche, "profitto": profitto,
             "cassa": versato + rettifiche + profitto}
+
+
+def storico_giocata(dati: dict, pick_id: str) -> list[dict]:
+    """
+    Il journal di una giocata: ogni INSERT/UPDATE/DELETE registrato dal
+    trigger di audit (`betcore_pick_history`), in ordine cronologico.
+
+    Manca del tutto se la migrazione che estende `debrief_lettura` non e'
+    ancora stata eseguita: viene trattato come "nessuno storico", non come
+    errore, perche' e' una tabella opzionale creata fuori da questo
+    repository (vedi CLAUDE.md, sezione "Non siamo soli sul progetto").
+    """
+    voci = [h for h in dati.get("storico_giocate", []) if str(h.get("pick_id")) == str(pick_id)]
+    return sorted(voci, key=lambda h: str(h.get("recorded_at") or ""))
+
+
+def _diff_righe(prima: dict | None, dopo: dict | None) -> list[tuple[str, object, object]]:
+    """Solo i campi cambiati fra due versioni di una riga, non l'intera riga."""
+    prima = prima or {}
+    dopo = dopo or {}
+    chiavi = sorted(set(prima) | set(dopo))
+    return [(k, prima.get(k), dopo.get(k)) for k in chiavi if prima.get(k) != dopo.get(k)]
+
+
+def stampa_storico(voci: list[dict]) -> None:
+    if not voci:
+        print("  Nessuno storico trovato per questa giocata.")
+        print("  (o la migrazione 20260907214433_debrief_lettura_include_audit.sql")
+        print("   non e' ancora stata eseguita)")
+        return
+    for h in voci:
+        quando = str(h.get("recorded_at") or "?")[:19].replace("T", " ")
+        chi = h.get("actor_role") or "?"
+        print(f"  {quando}  {h.get('operation','?'):8s}  attore: {chi}")
+        if h.get("operation") == "UPDATE":
+            for campo, prima, dopo in _diff_righe(h.get("before_row"), h.get("after_row")):
+                print(f"      {campo}: {prima!r} -> {dopo!r}")
+        elif h.get("operation") in ("INSERT", "BASELINE"):
+            riga = h.get("after_row") or {}
+            print(f"      evento: {riga.get('evento') or riga.get('nota') or '?'}  "
+                  f"stake: {riga.get('stake')}  esito: {riga.get('esito')}")
+        elif h.get("operation") == "DELETE":
+            riga = h.get("before_row") or {}
+            print(f"      cancellata: {riga.get('evento') or riga.get('nota') or '?'}")
 
 
 CONSIGLI = os.path.join(RADICE, "claude", "consigli.csv")
@@ -424,6 +469,20 @@ def main(argv: list[str]) -> int:
             print(f"  cassa ricostruita: {c['cassa']:.2f} "
                   f"(versato {c['versato']:.2f}, profitti {c['profitto']:+.2f}"
                   + (f", rettifiche {c['rettifiche']:+.2f}" if c["rettifiche"] else "") + ")")
+            if "storico_giocate" in dati or "snapshot_analisi" in dati:
+                print(f"  tabelle di audit: {len(dati.get('storico_giocate', []))} voci di "
+                      f"storico, {len(dati.get('snapshot_analisi', []))} snapshot")
+            else:
+                print("  tabelle di audit non ancora incluse — eseguire la migrazione "
+                      "20260907214433_debrief_lettura_include_audit.sql")
+            return 0
+
+        if cmd == "storico":
+            if len(argv) < 3:
+                print("uso: leggi_app.py storico <pick_id>")
+                return 1
+            dati = leggi()
+            stampa_storico(storico_giocata(dati, argv[2]))
             return 0
 
         if cmd == "debrief":

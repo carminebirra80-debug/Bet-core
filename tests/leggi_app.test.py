@@ -220,6 +220,36 @@ def test_confronto_legge_il_registro_dei_consigli():
         assert None not in r, f"virgola non quotata in consigli.csv: {r}"
 
 
+def test_storico_giocata_filtra_e_ordina():
+    """
+    Il journal contiene le voci di TUTTE le giocate mescolate: storico_giocata
+    deve isolare solo quelle di una, in ordine cronologico, non nell'ordine
+    (arbitrario) in cui il database le restituisce.
+    """
+    dati = {"storico_giocate": [
+        {"pick_id": "A", "operation": "UPDATE", "recorded_at": "2026-09-06T10:00:00"},
+        {"pick_id": "B", "operation": "BASELINE", "recorded_at": "2026-09-05T09:00:00"},
+        {"pick_id": "A", "operation": "BASELINE", "recorded_at": "2026-09-05T09:00:00"},
+    ]}
+    voci = L.storico_giocata(dati, "A")
+    assert [v["operation"] for v in voci] == ["BASELINE", "UPDATE"], voci
+    assert all(v["pick_id"] == "A" for v in voci), voci
+
+
+def test_storico_giocata_vuoto_se_tabella_assente():
+    """Se la migrazione di audit non e' stata eseguita, non deve esplodere."""
+    assert L.storico_giocata({}, "qualsiasi") == []
+
+
+def test_diff_righe_solo_i_campi_cambiati():
+    prima = {"stake": 3.0, "esito": "aperta", "nota": "x"}
+    dopo = {"stake": 5.0, "esito": "aperta", "nota": "x"}
+    diff = L._diff_righe(prima, dopo)
+    assert diff == [("stake", 3.0, 5.0)], diff
+    # Nessuna differenza -> nessuna riga, non una riga con vecchio==nuovo.
+    assert L._diff_righe(prima, prima) == []
+
+
 if __name__ == "__main__":
     test_credenziali_dal_html()
     test_segreto_mancante()
@@ -230,4 +260,7 @@ if __name__ == "__main__":
     test_mercato_opposto_non_e_lo_stesso_consiglio()
     test_confronto_separa_consigli_seguiti_e_no()
     test_confronto_legge_il_registro_dei_consigli()
+    test_storico_giocata_filtra_e_ordina()
+    test_storico_giocata_vuoto_se_tabella_assente()
+    test_diff_righe_solo_i_campi_cambiati()
     print("leggi-app: ok")
