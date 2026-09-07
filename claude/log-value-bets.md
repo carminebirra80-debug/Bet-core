@@ -75,6 +75,56 @@ il 5%**. Da manuale (sez. 15) si dichiara e non si costruisce nulla.
 Le due multiple di Fabrizio Rubino restano fuori da questo conteggio, come
 sempre: origine Tipster, non Core.
 
+### DEBRIEF della domenica — eseguito lunedi' 7 alle 08:13
+
+Il promemoria era per le 23:30 di domenica ma la sessione era ferma: il
+debrief viene fatto la mattina dopo, su richiesta esplicita.
+
+**Risultati verificati con fonte pulita:**
+
+| Partita | Risultato | Fonte |
+|---|---|---|
+| Juventus-Milan | **1-1** (Cisse' 68', Gatti 92') | ESPN, ANSA, Fanpage concordi |
+| Espanyol-Sevilla | **1-1** | ESPN |
+| Valencia-Barcelona | **0-5** | El Espanol, La Republica concordi |
+
+**Conteggio Core: VUOTO.** Nessuna selezione prodotta ne' alle 13:55 ne' alle
+17:31, perche' nessun edge eseguibile raggiungeva il 5% (motivo e numeri
+documentati sopra). Non e' una giornata persa dal metodo: e' il metodo che ha
+detto no. Zero giocate Core, zero euro rischiati dal Core.
+
+**J4F (fuori conteggio Core): VINTA.**
+Doppia Under 2.5 su Juventus-Milan + Espanyol-Sevilla, quota reale Sportium
+**2,76**. Entrambe le partite finite 1-1, quindi due gol per parte: entrambe
+le gambe centrate.
+
+Da annotare per onesta' intellettuale, perche' e' il punto piu' istruttivo
+della giornata: era la doppia che Carmine aveva in mente fin dall'inizio.
+Io l'avevo scartata sul prezzo — era la peggio pagata del tabellone,
+−17,9% di margine — proponendo al suo posto Juve 1 × Espanyol 1 a −8,3%.
+Quando lui ha chiesto se avessi studiato il perche' di quelle due selezioni,
+la risposta onesta era no: avevo ottimizzato il margine, non la plausibilita'
+dell'esito. Rifatta l'analisi sui dati (tre 0-0 negli ultimi quattro
+Juve-Milan, Juve senza Yildiz e Thuram, Espanyol senza entrambe le punte,
+due difese da 0,8 gol subiti) la scelta corretta era la sua, e ho corretto
+il consiglio.
+
+**Ma l'esito non e' la prova che avesse ragione**, ed e' importante non
+confondere le due cose: la doppia restava e resta la peggio pagata del
+tabellone. Ha vinto una volta su un campione di una. Cio' che il caso
+dimostra davvero e' un'altra cosa: **avevo scelto sul criterio sbagliato**, e
+il criterio giusto — cosa dicono dati e notizie — portava alla stessa
+conclusione a cui era arrivato lui. Il metodo era sbagliato, non il numero.
+
+**Ancora da chiudere** (servono i dati reali dell'app):
+- Puntata effettiva sulla J4F, quindi l'incasso.
+- Esito della multipla di Fabrizio (quota 5,62, stake €2): la gamba
+  Valencia-Barcelona "2" e' vinta, le altre cinque sono in campionati minori
+  (islandese, svizzero, norvegese, boliviano, olandese) non verificabili con
+  ricerche affidabili.
+- Lo scarto di ~€2 sul saldo delle 19:55 (€16,01 invece dei €18 attesi):
+  probabilmente la seconda multipla di Fabrizio, da confermare.
+
 ### Finestra 2, ore 17:31 — controllo con formazioni ufficiali
 
 Il promemoria era stato scritto stamattina dando per scontate delle pick da
