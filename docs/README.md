@@ -235,6 +235,55 @@ mai su disco. Cache locale di 5 minuti per non consumare quota inutilmente
 (piano gratuito: 500 richieste/mese, una chiamata per campionato ne costa
 poche unita').
 
+## Lettura dei dati dell'app per il debrief
+
+Il debrief ha bisogno dei dati veri del registro: giocate, esiti, puntate,
+versamenti. Finora arrivavano a mano (export CSV o screenshot). Dal 7
+settembre 2026 esiste un canale di sola lettura.
+
+**Perche' non basta la chiave pubblica.** In `index.html` c'e' gia' una
+chiave Supabase, ma e' quella *publishable*: la legge chiunque apra la
+pagina, e le tabelle sono protette da Row Level Security. Verificato: con
+quella chiave `picks`, `versamenti` e `impostazioni` rispondono tutte `[]`.
+E' il comportamento corretto e non va indebolito — se restituisse i dati, lo
+storico delle scommesse sarebbe leggibile da chiunque apra l'app.
+
+**Perche' non si usa la service_role key.** E' la chiave amministrativa:
+legge, scrive e cancella tutto ignorando ogni policy. Per leggere non serve,
+e passata in chat resterebbe nella cronologia per sempre.
+
+**Come funziona invece.** Una funzione RPC di sola lettura
+(`supabase/migrations/20260907062803_add_debrief_read_function.sql`),
+protetta da un segreto scelto da chi gioca. Non puo' scrivere ne' cancellare;
+il segreto vive solo in una variabile d'ambiente e si revoca in qualsiasi
+momento con `drop function public.debrief_lettura(text);`.
+
+Due passi manuali, una volta sola — sono gli unici che non si possono
+automatizzare, perche' creare una funzione richiede privilegi che la chiave
+pubblica non ha e la variabile d'ambiente sta nelle impostazioni dell'account:
+
+1. Sostituire il segnaposto del segreto nella migrazione ed eseguirla
+   dall'SQL Editor di Supabase.
+2. Impostare la stessa stringa come variabile d'ambiente
+   `BETCORE_DEBRIEF_SECRET` nelle impostazioni dell'ambiente Claude Code —
+   **non in chat e non in un file**: entrambe le cronologie sono permanenti.
+
+Poi:
+
+```
+python3 analytics/leggi_app.py stato               # verifica il canale
+python3 analytics/leggi_app.py debrief 2026-09-06  # riepilogo di una giornata
+```
+
+`stato` distingue i tre modi in cui il canale puo' essere chiuso (variabile
+mancante, funzione non ancora creata, segreto che non corrisponde) invece di
+lasciare indovinare davanti a una risposta vuota.
+
+Il client legge URL e chiave pubblica da `index.html` invece di duplicarli,
+cosi' non possono divergere dopo un cambio di progetto Supabase. Le rettifiche
+contabili sono escluse dal totale versato, come nell'app: sommarle falserebbe
+il rendimento sul versato.
+
 ## Cosa manca rispetto alla specifica
 
 - **P_Elo** (§5): non implementato. Senza un secondo modello davvero

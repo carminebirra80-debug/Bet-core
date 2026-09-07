@@ -67,6 +67,21 @@ fare.
 Nessuna credenziale Supabase va gestita da qui. Le migrazioni al database le
 esegue Carmine dal SQL Editor, con la query fornita in chat.
 
+**Mai chiedere né accettare la `service_role` key**: legge, scrive e cancella
+tutto ignorando le policy, e in chat resterebbe scritta per sempre. Per
+leggere i dati del registro esiste un canale di sola lettura — vedi
+`docs/README.md`, sezione "Lettura dei dati dell'app per il debrief":
+
+```bash
+python3 analytics/leggi_app.py stato               # verifica il canale
+python3 analytics/leggi_app.py debrief 2026-09-06
+```
+
+Richiede `BETCORE_DEBRIEF_SECRET` fra le variabili d'ambiente e la migrazione
+`20260907062803_add_debrief_read_function.sql` eseguita. Se `stato` dice che
+il canale è chiuso, il messaggio indica quale dei due passi manca: non
+tentare aggiramenti, chiedere a Carmine di completarlo.
+
 ## Verifica del lavoro
 
 L'app è un file solo, `index.html`, con JS e CSS inline. Prima di dichiarare
