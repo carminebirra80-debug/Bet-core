@@ -648,3 +648,51 @@ al saldo vero su Sportium. Lo scarto residuo si e' azzerato da solo — non
 e' stato "trovato" un errore preciso, ma con il registro sempre allineato
 in tempo reale d'ora in poi un residuo che torna a comparire sara' visibile
 subito, invece di accumularsi per giorni prima di essere notato.
+
+### Esplorazione bookmaker italiani da PC locale — sera del 7 settembre
+
+Con la sessione ora locale (VS Code, PC di Carmine, non piu' la sandbox
+cloud), provata la lettura diretta dei book ADM italiani. Risultati, senza
+arrotondare gli esiti incerti a un "funziona"/"non funziona" netto dove non
+lo erano:
+
+**Sportium** (`www.sportium.it`): il blocco visto dal cloud (`403`,
+`Access Denied`, pagina Akamai `edgesuite.net`) **non e' un blocco di rete/IP**
+— si ripresenta identico anche da questa rete di casa con `curl` o con Chrome
+headless. Un Chrome vero con finestra visibile invece passa: home page reale
+caricata due volte, con banner cookie Iubenda (`button.iubenda-cs-reject-btn`)
+e, la prima volta, palinsesto Serie A completo con tutte le quote (1X2,
+doppia chance, Under/Over 2.5, Gol/NoGol) senza login.
+Limite pero' concreto: la pagina di campionato aperta come link diretto
+("https://sportium.it/scommesse/prematch/calcio/1/palinsesto/...") a volte
+carica, a volte il sito stesso risponde con un proprio errore interno
+("Non e' stato possibile caricare la manifestazione"): sembra una rotta SPA
+che si aspetta di essere raggiunta navigando dal menu, non aperta a freddo.
+La pagina generale "i piu' giocati" invece ha caricato bene ad ogni prova,
+con meno mercati (solo 1X2) ma piu' stabile.
+**Non ancora un lettore pronto**: serve capire se conviene costruire
+l'estrazione a partire dai "piu' giocati" + click sulla singola partita,
+invece che dal link diretto al campionato.
+
+**Altri quattro book ADM** (assenti da The Odds API, gia' documentato in
+CLAUDE.md), test rapido con solo `curl`:
+- **Eurobet** (`www.eurobet.it`): nessun blocco rilevato — 200 OK, 141KB,
+  contenuto vero (Serie A, palinsesto). E' pero' risultato **instabile in
+  tempo reale**: la stessa richiesta, a pochi minuti di distanza, ha dato una
+  volta il sito vero e una volta una pagina di manutenzione reale
+  ("aggiornamento dei sistemi in linea con le disposizioni dei Monopoli di
+  Stato" — non un blocco anti-bot, un avviso genuino). Va riprovato con calma
+  in un altro momento prima di trarre conclusioni.
+- **Lottomatica** e **Goldbet**: `403 Forbidden`, stessa firma di Sportium
+  (probabile Akamai) — da riprovare col trucco del browser visibile prima di
+  escluderli.
+- **Snai** e **Sisal**: nessuna risposta, timeout completo lato TCP/TLS —
+  un blocco piu' aggressivo dei precedenti, probabile filtraggio a livello di
+  rete. Non ancora riprovati con un browser vero.
+
+**Conclusione della serata, non definitiva**: l'idea di leggere le quote
+direttamente da un book italiano (invece di passare da Codere via The Odds
+API) resta aperta e promettente — il blocco di Sportium non e' quello che
+sembrava dal cloud — ma nessun candidato e' ancora abbastanza stabile da
+diventare un lettore automatico affidabile. Da riprendere con piu' tempo,
+non in coda a una sessione gia' lunga.
