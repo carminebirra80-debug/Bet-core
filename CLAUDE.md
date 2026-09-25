@@ -33,6 +33,17 @@ lanciare un'analisi**, mai partire in automatico allo scattare di un
 promemoria. Vale anche quando il promemoria stesso descrive il lavoro da
 fare.
 
+## Avvisi a Carmine: via email
+
+I promemoria (`send_later`) svegliano la sessione ma **non** fanno suonare il
+telefono, e le notifiche push da sessione cloud non gli arrivano (verificato
+il 25 settembre 2026). Carmine preferisce l'email: ogni avviso che deve
+raggiungerlo mentre non guarda la chat (scatto di un check T-60/T-25,
+verdetto finale, richiesta di conferma) va inviato con Gmail a
+carmine.birra80@gmail.com, oggetto `Bet Core …` e corpo breve in testo
+semplice, oltre che scritto in chat. Nel prompt di ogni promemoria va scritto
+di mandare l'email.
+
 ## Metodo: cosa regge e cosa no
 
 - Il modello Poisson interno è stato validato e **bocciato**: log-loss
