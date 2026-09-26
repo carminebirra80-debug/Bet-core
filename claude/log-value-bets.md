@@ -620,3 +620,45 @@ settembre (drift accumulato su quote inserite e mai corrette su giocate
 passate) o riguarda un movimento di conto non legato a una giocata. Non
 persguito oltre su richiesta indiretta dell'utente (la conversazione e'
 passata al debrief generale della giornata).
+
+---
+
+## 25 settembre 2026 — Nations League, giornata 1 (pausa nazionali)
+
+Campionati maggiori fermi (finestra internazionale 21/09–06/10). Analisi sulle
+5 partite di Nations League delle 20:45: Italia-Belgio, Turchia-Francia,
+Ungheria-Ucraina, Polonia-Bosnia, Svezia-Romania. Nessun dossier ne' modello
+per le nazionali: solo notizie di formazione e quote live (The Odds API,
+`live_odds.py UNL`, aggiunto oggi). Codere (IT) non quota la Nations League.
+
+- **T-60 (19:41)**: formazioni ufficiali di Italia e Turchia/Francia senza
+  sorprese non prezzate; i 7 esclusi dell'Ucraina noti dalle 10:18 e gia'
+  assorbiti dal mercato (1X2 fermo a 35/31/34).
+- **T-25 (20:20)**: Svezia con Isak + Gyokeres titolari (fuori Hien);
+  Polonia con Bednarek titolare — la squalifica riportata dalle anteprime era
+  **falsa**, lezione: le probabili formazioni della vigilia sono inaffidabili
+  anche sui fatti. Quote mosse poco (Polonia 1.56 -> 1.60, Francia 1.34 -> 1.37).
+- **Verdetto protocollo: tutte scartate.** Nessuna notizia non prezzata.
+  Verdetto inviato per email (primo uso del canale email, vedi CLAUDE.md).
+
+### Raddoppio J4F (fuori protocollo, richiesto da Carmine)
+
+Consigliato esplicitamente come J4F con EV atteso ~ -7% (solo margine del
+book), scelto come combinazione a probabilita' piu' alta.
+
+| Gamba | Quota giocata | Miglior quota mercato T-25 | Consenso de-vigato | Esito |
+|---|---|---|---|---|
+| Svezia-Romania 1 | 1.44 | 1.50 | 64,6% (equa 1.55) | 2-1, vinta |
+| Turchia-Francia 2 | 1.35 | 1.37 | 72,0% (equa 1.39) | 0-1, vinta |
+| **Totale** | **1.94** | 2.05 | 46,5% (equa 2.15) | **VINTA** |
+
+Giocata su **Sportbet** (non Sportium), ref. DF07EA091931B226C50A, ore 20:42.
+Importo €9,00, bonus €0,04, vincita €17,54 -> **netto +€8,54**.
+
+Prezzo pagato: -5,4% sul miglior mercato, -9,8% sulla quota equa. Non va in
+`sportium-quotes.csv` perche' e' un altro book; se Sportbet diventa un book
+abituale conviene tracciarlo allo stesso modo.
+
+Nota: nello storico Sportbet compare anche una Multipla (5) da €1,00 a 21,99,
+persa, piazzata alle 19:59 — non costruita in questa sessione, non inclusa nel
+conteggio J4F.
