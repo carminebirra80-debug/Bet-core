@@ -193,10 +193,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js"></script>
-<script src="./market-metrics.js"></script>
-<script src="./sync-merge.js"></script>
-<script src="./receipt-parser.js"></script>
+<script src="./market-taxonomy.js?v=20260926a"></script>
+<script src="./market-metrics.js?v=20260926a"></script>
+<script src="./sync-merge.js?v=20260926a"></script>
+<script src="./receipt-parser.js?v=20260926a"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -499,6 +499,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return p-(r.avvisi||[]).length;
   }
 
+  // Se il telefono ha ancora in cache un receipt-parser.js precedente (senza
+  // parseRicevuta), si ripiega sul lettore Sportium invece di fermarsi con
+  // un errore: e' successo il 26/09 subito dopo l'aggiornamento.
+  function leggiTestoRicevuta(testo){
+    var P=window.BetCoreReceiptParser;
+    return typeof P.parseRicevuta==="function"?P.parseRicevuta(testo):P.parseSportium(testo);
+  }
+
   async function leggiRicevuta(file){
     if(!file) return;
     if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
@@ -516,10 +524,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
       if(worker.setParameters) await worker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
       var invertita=await creaRicevutaInvertitaSeScura(file);
       var lettura=await worker.recognize(invertita||file);
-      var risultato=window.BetCoreReceiptParser.parseRicevuta(lettura&&lettura.data?lettura.data.text:"");
+      var risultato=leggiTestoRicevuta(lettura&&lettura.data?lettura.data.text:"");
       if(invertita&&(risultato.avvisi||[]).length){
         var letturaOriginale=await worker.recognize(file);
-        var originale=window.BetCoreReceiptParser.parseRicevuta(letturaOriginale&&letturaOriginale.data?letturaOriginale.data.text:"");
+        var originale=leggiTestoRicevuta(letturaOriginale&&letturaOriginale.data?letturaOriginale.data.text:"");
         if(punteggioRicevuta(originale)>punteggioRicevuta(risultato)) risultato=originale;
       }
       var mancaMercato=(risultato.eventi||[]).some(function(x){return !x.mercato;});
@@ -527,7 +535,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         altoContrasto=true;ultimo=-1;OCR.progresso=1;OCR.fase="Recupero del mercato ad alto contrasto";disegna();
         var contrasto=await creaRicevutaAltoContrasto(file);
         var letturaContrasto=await worker.recognize(contrasto);
-        var alternativa=window.BetCoreReceiptParser.parseRicevuta(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
+        var alternativa=leggiTestoRicevuta(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
         if(punteggioRicevuta(alternativa)>punteggioRicevuta(risultato)) risultato=alternativa;
       }
       applicaRicevuta(risultato);
