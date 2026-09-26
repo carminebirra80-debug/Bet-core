@@ -72,6 +72,10 @@ di mandare l'email.
   esporta a mano nella sessione (`export ODDS_API_KEY=...`).
 - FBref, Understat, FootyStats e WorldFootball sono dietro Cloudflare e
   restituiscono 403: non riprovarli.
+- **Sportbet** (sportbet.it), usato da Carmine per alcune giocate, blocca la
+  sessione cloud con Cloudflare "Sorry, you have been blocked": 403 sia a
+  curl sia a Chromium reale (verificato il 26 settembre 2026). Come per
+  Sportium, la quota va chiesta a Carmine (va bene uno screenshot).
 
 ## Segreti
 

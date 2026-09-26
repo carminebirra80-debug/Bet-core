@@ -659,6 +659,18 @@ Prezzo pagato: -5,4% sul miglior mercato, -9,8% sulla quota equa. Non va in
 `sportium-quotes.csv` perche' e' un altro book; se Sportbet diventa un book
 abituale conviene tracciarlo allo stesso modo.
 
-Nota: nello storico Sportbet compare anche una Multipla (5) da €1,00 a 21,99,
-persa, piazzata alle 19:59 — non costruita in questa sessione, non inclusa nel
-conteggio J4F.
+### Multipla personale (fuori conteggio Core e J4F)
+
+Multipla (5) su Sportbet, ref. DF07EA09193211DA6903, ore 19:59: importo
+€1,00, quota 21,99, **persa -> netto -€1,00**. Non costruita in questa
+sessione, gambe non note. Registrata come personale su conferma di Carmine
+(26/09).
+
+### Bilancio giornata
+
+| Categoria | Giocate | Netto |
+|---|---|---|
+| Core (protocollo) | 0 — tutte scartate | €0,00 |
+| J4F (raddoppio Francia+Svezia) | 1, vinta | +€8,54 |
+| Personale (multipla 5) | 1, persa | -€1,00 |
+| **Totale** | | **+€7,54** |
