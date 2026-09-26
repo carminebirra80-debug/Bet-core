@@ -125,6 +125,26 @@ conclusione a cui era arrivato lui. Il metodo era sbagliato, non il numero.
 - Lo scarto di ~€2 sul saldo delle 19:55 (€16,01 invece dei €18 attesi):
   probabilmente la seconda multipla di Fabrizio, da confermare.
 
+**Chiuso il 7 settembre**, con il canale di lettura diretto sui dati reali
+dell'app (non piu' CSV o screenshot):
+
+- **J4F: mai giocata**, confermato da Carmine. Ha vinto solo sulla carta —
+  zero impatto sulla cassa reale, e quindi non c'entra nulla con lo scarto
+  di cassa che stavamo inseguendo: quella pista si chiude qui.
+- La multipla Fabrizio a quota 5,62 (stake €2): **PERSA**, confermato dal
+  registro.
+- C'era anche una **seconda** multipla Fabrizio, quota 5,26 (stake €2), non
+  annotata sopra perche' non ancora nota: **PERSA** anch'essa — e spiega lo
+  scarto di ~€2 sul saldo delle 19:55 ipotizzato al punto precedente.
+- Una terza giocata reale del 6 settembre, anch'essa non annotata sopra:
+  multipla personale a 2 gambe, quota 3,10 (stake €2), **VINTA**, +€4,20.
+  Non e' la J4F (quota diversa: 3,10 contro 2,76) ed e' fuori conteggio
+  Core/consigli come le altre due.
+- **Netto reale della giornata**: +€0,20 su €6 giocati (+4,20 personale,
+  −2,00 e −2,00 le due multiple Fabrizio). Core a zero perche' nessuna
+  selezione ha superato la soglia — bilancio della giornata comunque
+  leggermente positivo nel complesso.
+
 ### Finestra 2, ore 17:31 — controllo con formazioni ufficiali
 
 Il promemoria era stato scritto stamattina dando per scontate delle pick da
@@ -620,6 +640,104 @@ settembre (drift accumulato su quote inserite e mai corrette su giocate
 passate) o riguarda un movimento di conto non legato a una giocata. Non
 persguito oltre su richiesta indiretta dell'utente (la conversazione e'
 passata al debrief generale della giornata).
+
+**CHIUSA per davvero il 7 settembre 2026.** Primo debrief con il canale di
+lettura diretto sui dati reali dell'app (non piu' CSV ne' screenshot):
+cassa ricostruita dal registro **€17,19**, confermata da Carmine identica
+al saldo vero su Sportium. Lo scarto residuo si e' azzerato da solo — non
+e' stato "trovato" un errore preciso, ma con il registro sempre allineato
+in tempo reale d'ora in poi un residuo che torna a comparire sara' visibile
+subito, invece di accumularsi per giorni prima di essere notato.
+
+### Esplorazione bookmaker italiani da PC locale — sera del 7 settembre
+
+Con la sessione ora locale (VS Code, PC di Carmine, non piu' la sandbox
+cloud), provata la lettura diretta dei book ADM italiani. Risultati, senza
+arrotondare gli esiti incerti a un "funziona"/"non funziona" netto dove non
+lo erano:
+
+**Sportium** (`www.sportium.it`): il blocco visto dal cloud (`403`,
+`Access Denied`, pagina Akamai `edgesuite.net`) **non e' un blocco di rete/IP**
+— si ripresenta identico anche da questa rete di casa con `curl` o con Chrome
+headless. Un Chrome vero con finestra visibile invece passa: home page reale
+caricata due volte, con banner cookie Iubenda (`button.iubenda-cs-reject-btn`)
+e, la prima volta, palinsesto Serie A completo con tutte le quote (1X2,
+doppia chance, Under/Over 2.5, Gol/NoGol) senza login.
+Limite pero' concreto: la pagina di campionato aperta come link diretto
+("https://sportium.it/scommesse/prematch/calcio/1/palinsesto/...") a volte
+carica, a volte il sito stesso risponde con un proprio errore interno
+("Non e' stato possibile caricare la manifestazione"): sembra una rotta SPA
+che si aspetta di essere raggiunta navigando dal menu, non aperta a freddo.
+La pagina generale "i piu' giocati" invece ha caricato bene ad ogni prova,
+con meno mercati (solo 1X2) ma piu' stabile.
+**Non ancora un lettore pronto**: serve capire se conviene costruire
+l'estrazione a partire dai "piu' giocati" + click sulla singola partita,
+invece che dal link diretto al campionato.
+
+**Altri quattro book ADM** (assenti da The Odds API, gia' documentato in
+CLAUDE.md), test rapido con solo `curl`:
+- **Eurobet** (`www.eurobet.it`): nessun blocco rilevato — 200 OK, 141KB,
+  contenuto vero (Serie A, palinsesto). E' pero' risultato **instabile in
+  tempo reale**: la stessa richiesta, a pochi minuti di distanza, ha dato una
+  volta il sito vero e una volta una pagina di manutenzione reale
+  ("aggiornamento dei sistemi in linea con le disposizioni dei Monopoli di
+  Stato" — non un blocco anti-bot, un avviso genuino). Va riprovato con calma
+  in un altro momento prima di trarre conclusioni.
+- **Lottomatica** e **Goldbet**: `403 Forbidden`, stessa firma di Sportium
+  (probabile Akamai) — da riprovare col trucco del browser visibile prima di
+  escluderli.
+- **Snai** e **Sisal**: nessuna risposta, timeout completo lato TCP/TLS —
+  un blocco piu' aggressivo dei precedenti, probabile filtraggio a livello di
+  rete. Non ancora riprovati con un browser vero.
+
+**Conclusione della serata, non definitiva**: l'idea di leggere le quote
+direttamente da un book italiano (invece di passare da Codere via The Odds
+API) resta aperta e promettente — il blocco di Sportium non e' quello che
+sembrava dal cloud — ma nessun candidato e' ancora abbastanza stabile da
+diventare un lettore automatico affidabile. Da riprendere con piu' tempo,
+non in coda a una sessione gia' lunga.
+
+### Understat: il blocco documentato non c'è più
+
+Verificato lo stesso giro dei book, sulle fonti statistiche xG citate in
+CLAUDE.md come bloccate da Cloudflare. Tre di quattro **invariate**:
+FBref, FootyStats, WorldFootball ancora `403`. **Understat invece risponde
+`200`, con contenuto vero** — non era cosi' quando e' stato documentato il
+blocco.
+
+Con `curl` la pagina arriva pero' piu' piccola del previsto (18KB, senza le
+variabili `teamsData`/`datesData` che le guide di scraping si aspettano):
+non un blocco travestito, verificato con Chrome vero che rende la stessa
+pagina a 154KB con gli stessi identici xG — il sito ha semplicemente
+smesso di incorporare i dati in una variabile JS unica, li disegna
+direttamente nella pagina. Struttura pulita, non offuscata:
+
+```html
+<div class="calendar-game">
+  <div class="team-title"><a href="team/Cagliari/2026">Cagliari</a></div>
+  <a class="match-info" data-isresult="true" href="match/31588">
+    <div class="teams-goals">1 – 0</div>
+    <div class="teams-xG">1.92 – 0.45</div>
+  </a>
+  <div class="team-title"><a href="team/Lecce/2026">Lecce</a></div>
+</div>
+```
+
+**Limite strutturale, non tecnico**: `data-isresult="true"` c'e' solo sulle
+partite gia' giocate — l'xG si calcola dagli eventi reali, non esiste prima
+del fischio d'inizio. Quindi non sostituisce una fonte di quote pre-partita:
+serve per costruire la forma reale delle squadre (xG fatto/subito sulle
+ultime N gare), dato piu' solido di quello che il dossier statico usa oggi
+(spesso "su 1 gara" per mancanza di storico piu' profondo).
+
+**Non ancora costruito un lettore.** Prossimo passo naturale: uno script che
+apra la pagina di lega, scorra le partite `data-isresult="true"` degli
+ultimi N turni per squadra, e restituisca l'xG medio fatto/subito — da
+integrare in `analytics/prepara_giornata.py` al posto (o accanto) ai numeri
+attuali. Richiede lo stesso Chrome con finestra visibile usato per Sportium,
+non ancora provato in headless su Understat (probabile che headless funzioni
+qui, visto che gia' `curl` non viene bloccato — a differenza di Sportium
+dove il blocco era specifico dell'headless).
 
 ---
 

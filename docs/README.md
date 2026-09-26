@@ -284,6 +284,36 @@ cosi' non possono divergere dopo un cambio di progetto Supabase. Le rettifiche
 contabili sono escluse dal totale versato, come nell'app: sommarle falserebbe
 il rendimento sul versato.
 
+### Consigliato contro giocato
+
+Il debrief non deve dire solo com'e' andata la giornata, ma **come sono andati
+i consigli**. Sono due domande diverse: le giocate nascono anche da altro (le
+multiple del tipster, le J4F), e mescolarle rende il rendimento del metodo
+indistinguibile da quello del resto.
+
+Per poterlo fare serve una traccia scritta di cosa era stato proposto, prima
+di sapere com'e' finita: e' `claude/consigli.csv`, da aggiornare **durante**
+l'analisi. Le righe `NESSUNA_SELEZIONE` sono importanti quanto le altre —
+distinguono "analizzato, nessun segnale" da "non analizzato", che senza di
+esse sono indistinguibili a posteriori.
+
+`debrief <data>` incrocia quel file col registro e divide in quattro:
+
+- **consigliati e giocati** — stessa partita *e* stesso mercato; solo questi
+  fanno il ROI del metodo;
+- **stessa partita, scommessa diversa** — a parte: se il consiglio era Under e
+  la giocata Over, l'esito non dipende dal consiglio;
+- **consigliati ma non giocati**;
+- **giocate fuori dai consigli**, col loro ROI separato.
+
+L'abbinamento fra le due fonti non e' banale: nel registro i nomi li scrive
+Carmine ("Juventus - Milan", "Espanyol - Siviglia"), nei consigli arrivano
+dalle API ("Juventus-AC Milan", "Espanyol-Sevilla"). Il confronto normalizza
+i nomi in una forma canonica simmetrica — la tabella alias di `teams.py` e'
+direzionale (italiano verso football-data) e usata cosi' com'e' abbinava
+zero righe, cioe' avrebbe dichiarato ignorati tutti i consigli proprio nel
+giorno in cui erano stati seguiti tutti.
+
 ## Cosa manca rispetto alla specifica
 
 - **P_Elo** (§5): non implementato. Senza un secondo modello davvero
