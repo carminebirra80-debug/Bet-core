@@ -796,3 +796,20 @@ sessione, gambe non note. Registrata come personale su conferma di Carmine
 **Non registrate nell'app Bet Core**, per scelta di Carmine (26/09): sono
 giocate sulle nazionali, fuori dal perimetro del registro. Il canale di
 lettura conferma 0 giocate al 25/09 nel registro.
+
+---
+
+## 26 settembre 2026 — League One/Liga 2 (16:00) e Nations League (20:45)
+
+- **Fascia 16:00** (confermata da Carmine alle 15:0x): 5 partite in
+  `analisi.csv`, nessuna selezione. Unico candidato Wycombe-Reading (Reading
+  senza Rinomhota, Savage, Dorsett) scartato al T-25 perche' Wycombe era
+  salito 2.63 -> 2.75; ha chiuso a 2.66 (Pinnacle, 15:57), quindi entrare a
+  T-25 avrebbe dato CLV +3.4%. Primo caso del dubbio "scartiamo troppo
+  presto quando il mercato si muove contro la tesi?": da seguire nel report.
+- **Nations League 20:45** (Inghilterra-Spagna, Rep. Ceca-Croazia,
+  Macedonia-Svizzera): **non analizzata**. Richiesta di conferma inviata
+  alle 19:45 e sollecitata alle 20:21 via email, nessuna risposta: per regola
+  non si parte senza conferma. Nessuna riga in `analisi.csv` ne'
+  `NESSUNA_SELEZIONE` in `consigli.csv`, per non confondere "non analizzata"
+  con "analizzata, niente da giocare".
