@@ -674,3 +674,7 @@ sessione, gambe non note. Registrata come personale su conferma di Carmine
 | J4F (raddoppio Francia+Svezia) | 1, vinta | +€8,54 |
 | Personale (multipla 5) | 1, persa | -€1,00 |
 | **Totale** | | **+€7,54** |
+
+**Non registrate nell'app Bet Core**, per scelta di Carmine (26/09): sono
+giocate sulle nazionali, fuori dal perimetro del registro. Il canale di
+lettura conferma 0 giocate al 25/09 nel registro.
