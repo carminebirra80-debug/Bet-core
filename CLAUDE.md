@@ -70,6 +70,36 @@ indistinguibili.
 Nomi delle partite con separatore spaziato — `Juventus - Milan` — e note che
 contengono virgole fra virgolette.
 
+## Registro delle analisi: raccogliere dati per migliorare il metodo
+
+Chiesto da Carmine il 26 settembre 2026. Oltre a `consigli.csv` (solo i
+consigli dati), **ogni partita esaminata a T-60/T-25 va in
+`claude/analisi.csv`, anche se scartata**, con `analytics/analisi_log.py`:
+
+```bash
+python3 analytics/analisi_log.py add --data 2026-09-26 --fascia 20:45 \
+  --partita "Inghilterra - Spagna" --campionato UNL --mercato 2 \
+  --tipo-notizia assenza_attacco --tesi "..." --t60 2.20 --t25 2.12 \
+  --decisione scartata --motivo "notizia gia' prezzata"
+python3 analytics/analisi_log.py chiudi --data ... --partita ... --mercato ... \
+  --chiusura 2.05 --esito vinta --risultato 1-2
+python3 analytics/analisi_log.py report
+```
+
+- **Quando**: la riga si scrive durante l'analisi (T-60, completata a T-25),
+  non dopo. La **quota di chiusura** si legge poco prima del calcio d'inizio
+  (Pinnacle, o la miglior quota se Pinnacle manca); **esito e risultato** al
+  debrief. Il mercato registrato per le scartate è quello della tesi: "se
+  avessimo giocato".
+- **Perché la chiusura conta più dell'esito**: il CLV (quota d'ingresso /
+  chiusura − 1) dice se la tesi aveva visto prima del mercato e si legge già
+  su 20-30 casi; l'esito di una partita è quasi tutto rumore.
+- `tipo_notizia` è un elenco chiuso (vedi `TIPI_NOTIZIA` nello script): se
+  una notizia non ci sta, usare `altro` e descriverla in `tesi`, non
+  inventare categorie nuove al volo.
+- Ogni 2-3 settimane, `report` per tipo di notizia: è la base per decidere
+  cosa tenere nel metodo.
+
 ## Quote e bookmaker
 
 - **Sportium**, dove le giocate vengono fatte davvero, non è leggibile in
