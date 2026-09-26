@@ -61,9 +61,14 @@ di mandare l'email.
 
 - **Sportium**, dove le giocate vengono fatte davvero, non è leggibile in
   automatico: `ERR_CONNECTION_RESET` a un browser reale, 403 a curl. È un
-  blocco deliberato, non un problema temporaneo — non riprovarci ogni
-  sessione. La quota reale va **chiesta a Carmine** e registrata con
-  `analytics/sportium_gap.py`.
+  blocco deliberato verso i server cloud, non un problema temporaneo — non
+  riprovarci da una sessione cloud. **Da una sessione locale sul PC di
+  Carmine invece si legge** (verificato il 26 settembre 2026 alle 08:53:
+  Chrome vero, sportium.it — non sportium.es, che e' il sito spagnolo —
+  quote 1X2 e pannello "Andamento del mercato"). Serve un browser reale:
+  il semplice Web Fetch non esegue il JavaScript e vede la pagina senza
+  numeri. Da cloud la quota va **chiesta a Carmine** (o letta dalla sessione
+  locale) e registrata con `analytics/sportium_gap.py`.
 - **Codere (IT)** è invece coperto da The Odds API con quote live vere: è
   l'unico book ADM italiano coperto (verificati assenti: Sportium, Snai,
   Eurobet, Lottomatica, Sisal, Goldbet).
