@@ -33,6 +33,17 @@ lanciare un'analisi**, mai partire in automatico allo scattare di un
 promemoria. Vale anche quando il promemoria stesso descrive il lavoro da
 fare.
 
+## Avvisi a Carmine: via email
+
+I promemoria (`send_later`) svegliano la sessione ma **non** fanno suonare il
+telefono, e le notifiche push da sessione cloud non gli arrivano (verificato
+il 25 settembre 2026). Carmine preferisce l'email: ogni avviso che deve
+raggiungerlo mentre non guarda la chat (scatto di un check T-60/T-25,
+verdetto finale, richiesta di conferma) va inviato con Gmail a
+carmine.birra80@gmail.com, oggetto `Bet Core …` e corpo breve in testo
+semplice, oltre che scritto in chat. Nel prompt di ogni promemoria va scritto
+di mandare l'email.
+
 ## Metodo: cosa regge e cosa no
 
 - Il modello Poisson interno è stato validato e **bocciato**: log-loss
@@ -50,9 +61,14 @@ fare.
 
 - **Sportium**, dove le giocate vengono fatte davvero, non è leggibile in
   automatico: `ERR_CONNECTION_RESET` a un browser reale, 403 a curl. È un
-  blocco deliberato, non un problema temporaneo — non riprovarci ogni
-  sessione. La quota reale va **chiesta a Carmine** e registrata con
-  `analytics/sportium_gap.py`.
+  blocco deliberato verso i server cloud, non un problema temporaneo — non
+  riprovarci da una sessione cloud. **Da una sessione locale sul PC di
+  Carmine invece si legge** (verificato il 26 settembre 2026 alle 08:53:
+  Chrome vero, sportium.it — non sportium.es, che e' il sito spagnolo —
+  quote 1X2 e pannello "Andamento del mercato"). Serve un browser reale:
+  il semplice Web Fetch non esegue il JavaScript e vede la pagina senza
+  numeri. Da cloud la quota va **chiesta a Carmine** (o letta dalla sessione
+  locale) e registrata con `analytics/sportium_gap.py`.
 - **Codere (IT)** è invece coperto da The Odds API con quote live vere: è
   l'unico book ADM italiano coperto (verificati assenti: Sportium, Snai,
   Eurobet, Lottomatica, Sisal, Goldbet).
@@ -61,6 +77,10 @@ fare.
   esporta a mano nella sessione (`export ODDS_API_KEY=...`).
 - FBref, Understat, FootyStats e WorldFootball sono dietro Cloudflare e
   restituiscono 403: non riprovarli.
+- **Sportbet** (sportbet.it), usato da Carmine per alcune giocate, blocca la
+  sessione cloud con Cloudflare "Sorry, you have been blocked": 403 sia a
+  curl sia a Chromium reale (verificato il 26 settembre 2026). Come per
+  Sportium, la quota va chiesta a Carmine (va bene uno screenshot).
 
 ## Segreti
 

@@ -54,6 +54,9 @@ SPORT_KEY = {
     "N1": "soccer_netherlands_eredivisie", "B1": "soccer_belgium_first_div",
     "P1": "soccer_portugal_primeira_liga", "T1": "soccer_turkey_super_league",
     "G1": "soccer_greece_super_league",
+    # Nazionali: nessun CSV su football-data.co.uk, quindi niente dossier ne'
+    # modello, solo quote live. Aggiunta il 25 settembre 2026 (pausa lunga).
+    "UNL": "soccer_uefa_nations_league",
 }
 
 # Libri che contano davvero per questo progetto: quelli gia' citati oggi

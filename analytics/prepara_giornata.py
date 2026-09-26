@@ -5,7 +5,7 @@ anticipo sull'analisi vera.
 
     python3 analytics/prepara_giornata.py                 # oggi
     python3 analytics/prepara_giornata.py 2026-09-06      # una data specifica
-    python3 analytics/prepara_giornata.py --divs I1,E0    # solo alcuni campionati
+    python3 analytics/prepara_giornata.py --divs=I1,E0    # solo alcuni campionati
 
 Perche' esiste (concordato con l'utente il 6 settembre 2026): in una giornata
 di campionato i dati si dividono in due categorie con scadenze diverse.
