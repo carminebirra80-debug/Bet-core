@@ -413,6 +413,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(r.data) S.form.data=r.data;
     if(r.orarioIngresso) S.form.orarioIngresso=r.orarioIngresso;
     if(r.ticketId) S.form.ticketId=r.ticketId;
+    if(r.bookmaker) S.form.bookmaker=r.bookmaker;
     if(r.quota) S.form.quota=r.quota.toFixed(2);
     if(r.stake){S.form.stake=r.stake.toFixed(2);S.form.toccato=true;}
     if(r.eventi&&r.eventi.length>1){
@@ -430,7 +431,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     S.errore=null;
   }
 
-  async function creaRicevutaAltoContrasto(file){
+  async function caricaSorgenteRicevuta(file){
     var sorgente;
     if(window.createImageBitmap){
       sorgente=await window.createImageBitmap(file);
@@ -442,6 +443,38 @@ textarea{width:100%;min-height:78px;resize:vertical}
         img.src=url;
       });
     }
+    return sorgente;
+  }
+
+  // Luminosita' media: le schermate Sportbet (tema scuro, testo chiaro) vanno
+  // invertite prima dell'OCR. Senza inversione Tesseract perde gli importi
+  // ("9,00 €" letto "so0e" sulla schedina reale del 25/09); invertita li legge.
+  function luminositaMedia(px){
+    var tot=0,n=0;
+    for(var i=0;i<px.length;i+=16){tot+=px[i]*.299+px[i+1]*.587+px[i+2]*.114;n++;}
+    return n?tot/n:255;
+  }
+
+  async function creaRicevutaInvertitaSeScura(file){
+    var sorgente=await caricaSorgenteRicevuta(file);
+    var w=sorgente.width||sorgente.naturalWidth,h=sorgente.height||sorgente.naturalHeight;
+    var canvas=document.createElement("canvas");
+    canvas.width=w; canvas.height=h;
+    var ctx=canvas.getContext("2d",{willReadFrequently:true});
+    ctx.drawImage(sorgente,0,0,w,h);
+    if(sorgente.close) sorgente.close();
+    var immagine=ctx.getImageData(0,0,w,h),px=immagine.data;
+    if(luminositaMedia(px)>=110) return null;
+    for(var i=0;i<px.length;i+=4){
+      var v=255-Math.round(px[i]*.299+px[i+1]*.587+px[i+2]*.114);
+      px[i]=v;px[i+1]=v;px[i+2]=v;px[i+3]=255;
+    }
+    ctx.putImageData(immagine,0,0);
+    return canvas;
+  }
+
+  async function creaRicevutaAltoContrasto(file){
+    var sorgente=await caricaSorgenteRicevuta(file);
     var w=sorgente.width||sorgente.naturalWidth,h=sorgente.height||sorgente.naturalHeight;
     var scala=Math.min(1.5,2600/Math.max(w,h));
     var canvas=document.createElement("canvas");
@@ -450,9 +483,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ctx.drawImage(sorgente,0,0,canvas.width,canvas.height);
     if(sorgente.close) sorgente.close();
     var immagine=ctx.getImageData(0,0,canvas.width,canvas.height),px=immagine.data;
+    var scura=luminositaMedia(px)<110;
     for(var i=0;i<px.length;i+=4){
       var luce=px[i]*.299+px[i+1]*.587+px[i+2]*.114;
-      var v=luce>=89?255:0; px[i]=v;px[i+1]=v;px[i+2]=v;px[i+3]=255;
+      var v=(luce>=89)!==scura?255:0; px[i]=v;px[i+1]=v;px[i+2]=v;px[i+3]=255;
     }
     ctx.putImageData(immagine,0,0);
     return canvas;
@@ -465,7 +499,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return p-(r.avvisi||[]).length;
   }
 
-  async function leggiRicevutaSportium(file){
+  async function leggiRicevuta(file){
     if(!file) return;
     if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
     OCR.stato="loading";OCR.progresso=1;OCR.fase="Caricamento lettore";OCR.messaggio="";OCR.risultato=null;disegna();
@@ -480,14 +514,20 @@ textarea{width:100%;min-height:78px;resize:vertical}
         if(p===100 || p-ultimo>=5){ultimo=p;disegna();}
       }});
       if(worker.setParameters) await worker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
-      var lettura=await worker.recognize(file);
-      var risultato=window.BetCoreReceiptParser.parseSportium(lettura&&lettura.data?lettura.data.text:"");
+      var invertita=await creaRicevutaInvertitaSeScura(file);
+      var lettura=await worker.recognize(invertita||file);
+      var risultato=window.BetCoreReceiptParser.parseRicevuta(lettura&&lettura.data?lettura.data.text:"");
+      if(invertita&&(risultato.avvisi||[]).length){
+        var letturaOriginale=await worker.recognize(file);
+        var originale=window.BetCoreReceiptParser.parseRicevuta(letturaOriginale&&letturaOriginale.data?letturaOriginale.data.text:"");
+        if(punteggioRicevuta(originale)>punteggioRicevuta(risultato)) risultato=originale;
+      }
       var mancaMercato=(risultato.eventi||[]).some(function(x){return !x.mercato;});
-      if(mancaMercato){
+      if(mancaMercato||!risultato.quota||!risultato.stake){
         altoContrasto=true;ultimo=-1;OCR.progresso=1;OCR.fase="Recupero del mercato ad alto contrasto";disegna();
         var contrasto=await creaRicevutaAltoContrasto(file);
         var letturaContrasto=await worker.recognize(contrasto);
-        var alternativa=window.BetCoreReceiptParser.parseSportium(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
+        var alternativa=window.BetCoreReceiptParser.parseRicevuta(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
         if(punteggioRicevuta(alternativa)>punteggioRicevuta(risultato)) risultato=alternativa;
       }
       applicaRicevuta(risultato);
@@ -501,12 +541,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
   function pannelloRicevuta(){
     var input=el("input",{"type":"file","accept":"image/*","style":{display:"none"}});
-    input.addEventListener("change",function(){var f=this.files&&this.files[0];if(f)void leggiRicevutaSportium(f);});
+    input.addEventListener("change",function(){var f=this.files&&this.files[0];if(f)void leggiRicevuta(f);});
     var occupato=OCR.stato==="loading";
     var bottone=el("button",{"class":"ricevuta-azione","text":occupato?"Lettura…":"Scegli screenshot","disabled":occupato,
       "onclick":function(){input.click();}});
     var figli=[input,el("div",{"class":"ricevuta-import-top"},[
-      el("div",null,[el("h2",{"text":"Importa ricevuta Sportium"}),el("p",{"text":"La foto viene letta sul telefono e non caricata nel cloud."})]),bottone])];
+      el("div",null,[el("h2",{"text":"Importa ricevuta Sportium o Sportbet"}),el("p",{"text":"La foto viene letta sul telefono e non caricata nel cloud."})]),bottone])];
     if(occupato){
       figli.push(el("div",{"class":"ricevuta-progresso"},[el("span",{"style":{width:OCR.progresso+"%"}})]));
       figli.push(el("p",{"text":OCR.fase+" · "+OCR.progresso+"%"}));
@@ -516,7 +556,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var mercatoPreview=r.eventi&&r.eventi.length===1?r.eventi[0].mercato:"MULTIPLA";
       var taxPreview=window.BetCoreMarketTaxonomy&&window.BetCoreMarketTaxonomy.classifica
         ? window.BetCoreMarketTaxonomy.classifica(mercatoPreview,r.tipoSchedina,r.eventi||[]) : null;
-      figli.push(el("div",{"class":"ricevuta-esito"},[el("strong",{"text":"Ricevuta letta"}),el("p",{"text":OCR.messaggio}),
+      var esitoBook={vinta:"vinta",persa:"persa",rimborsata:"rimborsata"}[r.esitoBook]||"";
+      figli.push(el("div",{"class":"ricevuta-esito"},[el("strong",{"text":"Ricevuta "+(r.bookmaker||"")+" letta"}),el("p",{"text":OCR.messaggio}),
+        esitoBook?el("p",{"text":"Sul book risulta già "+esitoBook+": dopo averla registrata, aggiorna l'esito."}):null,
         el("p",{"class":"mercato-letto","text":mercati}),
         taxPreview?el("p",{"text":"Market Lab: "+window.BetCoreMarketTaxonomy.etichetta(taxPreview.famiglia)+(taxPreview.selezione?" · "+taxPreview.selezione:"")}):null,
         r.avvisi&&r.avvisi.length?el("p",{"class":"ricevuta-warn","text":"Da controllare: "+r.avvisi.join(" · ")}):null]));
@@ -1340,8 +1382,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       disegna();
     });
     var inFase=selectGuidato([["PRE","Pre-match"],["LIVE","Live"]],S.form.faseIngresso,function(v){S.form.faseIngresso=v;});
-    var inBook=selectGuidato([["Sportium","Sportium"],["Lottomatica","Lottomatica"],["Goldbet","Goldbet"],["SNAI","SNAI"],["Eurobet","Eurobet"],["Bet365","Bet365"],["Altro","Altro"]],S.form.bookmaker,function(v){S.form.bookmaker=v;});
-    var inTicket=el("input",{"type":"text","placeholder":"Codice ADM Sportium","value":S.form.ticketId||"","autocomplete":"off"});
+    var inBook=selectGuidato([["Sportium","Sportium"],["Sportbet","Sportbet"],["Lottomatica","Lottomatica"],["Goldbet","Goldbet"],["SNAI","SNAI"],["Eurobet","Eurobet"],["Bet365","Bet365"],["Altro","Altro"]],S.form.bookmaker,function(v){S.form.bookmaker=v;});
+    var inTicket=el("input",{"type":"text","placeholder":"Codice ADM / Ref. della schedina","value":S.form.ticketId||"","autocomplete":"off"});
     inTicket.addEventListener("input",function(){S.form.ticketId=this.value.toUpperCase().replace(/\s/g,"");});
     var inOra=el("input",{"type":"datetime-local","value":S.form.orarioIngresso||""});
     inOra.addEventListener("change",function(){S.form.orarioIngresso=this.value;});

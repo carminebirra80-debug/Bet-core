@@ -203,7 +203,141 @@
     };
   }
 
+  // Sportbet stampa sempre gli importi e le quote con due decimali: se l'OCR
+  // perde il separatore ("100 €" per 1,00 €, "135" per 1.35) le ultime due
+  // cifre sono i decimali.
+  function numeroSportbet(v){
+    var s = String(v || "").replace(/\s/g, "");
+    if(/^\d{3,}$/.test(s)) return Number(s) / 100;
+    if(/[.,]\d{2}$/.test(s)) return numeroItaliano(s.replace(/\.(?=\d{2}$)/, ","));
+    return null;
+  }
+
+  function lineaIntestazioneSportbet(linea){
+    return /\|/.test(linea) && !/\bRef\b/i.test(linea) && /\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}[:.]\d{2}/.test(linea);
+  }
+
+  function eventoSportbet(linea){
+    var s = compatta(linea).replace(/\s+\d+\s*[-:]\s*\d+\s*$/, "");
+    var parti = s.split(/\s*-\s+|\s+-\s*/);
+    if(parti.length !== 2 || !parti[0] || !parti[1]) return "";
+    return normalizzaEvento(parti[0] + " vs " + parti[1]);
+  }
+
+  function mercatoSportbet(nome, segno){
+    var n = compatta(nome).toUpperCase();
+    var s = compatta(segno).toUpperCase().replace(/[^0-9A-Z+.,\/ ]/g, "");
+    if(/^[1IL|]?X2$/.test(n.replace(/\s/g, "")) || n === "1X2" || n === "ESITO FINALE") return s;
+    return compatta(n + " " + s);
+  }
+
+  // La lista "Mie scommesse" di Sportbet puo' contenere piu' schedine una
+  // sotto l'altra: ognuna finisce con la riga "Ref. <codice> | <data ora>".
+  // Si legge la prima che ha gli eventi visibili (dettagli aperti).
+  function bloccoSportbet(righe){
+    var blocchi = [], corrente = [];
+    righe.forEach(function(linea){
+      corrente.push(linea);
+      if(/\bRef\b\.?\s*[A-Z0-9]{10,}/i.test(linea)){ blocchi.push(corrente); corrente = []; }
+    });
+    var conEventi = blocchi.filter(function(b){ return b.some(lineaIntestazioneSportbet); });
+    return {blocco: conEventi[0] || blocchi[0] || righe, totale: blocchi.length};
+  }
+
+  function parseSportbet(testo){
+    var raw = String(testo || "");
+    var sel = bloccoSportbet(righePulite(raw));
+    var righe = sel.blocco;
+    var avvisi = [];
+
+    var eventi = [];
+    for(var i = 0; i < righe.length; i++){
+      if(!lineaIntestazioneSportbet(righe[i])) continue;
+      var evento = eventoSportbet(righe[i + 1] || "");
+      var gamba = {evento:evento, mercato:"", quota:null};
+      for(var j = i + 2; j < righe.length && !lineaIntestazioneSportbet(righe[j]); j++){
+        if(/^(?:HT|FT|CARDS|CORNERS)\b/i.test(righe[j])) continue;
+        var m = righe[j].match(/^(.*?\S)\s+(\S{1,6})\s+(\d+[.,]\d{2}|\d{3,4})\b/);
+        if(m){ gamba.mercato = mercatoSportbet(m[1], m[2]); gamba.quota = numeroSportbet(m[3]); break; }
+        if(/^IMPORTO\b/i.test(righe[j])) break;
+      }
+      eventi.push(gamba);
+    }
+
+    var stake = null, bonus = null, quota = null, importoFinale = null, esitoBook = "";
+    var iImporto = righe.findIndex(function(l){ return /^IMPORTO\b/i.test(l); });
+    if(iImporto >= 0 && righe[iImporto + 1]){
+      var etichette = righe[iImporto];
+      var valori = righe[iImporto + 1];
+      var esitoMatch = valori.match(/\b(VIN\w*\s+POTENZIALE|VIN\w*|PERDENT\w*|RIMBORS\w*)\s*([0-9.,]+)\s*€/i);
+      if(esitoMatch){
+        var tipo = esitoMatch[1].toUpperCase();
+        esitoBook = /POTENZIALE/.test(tipo) ? "aperta" : /^VIN/.test(tipo) ? "vinta" : /^PERD/.test(tipo) ? "persa" : "rimborsata";
+        importoFinale = numeroSportbet(esitoMatch[2]);
+        valori = valori.replace(esitoMatch[0], " ");
+      }
+      var euro = [], reEuro = /([0-9][0-9.,]*)\s*€/g, e;
+      while((e = reEuro.exec(valori))) euro.push(numeroSportbet(e[1]));
+      stake = euro[0] != null ? euro[0] : null;
+      if(/BONUS/i.test(etichette) && euro.length > 1) bonus = euro[1];
+      var resto = valori.replace(/[0-9][0-9.,]*\s*€/g, " ").match(/\b(\d+[.,]\d{2}|\d{3,4})\b/);
+      if(resto) quota = numeroSportbet(resto[1]);
+    }
+
+    // Controllo incrociato: la quota totale e' il prodotto delle gambe.
+    var prodotto = eventi.length && eventi.every(function(x){ return x.quota > 1; })
+      ? eventi.reduce(function(p, x){ return p * x.quota; }, 1) : null;
+    if(prodotto && (!quota || Math.abs(quota - prodotto) / prodotto > .03)){
+      if(quota) avvisi.push("Quota totale letta (" + quota.toFixed(2) + ") diversa dal prodotto delle gambe: uso " + prodotto.toFixed(2));
+      quota = Math.round(prodotto * 100) / 100;
+    }
+
+    var ref = righe.join("\n").match(/\bRef\b\.?\s*([A-Z0-9]{10,})\s*\|?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2})[:.](\d{2})/i);
+
+    if(!ref) avvisi.push("Codice Ref. e data della giocata non riconosciuti");
+    if(!quota || quota <= 1) avvisi.push("Quota non riconosciuta");
+    if(!stake || stake <= 0) avvisi.push("Importo non riconosciuto");
+    if(!eventi.length) avvisi.push("Evento non riconosciuto (apri i Dettagli della schedina prima dello screenshot)");
+    eventi.forEach(function(x, n){
+      if(!x.evento) avvisi.push("Evento non riconosciuto per la gamba " + (n + 1));
+      if(!x.mercato) avvisi.push("Mercato non riconosciuto per l'evento " + (n + 1));
+    });
+    if(sel.totale > 1) avvisi.push("Nello screenshot ci sono " + sel.totale + " schedine: letta solo quella con i dettagli aperti");
+
+    return {
+      bookmaker:"Sportbet",
+      ticketId:ref ? normalizzaAdm(ref[1]) : "",
+      data:ref ? dataIso(ref[2], ref[3], ref[4]) : "",
+      orarioIngresso:ref ? dataOraLocale([null, ref[2], ref[3], ref[4], ref[5], ref[6]]) : "",
+      quota:quota,
+      stake:stake,
+      bonus:bonus,
+      vincitaPotenziale:esitoBook === "persa" ? null : importoFinale,
+      esitoBook:esitoBook,
+      tipoSchedina:eventi.length > 1 ? "MULTIPLA" : "SINGOLA",
+      eventi:eventi.filter(function(x){ return x.evento; }).map(function(x){
+        return {evento:x.evento, mercato:x.mercato, quota:x.quota, struttura:tipoMercato(x.mercato)};
+      }),
+      avvisi:avvisi,
+      testoOcr:raw
+    };
+  }
+
+  function riconosciBookmaker(testo){
+    var s = String(testo || "");
+    if(/\bADM\s*[:;]/i.test(s) || /GIOCATA\s+DEL/i.test(s)) return "Sportium";
+    if(/sportbet/i.test(s) || /\bRef\b\.?\s*[A-Z0-9]{10,}/i.test(s) || /\bSEGNO\b/i.test(s)) return "Sportbet";
+    return "Sportium";
+  }
+
+  function parseRicevuta(testo){
+    return riconosciBookmaker(testo) === "Sportbet" ? parseSportbet(testo) : parseSportium(testo);
+  }
+
   return {
+    parseRicevuta:parseRicevuta,
+    parseSportbet:parseSportbet,
+    riconosciBookmaker:riconosciBookmaker,
     parseSportium:parseSportium,
     tipoMercato:tipoMercato,
     pulisciMercato:pulisciMercato
