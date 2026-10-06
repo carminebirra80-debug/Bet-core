@@ -77,7 +77,8 @@ const picks=[
 ];
 const storage={
   "registro-tipster-v1":JSON.stringify({giocate:picks,versamenti:[
-    {id:1,data:"2026-09-05",importo:10,tipoMovimento:"versamento"},
+    {id:1,data:"2026-09-05",importo:30,tipoMovimento:"versamento"},
+    {id:3,data:"2026-09-17",importo:15,tipoMovimento:"prelievo"},
     {id:2,data:"2026-10-06",importo:-20,tipoMovimento:"rettifica",nota:"Allineamento al saldo del bookmaker"}
   ],tetti:{sabato:10,domenica:10,feriali:5},budgetMese:200}),
   "registro-tipster-cloud-sync":"1",
@@ -148,22 +149,35 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   clickNav(app,"Nuova");
   assert.ok(!findElement(app,x=>x.tagName==="LABEL"&&x.textContent==="Origine"),"selettore Origine da nascondere");
 
-  // Cassa: conta tutto. Versati 10 + rettifica -20 + profitti 5 (settembre)
-  // + 2 + 8 - 3 = 2. Le perdite di Rubino (-5) e Mercante (-4) non ci sono
-  // piu': con loro sarebbe -7.
+  // Cassa: conta tutto. Versati 30 - prelievo 15 + rettifica -20 + profitti
+  // 5 (settembre) + 2 + 8 - 3 = 7. Le perdite di Rubino (-5) e Mercante (-4)
+  // non ci sono piu': con loro sarebbe -2.
   clickNav(app,"Cassa");
-  assert.ok(app.textContent.includes("Hai versato €10,00 e registrato rettifiche -€20,00; in cassa hai €2,00."),
-    "cassa attesa €2,00: "+app.textContent.match(/(Hai versato|Registra)[^.]*\./));
-  // Risultato reale = cassa - versato = -8, anche se le giocate fanno +12:
-  // prima l'app mostrava +12 come "Risultato reale" e +120% sul versato.
-  const verdetto=findElement(app,x=>x.className==="verdetto");
+  assert.ok(app.textContent.includes("Hai versato €30,00, prelevato €15,00 e registrato rettifiche -€20,00; in cassa hai €7,00."),
+    "cassa attesa €7,00: "+app.textContent.match(/(Hai versato|Registra)[^.]*\./));
+  // Risultato reale = cassa + prelevato - versato = 7 + 15 - 30 = -8, anche
+  // se le giocate fanno +12: prima l'app mostrava +12 come "Risultato reale".
+  let verdetto=findElement(app,x=>x.className==="verdetto");
   assert.ok(verdetto,"riquadro del risultato non trovato");
-  const tv=verdetto.textContent;
+  let tv=verdetto.textContent;
   assert.ok(tv.includes("Risultato reale-€8,00"),"risultato reale atteso -€8,00: "+tv);
-  assert.ok(tv.includes("Rendimento sul versato: -80.0%"),"rendimento atteso -80.0%: "+tv);
+  assert.ok(tv.includes("Rendimento sul versato: -26.7%"),"rendimento atteso -26.7%: "+tv);
   assert.ok(tv.includes("Dalle giocate: +€12,00 · ROI +85.7% su €14,00 puntati"),"riga giocate attesa: "+tv);
-  const intest=app.children[0].textContent;
-  assert.ok(intest.includes("€2,00-€8,00"),"in alto accanto alla cassa va il risultato reale: "+intest.slice(0,60));
+  let intest=app.children[0].textContent;
+  assert.ok(intest.includes("€7,00-€8,00"),"in alto accanto alla cassa va il risultato reale: "+intest.slice(0,60));
+  assert.ok(app.textContent.includes("versati €30,00 · prelevati €15,00"),"il riepilogo deve mostrare il prelievo di settembre");
+  assert.ok(app.textContent.includes("prelievo-€15,00"),"lo storico deve mostrare il prelievo col segno meno");
+
+  // Un nuovo prelievo dal modulo toglie soldi dalla cassa ma non cambia il
+  // risultato reale: sono soldi incassati, non persi.
+  const inImporto=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="100.00");
+  const bPrelievo=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra prelievo");
+  assert.ok(inImporto&&bPrelievo,"modulo prelievo non trovato");
+  inImporto.value="5"; bPrelievo.listeners.click();
+  intest=app.children[0].textContent;
+  assert.ok(intest.includes("€2,00-€8,00"),"dopo il prelievo cassa €2,00 e risultato ancora -€8,00: "+intest.slice(0,60));
+  const mov=JSON.parse(storage["registro-tipster-v1"]).versamenti;
+  assert.ok(mov.some(v=>v.tipoMovimento==="prelievo"&&v.importo===5&&v.cloudDirty),"prelievo da salvare e mandare al cloud");
   assert.ok(app.textContent.includes("Settembre 2026+€5,00"),"settembre deve restare nel riepilogo mensile con il suo risultato");
 
   // Rendimento: scheda unica e riepilogo per tipo di mercato, ordinato per profitto.
