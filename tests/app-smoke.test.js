@@ -162,8 +162,9 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   const rigaBassa=document.getElementById("ev-live").textContent;
   assert.ok(rigaBassa.includes("non copre la tua stima"),"atteso avviso prezzo insufficiente: "+rigaBassa);
   assert.ok(rigaBassa.includes("-31.0%"),"EV atteso -31.0%: "+rigaBassa);
-  clickNav(app,"Tipster");
-  assert.ok(app.textContent.includes("Fabrizio Rubino"));
+  clickNav(app,"Rendimento");
+  assert.ok(app.textContent.includes("Le mie"));
+  assert.ok(app.textContent.includes("Per tipo di mercato"));
   clickNav(app,"Cassa");
   assert.ok(app.textContent.includes("Riepilogo mensile"));
   assert.ok(app.textContent.includes("Hai versato €10,00 e registrato rettifiche +€3,50; in cassa hai €30,33."),
