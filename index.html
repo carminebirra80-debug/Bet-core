@@ -1059,14 +1059,30 @@ textarea{width:100%;min-height:78px;resize:vertical}
     }catch(e){}
   }
 
+  // Tre tipi di movimento: versamento (soldi messi), prelievo (soldi tolti,
+  // importo salvato positivo) e rettifica (allineamento al saldo reale,
+  // puo' essere negativa). Prelievi aggiunti il 06/10/2026.
   function tipoMovimento(v){
+    if(v && v.tipoMovimento === "prelievo") return "prelievo";
     if(v && v.tipoMovimento === "rettifica") return "rettifica";
     if(v && /^rettifica contabile/i.test(String(v.nota||""))) return "rettifica";
     return "versamento";
   }
+  // Effetto del movimento sulla cassa: il prelievo la riduce.
+  function importoCassa(v){
+    var n = Number(v && v.importo || 0);
+    return tipoMovimento(v) === "prelievo" ? -Math.abs(n) : n;
+  }
   function totaleMovimenti(){
     var t = 0;
-    for(var i=0;i<S.versamenti.length;i++) t += Number(S.versamenti[i].importo||0);
+    for(var i=0;i<S.versamenti.length;i++) t += importoCassa(S.versamenti[i]);
+    return t;
+  }
+  function totalePrelevato(){
+    var t = 0;
+    for(var i=0;i<S.versamenti.length;i++){
+      if(tipoMovimento(S.versamenti[i]) === "prelievo") t += Math.abs(Number(S.versamenti[i].importo||0));
+    }
     return t;
   }
   function totaleVersato(){
@@ -1076,7 +1092,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
     }
     return t;
   }
-  function totaleRettifiche(){ return totaleMovimenti() - totaleVersato(); }
+  function totaleRettifiche(){
+    var t = 0;
+    for(var i=0;i<S.versamenti.length;i++){
+      if(tipoMovimento(S.versamenti[i]) === "rettifica") t += Number(S.versamenti[i].importo||0);
+    }
+    return t;
+  }
 
   // Solo i depositi reali consumano il budget mensile.
   function versatoQuestoMese(){
@@ -1103,15 +1125,16 @@ textarea{width:100%;min-height:78px;resize:vertical}
     for(i=0;i<aperte.length;i++) impegnato += aperte[i].stake;
     var versato = totaleVersato();
     var rettifiche = totaleRettifiche();
+    var prelevato = totalePrelevato();
     var bankroll = totaleMovimenti() + profitto;
     // Risultato reale = quanto hai adesso meno quanto hai versato. A
     // differenza di "profitto" (solo le giocate registrate) include le
     // rettifiche: il 06/10/2026 una rettifica di -50,42 per allinearsi al
     // saldo Sportbet faceva mostrare +46,6% sul versato a chi era a -5,6%.
-    // Se un giorno si registrassero i prelievi, andranno sommati qui.
+    // I prelievi sono soldi gia' incassati: si sommano a quelli ancora in cassa.
     return { chiuse:chiuse, aperte:aperte, profitto:profitto, versato:versato,
-      rettifiche:rettifiche, bankroll:bankroll, impegnato:impegnato,
-      reale:bankroll-versato,
+      rettifiche:rettifiche, prelevato:prelevato, bankroll:bankroll, impegnato:impegnato,
+      reale:bankroll-versato+prelevato,
       disponibile:bankroll-impegnato };
   }
 
@@ -1199,6 +1222,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
       giorni[d]=(giorni[d]||0)+(Number(delta)||0);
     }
     S.versamenti.forEach(function(v){
+      // Un prelievo toglie soldi dalla cassa ma non e' una perdita: se
+      // entrasse qui, ogni prelievo comparirebbe come un calo dal massimo.
+      if(v && v.tipoMovimento==="prelievo") return;
       aggiungi(v.data,v.importo);
     });
     chiuse.forEach(function(g){
@@ -1249,7 +1275,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // ricalcolato piu' volte per ogni disegno.
   function bankrollCorrente(){
     var tot = 0, i;
-    for(i=0;i<S.versamenti.length;i++) tot += Number(S.versamenti[i].importo)||0;
+    for(i=0;i<S.versamenti.length;i++) tot += importoCassa(S.versamenti[i]);
     for(i=0;i<S.giocate.length;i++){
       var g = S.giocate[i];
       if(g.osservata || (g.statoCore && g.statoCore!=="ufficiale")) continue;
@@ -2177,20 +2203,21 @@ textarea{width:100%;min-height:78px;resize:vertical}
       if(!mesi[m]) mesi[m]={mese:m,n:0,giocato:0,profitto:0};
       mesi[m].n++; mesi[m].giocato+=Number(g.stake||0); mesi[m].profitto+=Number(g.profitto||0);
     });
-    var versPerMese={}, rettPerMese={};
+    var versPerMese={}, rettPerMese={}, prelPerMese={};
     for(i=0;i<S.versamenti.length;i++){
       var vm=String(S.versamenti[i].data||"").slice(0,7);
       if(!vm) continue;
-      var destinazione=tipoMovimento(S.versamenti[i])==="rettifica" ? rettPerMese : versPerMese;
-      destinazione[vm]=(destinazione[vm]||0)+Number(S.versamenti[i].importo||0);
+      var tipoM=tipoMovimento(S.versamenti[i]);
+      var destinazione=tipoM==="rettifica" ? rettPerMese : tipoM==="prelievo" ? prelPerMese : versPerMese;
+      destinazione[vm]=(destinazione[vm]||0)+(tipoM==="prelievo"?Math.abs(Number(S.versamenti[i].importo||0)):Number(S.versamenti[i].importo||0));
     }
-    var chiavi=Object.keys(mesi).concat(Object.keys(versPerMese),Object.keys(rettPerMese));
+    var chiavi=Object.keys(mesi).concat(Object.keys(versPerMese),Object.keys(rettPerMese),Object.keys(prelPerMese));
     var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
     return uniche.sort().reverse().map(function(m){
       var d=mesi[m]||{mese:m,n:0,giocato:0,profitto:0};
       return {mese:m,n:d.n,giocato:d.giocato,profitto:d.profitto,
         roi:d.giocato?(d.profitto/d.giocato)*100:0,
-        versato:versPerMese[m]||0,rettifica:rettPerMese[m]||0};
+        versato:versPerMese[m]||0,rettifica:rettPerMese[m]||0,prelevato:prelPerMese[m]||0};
     });
   }
 
@@ -2210,26 +2237,36 @@ textarea{width:100%;min-height:78px;resize:vertical}
       else if(esito==="persa") giorni[d].perse++;
       else if(esito==="rimborsata") giorni[d].rimborsate++;
     });
-    var versPerGiorno={}, rettPerGiorno={};
+    var versPerGiorno={}, rettPerGiorno={}, prelPerGiorno={};
     for(i=0;i<S.versamenti.length;i++){
       var vd=String(S.versamenti[i].data||"");
       if(!vd) continue;
-      var destinazione=tipoMovimento(S.versamenti[i])==="rettifica" ? rettPerGiorno : versPerGiorno;
-      destinazione[vd]=(destinazione[vd]||0)+Number(S.versamenti[i].importo||0);
+      var tipoG=tipoMovimento(S.versamenti[i]);
+      var destinazione=tipoG==="rettifica" ? rettPerGiorno : tipoG==="prelievo" ? prelPerGiorno : versPerGiorno;
+      destinazione[vd]=(destinazione[vd]||0)+(tipoG==="prelievo"?Math.abs(Number(S.versamenti[i].importo||0)):Number(S.versamenti[i].importo||0));
     }
-    var chiavi=Object.keys(giorni).concat(Object.keys(versPerGiorno),Object.keys(rettPerGiorno));
+    var chiavi=Object.keys(giorni).concat(Object.keys(versPerGiorno),Object.keys(rettPerGiorno),Object.keys(prelPerGiorno));
     var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
     return uniche.sort().reverse().map(function(d){
       var x=giorni[d]||{giorno:d,n:0,vinte:0,perse:0,rimborsate:0,giocato:0,profitto:0};
       return {giorno:d,n:x.n,vinte:x.vinte,perse:x.perse,rimborsate:x.rimborsate,
         giocato:x.giocato,profitto:x.profitto,
         roi:x.giocato?(x.profitto/x.giocato)*100:0,
-        versato:versPerGiorno[d]||0,rettifica:rettPerGiorno[d]||0};
+        versato:versPerGiorno[d]||0,rettifica:rettPerGiorno[d]||0,prelevato:prelPerGiorno[d]||0};
     });
   }
 
+  // "versati 10,00 · prelevati 150,00 · rettifica -50,42" per i riepiloghi
+  function testoMovimenti(x){
+    var parti=[];
+    if(x.versato>0) parti.push("versati "+euro(x.versato));
+    if(x.prelevato>0) parti.push("prelevati "+euro(x.prelevato));
+    if(x.rettifica) parti.push("rettifica "+segnato(x.rettifica));
+    return parti.join(" \u00B7 ");
+  }
+
   async function eliminaVersamento(v){
-    if(!v || !window.confirm("Eliminare definitivamente questo versamento?")) return;
+    if(!v || !window.confirm("Eliminare definitivamente questo movimento?")) return;
     try{
       if(DB && CLOUD.user){
         await utenteCloudVerificato();
@@ -2261,6 +2298,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("p",{"class":"verdetto-nota",
         "text": c.versato > 0
           ? "Hai versato "+euro(c.versato)+
+            (c.prelevato ? ", prelevato "+euro(c.prelevato) : "")+
             (c.rettifiche ? " e registrato rettifiche "+segnato(c.rettifiche) : "")+
             "; in cassa hai "+euro(c.bankroll)+"."
           : "Registra il primo versamento per iniziare."}),
@@ -2317,9 +2355,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
             el("span",{"text": m.n
               ? m.n+(m.n===1?" ticket reale":" ticket reali")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
               : "nessuna giocata"}),
-            el("span",{"class":"tab","text":
-              (m.versato>0 ? "versati "+euro(m.versato) : "")+
-              (m.rettifica ? (m.versato>0 ? " · " : "")+"rettifica "+segnato(m.rettifica) : "")})
+            el("span",{"class":"tab","text":testoMovimenti(m)})
           ])
         ]));
       });
@@ -2352,9 +2388,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
             el("span",{"text": g.n
               ? dettaglio+" · ROI "+(g.roi>=0?"+":"")+g.roi.toFixed(0)+"%"
               : dettaglio}),
-            el("span",{"class":"tab","text":
-              (g.versato>0 ? "versati "+euro(g.versato) : "")+
-              (g.rettifica ? (g.versato>0 ? " · " : "")+"rettifica "+segnato(g.rettifica) : "")})
+            el("span",{"class":"tab","text":testoMovimenti(g)})
           ])
         ]));
       });
@@ -2366,16 +2400,20 @@ textarea{width:100%;min-height:78px;resize:vertical}
       "class":"tab","placeholder":"100.00"});
     var inDataV = el("input",{"type":"date","value":oggi()});
 
+    function registraMovimento(tipo){
+      var v = parseFloat(inImporto.value);
+      if(!v || v<=0) return;
+      S.versamenti.push({ id:Date.now(), data:inDataV.value||oggi(),
+        importo:v, tipoMovimento:tipo, cloudDirty:true });
+      salva(); disegna();
+    }
     pag.appendChild(el("div",{"class":"gruppo"},[
-      el("label",{"text":"Nuovo versamento"}),
+      el("label",{"text":"Nuovo movimento"}),
       el("div",{"class":"due","style":{marginBottom:"12px"}},[ inImporto, inDataV ]),
-      el("button",{"class":"principale","text":"Registra versamento","onclick":function(){
-        var v = parseFloat(inImporto.value);
-        if(!v || v<=0) return;
-        S.versamenti.push({ id:Date.now(), data:inDataV.value||oggi(),
-          importo:v, tipoMovimento:"versamento", cloudDirty:true });
-        salva(); disegna();
-      }})
+      el("div",{"class":"due"},[
+        el("button",{"class":"principale","text":"Registra versamento","onclick":function(){ registraMovimento("versamento"); }}),
+        el("button",{"class":"secondario","text":"Registra prelievo","onclick":function(){ registraMovimento("prelievo"); }})
+      ])
     ]));
 
     // Storico versamenti
@@ -2386,9 +2424,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
       }).forEach(function(v){
         lista.appendChild(el("li",{"class":"vers"},[
           el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},
-            "text":breve(v.data)+" · "+(tipoMovimento(v)==="rettifica" ? "rettifica" : "versamento")}),
+            "text":breve(v.data)+" · "+tipoMovimento(v)}),
           el("span",{"class":"tab","style":{fontSize:"14px"},
-            "text":tipoMovimento(v)==="rettifica" ? segnato(v.importo) : euro(v.importo)}),
+            "text":tipoMovimento(v)==="versamento" ? euro(v.importo) : segnato(importoCassa(v))}),
           el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E",
             "textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})
         ]));
