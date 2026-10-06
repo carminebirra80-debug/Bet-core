@@ -204,10 +204,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
   "use strict";
 
   var TIPSTERS = [
-    { id:"mercante", nome:"Mercante", corto:"Mercante", sigla:"MC", tinta:"#C8873A" },
-    { id:"rubino", nome:"Fabrizio Rubino", corto:"Rubino", sigla:"FR", tinta:"#8E5A9E" },
     { id:"io", nome:"Le mie", corto:"Le mie", sigla:"IO", tinta:"#4E9AA8" }
   ];
+  // Tipster eliminati il 06/10/2026 su richiesta di Carmine: le loro giocate
+  // sono state cancellate dal cloud, e qui si tolgono anche dalle copie
+  // locali, cosi' un telefono con dati vecchi non le rimette nel registro.
+  var TIPSTER_RIMOSSI = ["rubino","mercante"];
+  function tipsterRimosso(g){ return !!g && TIPSTER_RIMOSSI.indexOf(String(g.tipster||""))>=0; }
   var MERCATI = [
     ["1","1 - Vittoria casa"],["X","X - Pareggio"],["2","2 - Vittoria ospite"],
     ["1X","1X"],["X2","X2"],["12","12"],["DNB 1","DNB casa"],["DNB 2","DNB ospite"],
@@ -325,7 +328,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
   function deduplicaGiocate(lista){
     var viste={},pulite=[];
-    (lista||[]).forEach(function(g,indice){
+    // Tutte le strade (avvio, sync, download, salvataggio) passano di qui.
+    (lista||[]).filter(function(g){ return !tipsterRimosso(g); }).forEach(function(g,indice){
       var ticket=String(g&&g.ticketId||"").trim().toUpperCase();
       var haTesto=!!testoChiave((g&&g.evento)||"") || !!testoChiave((g&&g.mercato)||"");
       var chiave=ticket ? "ticket:"+ticket
@@ -455,16 +459,27 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return n?tot/n:255;
   }
 
-  async function creaRicevutaInvertitaSeScura(file){
+  // Con ingrandisci=true l'immagine viene anche portata a circa il doppio
+  // (al massimo 5000 px sul lato lungo) e restituita sempre, scura o chiara.
+  // Serve per le scritte piccole: sotto una certa altezza Tesseract legge la
+  // riga dell'importo come "soe" (stesso errore di "so0e" del 25/09), mentre
+  // ingrandita la legge giusta. Verificato il 06/10/2026 su una schedina di
+  // prova rimpicciolita al 40% e al 33%: a 1x importo e quota persi, a 2x letti.
+  // Non oltre 2x: a 3x la stessa schedina al 30% ha dato quota 9,00 e importo
+  // 0,04, cioe' cifre sbagliate invece di nessuna, che e' peggio.
+  async function creaRicevutaInvertitaSeScura(file,ingrandisci){
     var sorgente=await caricaSorgenteRicevuta(file);
-    var w=sorgente.width||sorgente.naturalWidth,h=sorgente.height||sorgente.naturalHeight;
+    var w0=sorgente.width||sorgente.naturalWidth,h0=sorgente.height||sorgente.naturalHeight;
+    var scala=ingrandisci?Math.max(1,Math.min(2,5000/Math.max(w0,h0))):1;
+    var w=Math.max(1,Math.round(w0*scala)),h=Math.max(1,Math.round(h0*scala));
     var canvas=document.createElement("canvas");
     canvas.width=w; canvas.height=h;
     var ctx=canvas.getContext("2d",{willReadFrequently:true});
+    if(scala>1){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";}
     ctx.drawImage(sorgente,0,0,w,h);
     if(sorgente.close) sorgente.close();
     var immagine=ctx.getImageData(0,0,w,h),px=immagine.data;
-    if(luminositaMedia(px)>=110) return null;
+    if(luminositaMedia(px)>=110) return ingrandisci?canvas:null;
     for(var i=0;i<px.length;i+=4){
       var v=255-Math.round(px[i]*.299+px[i+1]*.587+px[i+2]*.114);
       px[i]=v;px[i+1]=v;px[i+2]=v;px[i+3]=255;
@@ -511,13 +526,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(!file) return;
     if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
     OCR.stato="loading";OCR.progresso=1;OCR.fase="Caricamento lettore";OCR.messaggio="";OCR.risultato=null;disegna();
-    var worker=null,ultimo=-1,altoContrasto=false;
+    var worker=null,ultimo=-1,faseLettura="Lettura della ricevuta";
     try{
       var T=await caricaLibreriaOCR();
       worker=await T.createWorker("eng",1,{logger:function(m){
         var p=Math.max(1,Math.round(Number(m.progress||0)*100));
         OCR.progresso=p;OCR.fase=m.status==="recognizing text"
-          ? (altoContrasto?"Recupero del mercato ad alto contrasto":"Lettura della ricevuta")
+          ? faseLettura
           : "Preparazione del lettore";
         if(p===100 || p-ultimo>=5){ultimo=p;disegna();}
       }});
@@ -530,9 +545,18 @@ textarea{width:100%;min-height:78px;resize:vertical}
         var originale=leggiTestoRicevuta(letturaOriginale&&letturaOriginale.data?letturaOriginale.data.text:"");
         if(punteggioRicevuta(originale)>punteggioRicevuta(risultato)) risultato=originale;
       }
+      if(!risultato.quota||!risultato.stake){
+        faseLettura="Rilettura ingrandita di importo e quota";
+        ultimo=-1;OCR.progresso=1;OCR.fase=faseLettura;disegna();
+        var grande=await creaRicevutaInvertitaSeScura(file,true);
+        var letturaGrande=await worker.recognize(grande);
+        var ingrandita=leggiTestoRicevuta(letturaGrande&&letturaGrande.data?letturaGrande.data.text:"");
+        if(punteggioRicevuta(ingrandita)>punteggioRicevuta(risultato)) risultato=ingrandita;
+      }
       var mancaMercato=(risultato.eventi||[]).some(function(x){return !x.mercato;});
       if(mancaMercato||!risultato.quota||!risultato.stake){
-        altoContrasto=true;ultimo=-1;OCR.progresso=1;OCR.fase="Recupero del mercato ad alto contrasto";disegna();
+        faseLettura="Recupero del mercato ad alto contrasto";
+        ultimo=-1;OCR.progresso=1;OCR.fase=faseLettura;disegna();
         var contrasto=await creaRicevutaAltoContrasto(file);
         var letturaContrasto=await worker.recognize(contrasto);
         var alternativa=leggiTestoRicevuta(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
@@ -643,7 +667,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
   function segnato(n){ return (n>=0?"+":"-")+"\u20AC"+Math.abs(n).toFixed(2).replace(".",","); }
   function trova(id){
     for(var i=0;i<TIPSTERS.length;i++){ if(TIPSTERS[i].id===id) return TIPSTERS[i]; }
-    return TIPSTERS[0];
+    // Origine non in elenco (es. "BET Core", le analisi di settembre): si
+    // mostra col suo nome invece di attribuirla a chi sta in cima alla lista.
+    var nome=String(id||"Altro");
+    var iniziali=nome.split(/\s+/).filter(function(x){return /^[A-Za-z]/.test(x);}).slice(0,2)
+      .map(function(x){return x.charAt(0);}).join("").toUpperCase();
+    return { id:nome, nome:nome, corto:nome, sigla:iniziali||"?", tinta:"#6D7F8E" };
   }
   // La puntata si dimensiona sul limite del periodo, non sulla cassa:
   // sono i tetti a governare il rischio, la quota decide come spenderli
@@ -1075,8 +1104,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var versato = totaleVersato();
     var rettifiche = totaleRettifiche();
     var bankroll = totaleMovimenti() + profitto;
+    // Risultato reale = quanto hai adesso meno quanto hai versato. A
+    // differenza di "profitto" (solo le giocate registrate) include le
+    // rettifiche: il 06/10/2026 una rettifica di -50,42 per allinearsi al
+    // saldo Sportbet faceva mostrare +46,6% sul versato a chi era a -5,6%.
+    // Se un giorno si registrassero i prelievi, andranno sommati qui.
     return { chiuse:chiuse, aperte:aperte, profitto:profitto, versato:versato,
       rettifiche:rettifiche, bankroll:bankroll, impegnato:impegnato,
+      reale:bankroll-versato,
       disponibile:bankroll-impegnato };
   }
 
@@ -1316,8 +1351,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("p",{"class":"etich","text":"Cassa"}),
       el("div",{"class":"riga-cassa"},[
         el("span",{"class":"serif tab cassa","text":euro(c.bankroll)}),
-        el("span",{"class":"tab delta","text":segnato(c.profitto),
-          "style":{color: c.profitto>=0 ? "#4FB286" : "#D4635F"}})
+        el("span",{"class":"tab delta","text":segnato(c.reale),
+          "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}})
       ]),
       // Il numero che conta davvero: quanto hai messo contro quanto hai
       el("div",{"class":"netto"},[
@@ -1337,7 +1372,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ]));
 
     var nav = el("nav");
-    [["registro","Registro"],["nuova","Nuova"],["core","Core"],["tipster","Tipster"],
+    [["registro","Registro"],["nuova","Nuova"],["core","Core"],["tipster","Rendimento"],
      ["cassa","Cassa"],["dati","Dati"],["guida","?"]].forEach(function(v){
       nav.appendChild(el("button",{
         "class": (S.vista===v[0] ? "on" : "")+(v[0]==="guida" ? " nav-aiuto" : ""),
@@ -1478,7 +1513,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var elementi=[vessillo,
       pannelloRicevuta(),
-      el("div",{"class":"gruppo"},[el("label",{"text":"Origine"}),scelte]),
+      TIPSTERS.length>1 ? el("div",{"class":"gruppo"},[el("label",{"text":"Origine"}),scelte]) : null,
       el("div",{"class":"gruppo due"},[
         el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Classificazione"}),inClass]),
         el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Tipo"}),inTipo])
@@ -1735,7 +1770,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var filtri = el("div",{"class":"filtri"});
     var opzioni = [["tutti","Tutte"]];
-    TIPSTERS.forEach(function(t){ opzioni.push([t.id,t.corto]); });
+    if(TIPSTERS.length>1) TIPSTERS.forEach(function(t){ opzioni.push([t.id,t.corto]); });
     if(scadute.length) opzioni.push(["scadute","Da chiudere"]);
     opzioni.forEach(function(o){
       filtri.appendChild(el("button",{
@@ -2221,8 +2256,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
     pag.appendChild(el("div",{"class":"verdetto"},[
       el("p",{"class":"etich","text":"Risultato reale"}),
       el("p",{"class":"serif tab verdetto-cifra",
-        "text": segnato(c.profitto),
-        "style":{color: c.profitto>=0 ? "#4FB286" : "#D4635F"}}),
+        "text": segnato(c.reale),
+        "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}}),
       el("p",{"class":"verdetto-nota",
         "text": c.versato > 0
           ? "Hai versato "+euro(c.versato)+
@@ -2232,7 +2267,15 @@ textarea{width:100%;min-height:78px;resize:vertical}
       c.versato > 0
         ? el("p",{"class":"verdetto-nota","style":{marginTop:"4px"},
             "text":"Rendimento sul versato: "+
-              (c.profitto>=0?"+":"")+((c.profitto/c.versato)*100).toFixed(1)+"%"})
+              (c.reale>=0?"+":"")+((c.reale/c.versato)*100).toFixed(1)+"%"})
+        : null,
+      // Le sole giocate, separate dalle rettifiche: dicono come va il metodo,
+      // mentre il risultato reale dice come vanno i soldi.
+      c.chiuse.length
+        ? el("p",{"class":"verdetto-nota","style":{marginTop:"4px"},
+            "text":"Dalle giocate: "+segnato(c.profitto)+" · ROI "+
+              (riassumi(c.chiuse).roi>=0?"+":"")+riassumi(c.chiuse).roi.toFixed(1)+"% su "+
+              euro(riassumi(c.chiuse).giocato)+" puntati"})
         : null
     ]));
 
@@ -2468,13 +2511,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
     function numero(v){var n=Number(String(v||"").replace(",","."));return isFinite(n)?n:null;}
     function tipsterId(v){
       var s=testoChiave(v);
-      if(s.indexOf("rubino")>=0||s.indexOf("fabrizio")>=0)return "rubino";
-      if(s.indexOf("mercante")>=0)return "mercante";
+      if(s.indexOf("rubino")>=0||s.indexOf("fabrizio")>=0||s.indexOf("mercante")>=0)return null;
       return "io";
     }
     var ok=[];
     righe.slice(1).forEach(function(r,idx){
       var data=valore(r,"data"),quota=numero(valore(r,"quota")),stake=numero(valore(r,"stake"));
+      if(tipsterId(valore(r,"tipster"))===null)return; // tipster eliminato
       if(!/^\d{4}-\d{2}-\d{2}$/.test(data)||!quota||quota<=1||stake===null||stake<0)return;
       var tipo=valore(r,"tipo").toLowerCase(),stato=valore(r,"stato_core")||"ufficiale";
       var gambe=[];try{gambe=JSON.parse(valore(r,"gambe")||"[]");}catch(_e){gambe=[];}
@@ -2650,6 +2693,39 @@ textarea{width:100%;min-height:78px;resize:vertical}
           "text": pend+(pend===1?" giocata ancora aperta":" giocate ancora aperte")}) : null
       ]));
     });
+
+    // Dove si guadagna e dove si perde: le giocate ufficiali chiuse divise
+    // per tipo di mercato (le multiple stanno insieme sotto "Multipla").
+    // Ordinate per profitto, cosi' in cima c'e' cio' che rende di piu'.
+    var famiglie={};
+    c.chiuse.forEach(function(g){
+      var k=g.famigliaMercato||"NON_CLASSIFICATO";
+      if(!famiglie[k]) famiglie[k]={nome:etichettaFamiglia(g),giocate:[]};
+      famiglie[k].giocate.push(g);
+    });
+    var righe=Object.keys(famiglie).map(function(k){
+      var r=riassumi(famiglie[k].giocate); r.nome=famiglie[k].nome; return r;
+    }).sort(function(a,b){ return b.profitto-a.profitto; });
+    if(righe.length){
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
+        "text":"Per tipo di mercato"}));
+      var lista=el("div");
+      righe.forEach(function(r){
+        lista.appendChild(el("div",{"class":"mese"},[
+          el("div",{"class":"mese-top"},[
+            el("span",{"text":r.nome}),
+            el("span",{"class":"tab","style":{fontWeight:"600",color:r.profitto>=0?"#4FB286":"#D4635F"},
+              "text":segnato(r.profitto)})
+          ]),
+          el("div",{"class":"mese-riga"},[
+            el("span",{"text":r.vinte+"/"+r.n+(r.n===1?" vinta":" vinte")+" \u00B7 ROI "+(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%"}),
+            el("span",{"class":"tab","text":"quota media "+r.quotaMedia.toFixed(2)})
+          ])
+        ]));
+      });
+      pag.appendChild(lista);
+      pag.appendChild(el("p",{"class":"campione","text":"Conta le giocate ufficiali chiuse. Con poche giocate per tipo i numeri sono indicativi."}));
+    }
 
     return pag;
   }
