@@ -228,6 +228,15 @@
     var n = compatta(nome).toUpperCase();
     var s = compatta(segno).toUpperCase().replace(/[^0-9A-Z+.,\/ ]/g, "");
     if(/^[1IL|]?X2$/.test(n.replace(/\s/g, "")) || n === "1X2" || n === "ESITO FINALE") return s;
+    // "Under/Over 3.5" col segno "UN"/"OV", anche combinato: "1X + Under/Over
+    // 3.5" con segno "1X + UN" diventa "1X + UNDER 3.5" (schedina del 07/10/2026).
+    var uo = n.match(/UNDER\s*\/\s*OVER\s*(\d+[.,]\d)/);
+    if(uo){
+      var soglia = uo[1].replace(",", ".");
+      return s.split(/\s*\+\s*/).map(function(p){
+        return /^UN/.test(p) ? "UNDER " + soglia : /^OV/.test(p) ? "OVER " + soglia : p;
+      }).join(" + ");
+    }
     return compatta(n + " " + s);
   }
 
@@ -257,7 +266,8 @@
       var gamba = {evento:evento, mercato:"", quota:null};
       for(var j = i + 2; j < righe.length && !lineaIntestazioneSportbet(righe[j]); j++){
         if(/^(?:HT|FT|CARDS|CORNERS)\b/i.test(righe[j])) continue;
-        var m = righe[j].match(/^(.*?\S)\s+(\S{1,6})\s+(\d+[.,]\d{2}|\d{3,4})\b/);
+        // Il segno puo' essere combinato, es. "1X + UN".
+        var m = righe[j].match(/^(.*?\S)\s+(\S{1,6}(?:\s*\+\s*\S{1,6})?)\s+(\d+[.,]\d{2}|\d{3,4})\b/);
         if(m){ gamba.mercato = mercatoSportbet(m[1], m[2]); gamba.quota = numeroSportbet(m[3]); break; }
         if(/^IMPORTO\b/i.test(righe[j])) break;
       }
@@ -265,11 +275,22 @@
     }
 
     var stake = null, bonus = null, quota = null, importoFinale = null, esitoBook = "";
-    var iImporto = righe.findIndex(function(l){ return /^IMPORTO\b/i.test(l); });
+    // Con selezioni ancora aperte Sportbet aggiunge a sinistra la colonna
+    // "Selezioni aperte 2/2": l'etichetta non e' piu' a inizio riga e i valori
+    // finiscono su piu' righe ("aperte totale Vincita potenziale 25,00 €",
+    // poi "10,00 € 0,07 €", poi "2/2 2.49"). Si leggono fino a 3 righe,
+    // fermandosi al riquadro del cashout o al Ref. (schedina del 07/10/2026).
+    var iImporto = righe.findIndex(function(l){ return /\bIMPORTO\b/i.test(l) && !/IMPORTO\s+PAGATO/i.test(l); });
     if(iImporto >= 0 && righe[iImporto + 1]){
       var etichette = righe[iImporto];
-      var valori = righe[iImporto + 1];
-      var esitoMatch = valori.match(/\b(VIN\w*\s+POTENZIALE|VIN\w*|PERDENT\w*|RIMBORS\w*)\s*([0-9.,]+)\s*€/i);
+      var parti = [];
+      for(var k = iImporto + 1; k < righe.length && parti.length < 3; k++){
+        if(/QUESTO TICKET|RISCOSS|CASHOUT|\bREF\b|^(?:SINGOLA|MULTIPLA|SISTEMA)\b/i.test(righe[k])) break;
+        parti.push(righe[k]);
+      }
+      var valori = parti.join(" ");
+      // "Vincita" a volte esce storpiata ("\/jncita"): basta "potenziale".
+      var esitoMatch = valori.match(/\b(VIN\w*\s+POTENZIALE|\w+\s+POTENZIALE|VIN\w*|PERDENT\w*|RIMBORS\w*)\s*([0-9.,]+)\s*€/i);
       if(esitoMatch){
         var tipo = esitoMatch[1].toUpperCase();
         esitoBook = /POTENZIALE/.test(tipo) ? "aperta" : /^VIN/.test(tipo) ? "vinta" : /^PERD/.test(tipo) ? "persa" : "rimborsata";

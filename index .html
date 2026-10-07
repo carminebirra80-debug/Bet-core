@@ -1,0 +1,2790 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111820">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Registro BET Core v4.22 · Market Lab</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
+<style>
+:root{
+  --sfondo:#111820; --campo:#0C1218; --bordo:#22303C; --bordo2:#1B2733;
+  --testo:#E8EDF2; --tenue:#6D7F8E; --tenue2:#8C9BA8; --spento:#4A5A68;
+  --oro:#C8873A; --verde:#4FB286; --rosso:#D4635F;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:#111820;color:#E8EDF2;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:16px;line-height:1.4;min-height:100%}
+.serif{font-family:Georgia,"Times New Roman",serif}
+.tab{font-variant-numeric:tabular-nums}
+.tab:not(.serif){font-family:var(--mono)}
+button{font-family:inherit;font-size:inherit;cursor:pointer;background:none;border:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:16px;width:100%;background:var(--campo);
+  border:1px solid var(--bordo);border-radius:4px;padding:12px;color:var(--testo)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--oro)}
+input::placeholder{color:var(--spento)}
+select{appearance:auto}
+
+header{padding:32px 20px 24px;border-bottom:1px solid var(--bordo)}
+.etich{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tenue);margin:0}
+.cassa{font-size:44px;font-weight:700;line-height:1.1}
+.riga-cassa{display:flex;align-items:baseline;gap:12px;margin-top:4px}
+.delta{font-size:14px;font-weight:600}
+.sotto{font-size:12px;color:var(--tenue);margin:8px 0 0}
+
+nav{display:flex;border-bottom:1px solid var(--bordo);position:sticky;top:0;background:#111820;z-index:5}
+nav button{flex:1;padding:14px 4px;font-size:12px;color:var(--tenue);border-bottom:2px solid transparent}
+nav button.on{color:var(--testo);border-bottom-color:var(--oro)}
+nav button.nav-aiuto{flex:0 0 44px;font-size:14px}
+
+.guida-intro{font-size:14px;color:var(--tenue2);line-height:1.6;margin:0 0 28px;
+  padding-bottom:20px;border-bottom:1px solid var(--bordo2)}
+.guida-sez{margin-bottom:28px}
+.guida-tit{font-size:17px;font-weight:500;margin:0 0 10px;color:var(--oro)}
+.guida-p{font-size:13px;color:var(--tenue2);line-height:1.65;margin:0 0 10px}
+.guida-p:last-child{margin-bottom:0}
+
+.pag{padding:24px 20px}
+.gruppo{margin-bottom:20px}
+.gruppo>label{display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--tenue);margin-bottom:8px}
+.due{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tre{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.scelta{padding:12px 4px;border:1px solid var(--bordo);border-radius:4px;
+  color:var(--tenue2);font-size:14px;text-align:center}
+/* Lo stato attivo cambiava solo il colore del testo, differenza troppo
+   debole per capire a colpo d'occhio quale opzione e selezionata: il bordo
+   nell'accento gia in uso lo rende evidente restando dentro la palette. */
+.scelta.on{color:var(--testo);border-color:var(--oro)}
+.scelta.pic{font-size:11px;padding:9px 2px}
+
+.riquadro{border:1px solid var(--bordo);border-radius:4px;overflow:hidden;margin-bottom:20px}
+.riq-top{display:flex;justify-content:space-between;align-items:baseline;
+  padding:12px 16px;background:var(--campo);border-bottom:1px solid var(--bordo)}
+.riq-mid{display:flex;justify-content:space-between;align-items:center;padding:20px 16px}
+.cifra{font-size:34px;font-weight:700}
+.riq-sez{padding:16px 16px 4px}
+.riq-fondo{padding:0 16px 16px}
+
+.principale{width:100%;padding:16px;border-radius:4px;font-size:14px;
+  font-weight:600;background:var(--oro);color:#111820}
+.principale:disabled{background:var(--bordo2);color:var(--spento)}
+
+.filtri{display:flex;gap:8px;padding:16px 20px;overflow-x:auto}
+.chip{padding:6px 12px;border:1px solid var(--bordo);border-radius:99px;
+  font-size:12px;color:var(--tenue);white-space:nowrap}
+.chip.on{border-color:var(--oro);color:var(--oro)}
+
+ul{list-style:none;margin:0;padding:0}
+li.voce{padding:16px 20px;border-top:1px solid var(--bordo2);display:flex;gap:12px}
+li.voce-oss .nota{color:var(--tenue2)}
+li.voce-oss{background:rgba(255,255,255,.012)}
+.sigla{font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;margin-top:2px;flex:0 0 auto;height:18px}
+.corpo{flex:1;min-width:0}
+.titolo-riga{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.nota{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.esito{font-size:14px;font-weight:600;flex:0 0 auto}
+.meta{font-size:12px;color:var(--tenue);margin:4px 0 0}
+.azioni{display:flex;gap:8px;margin-top:12px}
+.azioni button{flex:1;padding:9px 2px;border:1px solid var(--bordo);border-radius:4px;font-size:12px}
+.minori{display:flex;gap:16px;margin-top:8px}
+.minori button{font-size:11px;color:var(--tenue);text-decoration:underline}
+
+.vuoto{padding:64px 20px;text-align:center}
+.vuoto h2{font-size:20px;color:var(--spento);margin:0 0 8px;font-weight:400}
+.vuoto p{font-size:14px;color:var(--tenue);margin:0 0 20px}
+.vuoto button{font-size:14px;color:var(--oro);border-bottom:1px solid var(--oro);padding-bottom:2px}
+.vessillo-edit{font-size:12px;color:var(--oro);background:none;border:none;
+  border-left:2px solid var(--oro);padding:6px 0 6px 12px;margin-bottom:20px}
+
+.scheda{border:1px solid var(--bordo);border-radius:4px;overflow:hidden;margin-bottom:16px}
+.scheda-top{display:flex;justify-content:space-between;align-items:baseline;padding:12px 16px}
+.scheda-nome{font-size:18px}
+.scheda-tot{font-size:18px;font-weight:600}
+.celle{display:grid;grid-template-columns:repeat(4,1fr)}
+.cella{padding:12px 4px;text-align:center;border-left:1px solid var(--bordo2)}
+.cella:first-child{border-left:none}
+.cella .k{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--tenue);margin:0 0 4px}
+.cella .v{font-size:14px;margin:0}
+.pendenti{font-size:11px;color:var(--tenue);padding:8px 16px;border-top:1px solid var(--bordo2);margin:0}
+.campione{font-size:11px;color:var(--spento);padding:8px 16px;border-top:1px solid var(--bordo2);margin:0;font-style:italic}
+.recente{display:flex;justify-content:space-between;align-items:baseline;
+  padding:10px 16px;border-top:1px solid var(--bordo2)}
+.recente .k{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--tenue)}
+
+.netto{display:flex;justify-content:space-between;align-items:baseline;
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--bordo2)}
+.verdetto{border:1px solid var(--bordo);border-radius:4px;padding:20px 16px;margin-bottom:20px;text-align:center}
+.verdetto-cifra{font-size:38px;font-weight:700;margin:8px 0 10px;line-height:1}
+.verdetto-nota{font-size:12px;color:var(--tenue);margin:0;line-height:1.5}
+li.vers{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  padding:12px 0;border-top:1px solid var(--bordo2)}
+
+.mese{padding:12px 0;border-top:1px solid var(--bordo2)}
+.mese-top{display:flex;justify-content:space-between;font-size:14px}
+.mese-riga{display:flex;justify-content:space-between;font-size:11px;color:var(--tenue);margin-top:3px}
+.mese-corrente .mese-top span:first-child{color:var(--oro)}
+
+.promemoria{margin:16px 20px 0;padding:10px 0 10px 14px;border:none;
+  border-left:2px solid var(--oro);background:none;display:flex;justify-content:space-between;
+  align-items:center;gap:10px;flex-wrap:wrap}
+.promemoria span{font-size:12px;color:var(--testo);line-height:1.4}
+.promemoria button{font-size:11px;color:var(--oro);text-decoration:underline;white-space:nowrap}
+
+.tetto{border:1px solid var(--bordo);border-radius:4px;padding:14px 16px;margin-bottom:20px}
+.tetto-riga{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.barra{height:4px;background:var(--bordo2);border-radius:99px;overflow:hidden}
+.barra-piena{height:100%;border-radius:99px;transition:width .2s}
+.tetto-avviso{font-size:12px;color:var(--rosso);margin:10px 0 0;line-height:1.5}
+.tetto-azione{width:100%;margin-top:10px;padding:10px;border:1px solid var(--oro);
+  border-radius:4px;font-size:13px;color:var(--oro)}
+
+.secondario{width:100%;padding:12px;border:1px solid var(--bordo);border-radius:4px;
+  font-size:14px;color:var(--tenue2)}
+.secondario:disabled{color:var(--spento)}
+.avviso{font-size:11px;color:var(--spento);line-height:1.5;margin:12px 0 0}
+.errore{font-size:12px;color:var(--rosso);margin:12px 0 0}
+.ricevuta-import{border:1px solid var(--bordo);background:none;border-radius:4px;
+  padding:14px;margin-bottom:20px}
+.ricevuta-import-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ricevuta-import h2{font-size:14px;font-weight:600;margin:0;color:var(--testo)}
+.ricevuta-import p{font-size:11px;line-height:1.5;color:var(--tenue2);margin:6px 0 0}
+.ricevuta-azione{width:auto;flex:0 0 auto;padding:10px 12px;border:1px solid var(--oro);
+  border-radius:4px;color:var(--oro);font-size:12px;font-weight:600}
+.ricevuta-azione:disabled{border-color:var(--bordo);color:var(--spento)}
+.ricevuta-progresso{height:4px;background:var(--bordo2);border-radius:99px;overflow:hidden;margin-top:12px}
+.ricevuta-progresso span{display:block;height:100%;background:var(--oro);transition:width .2s}
+.ricevuta-esito{margin-top:12px;padding-top:12px;border-top:1px solid var(--bordo2)}
+.ricevuta-esito strong{display:block;font-size:12px;color:var(--oro);margin-bottom:4px}
+.ricevuta-esito .mercato-letto{font-size:12px;color:var(--testo);margin-top:8px}
+.ricevuta-warn{font-size:11px!important;color:#D9A15A!important}
+.guidato{border:none;border-left:2px solid var(--oro);background:none;padding:4px 0 4px 12px;margin-bottom:20px}
+.guidato p{font-size:12px;color:var(--tenue2);line-height:1.5;margin:0}
+.gamba{border:1px solid var(--bordo2);border-radius:4px;padding:12px;margin-bottom:10px;background:#0E161E}
+.gamba-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.gamba-top button{width:auto;padding:0;font-size:11px;color:var(--rosso);text-decoration:underline}
+.guidato input{margin-top:10px}
+.badge-meta{display:inline-block;margin:6px 6px 0 0;padding:3px 7px;border:1px solid var(--bordo);border-radius:99px;font-size:9px;letter-spacing:.06em;color:var(--tenue2)}
+.core-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+.core-card{border:1px solid var(--bordo);border-radius:4px;padding:14px;background:#111A22}
+.core-card .k{font-size:10px;color:var(--tenue);text-transform:uppercase;letter-spacing:.08em;margin:0 0 6px}
+.core-card .v{font-size:20px;margin:0}
+.core-dett{font-size:11px;color:var(--tenue);line-height:1.5;margin-top:5px}
+.lab-intro{font-size:12px;color:var(--tenue2);line-height:1.55;margin:0;padding:0 16px 14px}
+.lab-riga{padding:13px 16px;border-top:1px solid var(--bordo2)}
+.lab-riga-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.lab-riga-nome{font-size:14px;color:var(--testo)}
+.lab-riga-roi{font-size:14px;font-weight:600;white-space:nowrap}
+.lab-metriche{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:9px}
+.lab-metrica{border:1px solid var(--bordo2);border-radius:4px;padding:7px 8px;min-width:0}
+.lab-metrica .k{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--tenue);margin:0 0 2px}
+.lab-metrica .v{font-size:11px;color:var(--tenue2);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lab-fase{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-top:8px}
+.lab-fase span:first-child{font-size:10px;color:var(--oro)}
+.lab-fase span:last-child{font-size:9px;color:var(--spento);text-align:right}
+textarea{width:100%;min-height:78px;resize:vertical}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="./market-taxonomy.js?v=20261007a"></script>
+<script src="./market-metrics.js?v=20261007a"></script>
+<script src="./sync-merge.js?v=20261007a"></script>
+<script src="./receipt-parser.js?v=20261007a"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  var TIPSTERS = [
+    { id:"io", nome:"Le mie", corto:"Le mie", sigla:"IO", tinta:"#4E9AA8" }
+  ];
+  // Tipster eliminati il 06/10/2026 su richiesta di Carmine: le loro giocate
+  // sono state cancellate dal cloud, e qui si tolgono anche dalle copie
+  // locali, cosi' un telefono con dati vecchi non le rimette nel registro.
+  var TIPSTER_RIMOSSI = ["rubino","mercante"];
+  function tipsterRimosso(g){ return !!g && TIPSTER_RIMOSSI.indexOf(String(g.tipster||""))>=0; }
+  var MERCATI = [
+    ["1","1 - Vittoria casa"],["X","X - Pareggio"],["2","2 - Vittoria ospite"],
+    ["1X","1X"],["X2","X2"],["12","12"],["DNB 1","DNB casa"],["DNB 2","DNB ospite"],
+    ["Over 1.5","Over 1,5"],["Over 2.5","Over 2,5"],["Under 2.5","Under 2,5"],["Under 3.5","Under 3,5"],
+    ["Goal","Goal / BTTS"],["No Goal","No Goal"],["1X+Over 1.5","1X + Over 1,5"],
+    ["1X+Under 3.5","1X + Under 3,5"],["2+Over 1.5","2 + Over 1,5"],["ALTRO","Altro mercato…"]
+  ];
+  var CLASSIFICAZIONI = [
+    ["BET CORE","BET CORE - validata"],["BET PILOT","BET PILOT - giocabile"],
+    ["PERSONALE","Personale"],["TIPSTER","Tipster"],["CANDIDATA","Candidata"],
+    ["WATCHLIST","Watchlist"],["SCARTATA","Scartata"]
+  ];
+  var CHIAVE = "registro-tipster-v1";
+  var SUPABASE_URL = "https://sfcqxlerijeptejryruk.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_gMT-w8cCqiMMKWOnNCA5DA_MDLIvTUe";
+  var DB = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
+  var CLOUD = { user:null, email:"", stato:"", busy:false, syncEnabled: localStorage.getItem("registro-tipster-cloud-sync")==="1", timer:null, pending:false, ultimaSyncOk:null, remoteCount:null, lastDownloadCount:null, settingsDirty:false};
+  var OCR = { stato:"idle", progresso:0, fase:"", messaggio:"", risultato:null, libreria:null };
+  var OCR_CDN = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
+  // Percentuali di default del tetto, in un posto solo: erano duplicate fra
+  // l'inizializzatore e il fallback di carica(), e quello di carica() vinceva
+  // in silenzio — cambiarne una sola non aveva alcun effetto visibile.
+  var PCT_DEFAULT = { sabato:50, domenica:50, feriali:25 };
+
+  var S = {
+    giocate:[], versamenti:[], budgetMese:200,
+    tetti:{ sabato:20, domenica:20, feriali:10 },
+    // Il tetto del periodo puo' essere una cifra fissa oppure una percentuale
+    // della cassa reale. Il default resta "fisso" per non cambiare sotto i
+    // piedi il comportamento a chi non tocca nulla; in percentuale il tetto
+    // scende da solo quando scende la cassa, che e' il punto: uno stake fisso
+    // su una cassa che cala e' il modo in cui una serie storta si trasforma
+    // in un azzeramento.
+    tettiModo:"fisso",
+    tettiPct:{ sabato:PCT_DEFAULT.sabato, domenica:PCT_DEFAULT.domenica, feriali:PCT_DEFAULT.feriali },
+    vista:"registro", filtro:"tutti", coreAnno:"", coreMese:"", coreStagione:"", errore:null, editingId:null,
+    form:formVuoto(oggi(),"io")
+  };
+
+  // Quota equa = 1 / probabilità, EV unitario = probabilità × quota − 1
+  // (framework §3, mercati senza rimborso). Restano indicazioni sul prezzo:
+  // un EV positivo non è una previsione di vincita.
+  function testoEV(){
+    var q=parseFloat(S.form.quota), p=parseFloat(S.form.probabilitaStimata);
+    var qOk=q && q>1, pOk=p && p>0 && p<100;
+    if(!pOk) return "Senza probabilità congelata questa giocata non sarà misurabile: Brier, log loss e calibrazione non si ricostruiscono dopo l'esito.";
+    var pr=p/100, equa=1/pr;
+    if(!qOk) return "Quota equa "+equa.toFixed(2)+" · inserisci la quota presa per vedere l'EV.";
+    var ev=(pr*q-1)*100;
+    return "Quota equa "+equa.toFixed(2)+" · EV a "+q.toFixed(2)+": "+(ev>=0?"+":"")+ev.toFixed(1)+"%"
+      +(q<equa?" · il prezzo non copre la tua stima":"");
+  }
+
+  function aggiornaEV(){
+    var n=document.getElementById("ev-live");
+    if(n) n.textContent=testoEV();
+  }
+
+  function formVuoto(data,tipster){
+    return { data:data||oggi(), tipster:tipster||"io", evento:"", mercato:"", mercatoAltro:"", nota:"", quota:"", quotaCheck:"",
+      quotaChiusura:"", probabilitaStimata:"", probabilitaTimestamp:"",
+      confidence:"3", debrief:"", statoCore:"ufficiale", stake:"", toccato:false, osservata:false,
+      bookmaker:"Sportium", faseIngresso:"PRE", classificazione:tipster&&tipster!=="io"?"TIPSTER":"PERSONALE",
+      ticketId:"", orarioIngresso:valoreDataOraLocale(new Date().toISOString()), tipoSchedina:"SINGOLA", gambe:[] };
+  }
+
+  function statoDaClassificazione(v){
+    if(v==="BET CORE" || v==="BET PILOT" || v==="PERSONALE" || v==="TIPSTER") return "ufficiale";
+    if(v==="WATCHLIST") return "monitoraggio";
+    if(v==="SCARTATA") return "scartata";
+    return "candidata";
+  }
+
+  function classificazioneLegacy(g){
+    if(g.classificazione && g.classificazione!=="NON CLASSIFICATA") return g.classificazione;
+    if(g.statoCore==="monitoraggio") return "WATCHLIST";
+    if(g.statoCore==="candidata") return "CANDIDATA";
+    if(g.statoCore==="scartata") return "SCARTATA";
+    return g.tipster && g.tipster!=="io" ? "TIPSTER" : "PERSONALE";
+  }
+
+  function normalizzaGambe(v){
+    if(!Array.isArray(v)) return [];
+    return v.map(function(x){ return {evento:String(x&&x.evento||""),mercato:String(x&&x.mercato||"")}; });
+  }
+
+  function aggiornaTassonomia(g){
+    if(!g) return g;
+    var t=window.BetCoreMarketTaxonomy;
+    var c=t&&t.classifica ? t.classifica(g.mercato||"",g.tipoSchedina||"SINGOLA",normalizzaGambe(g.gambe)) : null;
+    g.famigliaMercato=c?c.famiglia:(g.famigliaMercato||"NON_CLASSIFICATO");
+    g.ambitoMercato=c?c.ambito:(g.ambitoMercato||"PARTITA");
+    g.selezioneNormalizzata=c?c.selezione:(g.selezioneNormalizzata||g.mercato||"");
+    g.lineaMercato=c?c.linea:(g.lineaMercato||null);
+    g.componentiMercato=c?c.componenti:(Array.isArray(g.componentiMercato)?g.componentiMercato:[]);
+    g.versioneTassonomia=c?c.versione:(g.versioneTassonomia||"v0.1");
+    return g;
+  }
+
+  function etichettaFamiglia(g){
+    aggiornaTassonomia(g);
+    var t=window.BetCoreMarketTaxonomy;
+    return t&&t.etichetta?t.etichetta(g.famigliaMercato):String(g.famigliaMercato||"Non classificato").replace(/_/g," ");
+  }
+
+  function testoChiave(v){
+    return String(v||"").trim().toLowerCase().replace(/\s+/g," ");
+  }
+
+  function chiaveSemantica(g){
+    return [g.data||"",g.tipster||"",testoChiave(g.evento||g.nota),testoChiave(g.mercato),
+      testoChiave(g.nota),Number(g.stake||0).toFixed(2),Number(g.quota||0).toFixed(3),
+      g.faseIngresso||"PRE",g.orarioIngresso||""].join("|");
+  }
+
+  function deduplicaGiocate(lista){
+    var viste={},pulite=[];
+    // Tutte le strade (avvio, sync, download, salvataggio) passano di qui.
+    (lista||[]).filter(function(g){ return !tipsterRimosso(g); }).forEach(function(g,indice){
+      var ticket=String(g&&g.ticketId||"").trim().toUpperCase();
+      var haTesto=!!testoChiave((g&&g.evento)||"") || !!testoChiave((g&&g.mercato)||"");
+      var chiave=ticket ? "ticket:"+ticket
+        : haTesto ? "sem:"+chiaveSemantica(g)
+        : "id:"+String((g&&g.cloudLegacyId)||(g&&g.id)||indice);
+      if(visto(chiave)) pulite[viste[chiave]]=g;
+      else {viste[chiave]=pulite.length;pulite.push(g);}
+    });
+    return pulite;
+
+    function visto(k){return Object.prototype.hasOwnProperty.call(viste,k);}
+  }
+
+  function legacyCloud(g){
+    if(g.cloudLegacyId) return String(g.cloudLegacyId);
+    var ticket=String(g.ticketId||"").trim().toUpperCase();
+    if(ticket) return "ticket:"+ticket;
+    return String(g.id);
+  }
+
+  function valoreDataOraLocale(iso){
+    if(!iso) return "";
+    var d=new Date(iso); if(isNaN(d.getTime())) return String(iso).slice(0,16);
+    var z=function(n){return String(n).padStart(2,"0");};
+    return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+"T"+z(d.getHours())+":"+z(d.getMinutes());
+  }
+
+  function isoDaDataOraLocale(v){
+    if(!v) return null;
+    var d=new Date(v); return isNaN(d.getTime())?null:d.toISOString();
+  }
+
+  function formDaGiocata(g){
+    return { data:g.data, tipster:g.tipster, evento:g.evento||"", mercato:g.mercato||"", nota:g.nota||"",
+      quota:String(g.quota), quotaCheck:g.quotaCheck ? String(g.quotaCheck) : "", confidence:g.confidence ? String(g.confidence) : "",
+      quotaChiusura:g.quotaChiusura ? String(g.quotaChiusura) : "",
+      probabilitaStimata:g.probabilitaStimata!=null ? String(Number(g.probabilitaStimata)*100) : "",
+      probabilitaTimestamp:valoreDataOraLocale(g.probabilitaTimestamp),
+      debrief:g.debrief||"", statoCore:g.statoCore||"candidata", stake:String(g.stake), toccato:true, osservata:!!g.osservata,
+      bookmaker:g.bookmaker||"Sportium", faseIngresso:g.faseIngresso||"PRE", classificazione:classificazioneLegacy(g),
+      ticketId:g.ticketId||"", orarioIngresso:valoreDataOraLocale(g.orarioIngresso), tipoSchedina:g.tipoSchedina||"SINGOLA",
+      gambe:normalizzaGambe(g.gambe) };
+  }
+
+  function caricaLibreriaOCR(){
+    if(window.Tesseract) return Promise.resolve(window.Tesseract);
+    if(OCR.libreria) return OCR.libreria;
+    OCR.libreria=new Promise(function(resolve,reject){
+      var s=document.createElement("script");
+      s.src=OCR_CDN; s.async=true; s.crossOrigin="anonymous";
+      s.onload=function(){window.Tesseract?resolve(window.Tesseract):reject(new Error("Motore OCR non disponibile"));};
+      s.onerror=function(){reject(new Error("Impossibile caricare il lettore. Controlla la connessione Internet."));};
+      document.head.appendChild(s);
+    }).catch(function(e){OCR.libreria=null;throw e;});
+    return OCR.libreria;
+  }
+
+  function chiaveEventoRicevuta(v){
+    return String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/\bbarca\b/g,"barcellona").replace(/[^a-z0-9]+/g," ").trim();
+  }
+
+  function trovaGiocataRicevuta(r){
+    var ticket=String(r.ticketId||"").toUpperCase();
+    if(ticket){
+      var esatta=S.giocate.find(function(g){return String(g.ticketId||"").toUpperCase()===ticket;});
+      if(esatta) return esatta;
+    }
+    if(!r.data || !r.quota || !r.stake) return null;
+    var eventoLetto=r.eventi&&r.eventi[0]?chiaveEventoRicevuta(r.eventi[0].evento):"";
+    var possibili=S.giocate.filter(function(g){
+      if(g.data!==r.data || String(g.esito||"").toLowerCase()!=="aperta") return false;
+      if(Math.abs(Number(g.quota||0)-Number(r.quota))>.05 || Math.abs(Number(g.stake||0)-Number(r.stake))>.01) return false;
+      if(!eventoLetto) return true;
+      var esistente=chiaveEventoRicevuta(g.evento||g.nota);
+      var prima=eventoLetto.split(" ")[0];
+      return !esistente || esistente.indexOf(prima)>=0 || eventoLetto.indexOf(esistente.split(" ")[0])>=0;
+    });
+    return possibili.length===1?possibili[0]:null;
+  }
+
+  function applicaRicevuta(r){
+    var esistente=trovaGiocataRicevuta(r);
+    if(esistente){S.editingId=esistente.id;S.form=formDaGiocata(esistente);}
+    if(r.data) S.form.data=r.data;
+    if(r.orarioIngresso) S.form.orarioIngresso=r.orarioIngresso;
+    if(r.ticketId) S.form.ticketId=r.ticketId;
+    if(r.bookmaker) S.form.bookmaker=r.bookmaker;
+    if(r.quota) S.form.quota=r.quota.toFixed(2);
+    if(r.stake){S.form.stake=r.stake.toFixed(2);S.form.toccato=true;}
+    if(r.eventi&&r.eventi.length>1){
+      S.form.tipoSchedina="MULTIPLA";
+      S.form.evento="Multipla · "+r.eventi.length+" gambe"; S.form.mercato="MULTIPLA";
+      S.form.gambe=r.eventi.map(function(x){return {evento:x.evento,mercato:x.mercato};});
+    }else if(r.eventi&&r.eventi.length===1){
+      S.form.tipoSchedina="SINGOLA";
+      S.form.evento=r.eventi[0].evento; S.form.mercato=r.eventi[0].mercato; S.form.gambe=[];
+    }
+    OCR.risultato=r; OCR.stato="ready"; OCR.progresso=100;
+    OCR.messaggio=esistente
+      ? "Collegata alla giocata già presente: controlla e salva la modifica."
+      : "Dati inseriti: controlla e registra.";
+    S.errore=null;
+  }
+
+  async function caricaSorgenteRicevuta(file){
+    var sorgente;
+    if(window.createImageBitmap){
+      sorgente=await window.createImageBitmap(file);
+    }else{
+      sorgente=await new Promise(function(resolve,reject){
+        var url=URL.createObjectURL(file),img=new Image();
+        img.onload=function(){URL.revokeObjectURL(url);resolve(img);};
+        img.onerror=function(){URL.revokeObjectURL(url);reject(new Error("Immagine non leggibile"));};
+        img.src=url;
+      });
+    }
+    return sorgente;
+  }
+
+  // Luminosita' media: le schermate Sportbet (tema scuro, testo chiaro) vanno
+  // invertite prima dell'OCR. Senza inversione Tesseract perde gli importi
+  // ("9,00 €" letto "so0e" sulla schedina reale del 25/09); invertita li legge.
+  function luminositaMedia(px){
+    var tot=0,n=0;
+    for(var i=0;i<px.length;i+=16){tot+=px[i]*.299+px[i+1]*.587+px[i+2]*.114;n++;}
+    return n?tot/n:255;
+  }
+
+  // Con ingrandisci=true l'immagine viene anche portata a circa il doppio
+  // (al massimo 5000 px sul lato lungo) e restituita sempre, scura o chiara.
+  // Serve per le scritte piccole: sotto una certa altezza Tesseract legge la
+  // riga dell'importo come "soe" (stesso errore di "so0e" del 25/09), mentre
+  // ingrandita la legge giusta. Verificato il 06/10/2026 su una schedina di
+  // prova rimpicciolita al 40% e al 33%: a 1x importo e quota persi, a 2x letti.
+  // Non oltre 2x: a 3x la stessa schedina al 30% ha dato quota 9,00 e importo
+  // 0,04, cioe' cifre sbagliate invece di nessuna, che e' peggio.
+  async function creaRicevutaInvertitaSeScura(file,ingrandisci){
+    var sorgente=await caricaSorgenteRicevuta(file);
+    var w0=sorgente.width||sorgente.naturalWidth,h0=sorgente.height||sorgente.naturalHeight;
+    var scala=ingrandisci?Math.max(1,Math.min(2,5000/Math.max(w0,h0))):1;
+    var w=Math.max(1,Math.round(w0*scala)),h=Math.max(1,Math.round(h0*scala));
+    var canvas=document.createElement("canvas");
+    canvas.width=w; canvas.height=h;
+    var ctx=canvas.getContext("2d",{willReadFrequently:true});
+    if(scala>1){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";}
+    ctx.drawImage(sorgente,0,0,w,h);
+    if(sorgente.close) sorgente.close();
+    var immagine=ctx.getImageData(0,0,w,h),px=immagine.data;
+    if(luminositaMedia(px)>=110) return ingrandisci?canvas:null;
+    for(var i=0;i<px.length;i+=4){
+      var v=255-Math.round(px[i]*.299+px[i+1]*.587+px[i+2]*.114);
+      px[i]=v;px[i+1]=v;px[i+2]=v;px[i+3]=255;
+    }
+    ctx.putImageData(immagine,0,0);
+    return canvas;
+  }
+
+  async function creaRicevutaAltoContrasto(file){
+    var sorgente=await caricaSorgenteRicevuta(file);
+    var w=sorgente.width||sorgente.naturalWidth,h=sorgente.height||sorgente.naturalHeight;
+    var scala=Math.min(1.5,2600/Math.max(w,h));
+    var canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(w*scala)); canvas.height=Math.max(1,Math.round(h*scala));
+    var ctx=canvas.getContext("2d",{willReadFrequently:true});
+    ctx.drawImage(sorgente,0,0,canvas.width,canvas.height);
+    if(sorgente.close) sorgente.close();
+    var immagine=ctx.getImageData(0,0,canvas.width,canvas.height),px=immagine.data;
+    var scura=luminositaMedia(px)<110;
+    for(var i=0;i<px.length;i+=4){
+      var luce=px[i]*.299+px[i+1]*.587+px[i+2]*.114;
+      var v=(luce>=89)!==scura?255:0; px[i]=v;px[i+1]=v;px[i+2]=v;px[i+3]=255;
+    }
+    ctx.putImageData(immagine,0,0);
+    return canvas;
+  }
+
+  function punteggioRicevuta(r){
+    var p=0;
+    if(r.ticketId)p+=2;if(r.data)p+=2;if(r.quota)p+=2;if(r.stake)p+=2;
+    (r.eventi||[]).forEach(function(x){if(x.evento)p+=1;if(x.mercato)p+=4;});
+    return p-(r.avvisi||[]).length;
+  }
+
+  // Se il telefono ha ancora in cache un receipt-parser.js precedente (senza
+  // parseRicevuta), si ripiega sul lettore Sportium invece di fermarsi con
+  // un errore: e' successo il 26/09 subito dopo l'aggiornamento.
+  function leggiTestoRicevuta(testo){
+    var P=window.BetCoreReceiptParser;
+    return typeof P.parseRicevuta==="function"?P.parseRicevuta(testo):P.parseSportium(testo);
+  }
+
+  async function leggiRicevuta(file){
+    if(!file) return;
+    if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
+    OCR.stato="loading";OCR.progresso=1;OCR.fase="Caricamento lettore";OCR.messaggio="";OCR.risultato=null;disegna();
+    var worker=null,ultimo=-1,faseLettura="Lettura della ricevuta";
+    try{
+      var T=await caricaLibreriaOCR();
+      worker=await T.createWorker("eng",1,{logger:function(m){
+        var p=Math.max(1,Math.round(Number(m.progress||0)*100));
+        OCR.progresso=p;OCR.fase=m.status==="recognizing text"
+          ? faseLettura
+          : "Preparazione del lettore";
+        if(p===100 || p-ultimo>=5){ultimo=p;disegna();}
+      }});
+      if(worker.setParameters) await worker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
+      var invertita=await creaRicevutaInvertitaSeScura(file);
+      var lettura=await worker.recognize(invertita||file);
+      var risultato=leggiTestoRicevuta(lettura&&lettura.data?lettura.data.text:"");
+      if(invertita&&(risultato.avvisi||[]).length){
+        var letturaOriginale=await worker.recognize(file);
+        var originale=leggiTestoRicevuta(letturaOriginale&&letturaOriginale.data?letturaOriginale.data.text:"");
+        if(punteggioRicevuta(originale)>punteggioRicevuta(risultato)) risultato=originale;
+      }
+      if(!risultato.quota||!risultato.stake){
+        faseLettura="Rilettura ingrandita di importo e quota";
+        ultimo=-1;OCR.progresso=1;OCR.fase=faseLettura;disegna();
+        var grande=await creaRicevutaInvertitaSeScura(file,true);
+        var letturaGrande=await worker.recognize(grande);
+        var ingrandita=leggiTestoRicevuta(letturaGrande&&letturaGrande.data?letturaGrande.data.text:"");
+        if(punteggioRicevuta(ingrandita)>punteggioRicevuta(risultato)) risultato=ingrandita;
+      }
+      var mancaMercato=(risultato.eventi||[]).some(function(x){return !x.mercato;});
+      if(mancaMercato||!risultato.quota||!risultato.stake){
+        faseLettura="Recupero del mercato ad alto contrasto";
+        ultimo=-1;OCR.progresso=1;OCR.fase=faseLettura;disegna();
+        var contrasto=await creaRicevutaAltoContrasto(file);
+        var letturaContrasto=await worker.recognize(contrasto);
+        var alternativa=leggiTestoRicevuta(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
+        if(punteggioRicevuta(alternativa)>punteggioRicevuta(risultato)) risultato=alternativa;
+      }
+      applicaRicevuta(risultato);
+    }catch(e){
+      OCR.stato="error";OCR.progresso=0;OCR.messaggio=e&&e.message?e.message:"Non sono riuscito a leggere questa immagine.";
+    }finally{
+      if(worker){try{await worker.terminate();}catch(_e){}}
+      disegna();
+    }
+  }
+
+  function pannelloRicevuta(){
+    var input=el("input",{"type":"file","accept":"image/*","style":{display:"none"}});
+    input.addEventListener("change",function(){var f=this.files&&this.files[0];if(f)void leggiRicevuta(f);});
+    var occupato=OCR.stato==="loading";
+    var bottone=el("button",{"class":"ricevuta-azione","text":occupato?"Lettura…":"Scegli screenshot","disabled":occupato,
+      "onclick":function(){input.click();}});
+    var figli=[input,el("div",{"class":"ricevuta-import-top"},[
+      el("div",null,[el("h2",{"text":"Importa ricevuta Sportium o Sportbet"}),el("p",{"text":"La foto viene letta sul telefono e non caricata nel cloud."})]),bottone])];
+    if(occupato){
+      figli.push(el("div",{"class":"ricevuta-progresso"},[el("span",{"style":{width:OCR.progresso+"%"}})]));
+      figli.push(el("p",{"text":OCR.fase+" · "+OCR.progresso+"%"}));
+    }else if(OCR.stato==="ready"&&OCR.risultato){
+      var r=OCR.risultato;
+      var mercati=(r.eventi||[]).map(function(x){return x.evento+" — "+(x.mercato||"mercato da completare");}).join(" · ");
+      var mercatoPreview=r.eventi&&r.eventi.length===1?r.eventi[0].mercato:"MULTIPLA";
+      var taxPreview=window.BetCoreMarketTaxonomy&&window.BetCoreMarketTaxonomy.classifica
+        ? window.BetCoreMarketTaxonomy.classifica(mercatoPreview,r.tipoSchedina,r.eventi||[]) : null;
+      var esitoBook={vinta:"vinta",persa:"persa",rimborsata:"rimborsata"}[r.esitoBook]||"";
+      figli.push(el("div",{"class":"ricevuta-esito"},[el("strong",{"text":"Ricevuta "+(r.bookmaker||"")+" letta"}),el("p",{"text":OCR.messaggio}),
+        esitoBook?el("p",{"text":"Sul book risulta già "+esitoBook+": dopo averla registrata, aggiorna l'esito."}):null,
+        el("p",{"class":"mercato-letto","text":mercati}),
+        taxPreview?el("p",{"text":"Market Lab: "+window.BetCoreMarketTaxonomy.etichetta(taxPreview.famiglia)+(taxPreview.selezione?" · "+taxPreview.selezione:"")}):null,
+        r.avvisi&&r.avvisi.length?el("p",{"class":"ricevuta-warn","text":"Da controllare: "+r.avvisi.join(" · ")}):null]));
+    }else if(OCR.stato==="error"){
+      figli.push(el("div",{"class":"ricevuta-esito"},[el("strong",{"style":{color:"#D4635F"},"text":"Lettura non riuscita"}),el("p",{"text":OCR.messaggio})]));
+    }
+    return el("div",{"class":"ricevuta-import"},figli);
+  }
+
+  function selectGuidato(opzioni,valore,cambia){
+    var s=el("select");
+    opzioni.forEach(function(x){
+      var o=el("option",{"value":x[0],"text":x[1]});
+      if(String(valore||"")===String(x[0])) o.selected=true;
+      s.appendChild(o);
+    });
+    s.addEventListener("change",function(){ cambia(this.value); });
+    return s;
+  }
+
+  function presetMercato(v){
+    var trovato=false;
+    MERCATI.forEach(function(x){ if(x[0]!=="ALTRO" && x[0]===v) trovato=true; });
+    return trovato ? v : (v ? "ALTRO" : "");
+  }
+
+  function campoMercato(valore,cambia){
+    var box=el("div",{"class":"guidato"});
+    var preset=presetMercato(valore);
+    var opts=[["","Seleziona mercato…"]].concat(MERCATI);
+    box.appendChild(selectGuidato(opts,preset,function(v){
+      cambia(v==="ALTRO" ? "Altro" : v);
+      disegna();
+    }));
+    if(preset==="ALTRO"){
+      var custom=el("input",{"type":"text","placeholder":"Scrivi il mercato esatto","value":valore==="Altro"?"":valore});
+      custom.addEventListener("input",function(){ cambia(this.value); });
+      box.appendChild(custom);
+    }
+    return box;
+  }
+
+  function oggi(){
+    var d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  }
+  function breve(iso){ var p = String(iso).split("-"); return p[2]+"/"+p[1]; }
+  function annoData(iso){ var p=String(iso||"").split("-"); return p.length===3 ? parseInt(p[0],10) : null; }
+  function meseData(iso){ var p=String(iso||"").split("-"); return p.length===3 ? parseInt(p[1],10) : null; }
+  function stagioneData(iso){
+    var a=annoData(iso), m=meseData(iso); if(!a||!m) return "";
+    return m>=7 ? a+"/"+String(a+1).slice(-2) : (a-1)+"/"+String(a).slice(-2);
+  }
+  function nomeMese(m){
+    var nomi=["","Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+    var parti=String(m==null?"":m).split("-");
+    if(parti.length>=2 && /^\d{4}$/.test(parti[0])){
+      return (nomi[Number(parti[1])]||parti[1])+" "+parti[0];
+    }
+    return nomi[Number(m)]||"";
+  }
+  // L'avviso di errore vive in cima alla pagina, il pulsante di salvataggio in
+  // fondo a un form lungo. Senza riportare la vista in alto, un salvataggio
+  // rifiutato e' indistinguibile da uno riuscito: la pagina si ridisegna
+  // uguale e il messaggio resta fuori schermo. E' cosi' che una modifica
+  // bloccata sembrava "non salvare" senza dire perche'.
+  function bloccaConErrore(messaggio){
+    S.errore = messaggio;
+    disegna();
+    if(window.scrollTo) window.scrollTo(0,0);
+  }
+
+  function euro(n){ return (n<0?"-":"")+"\u20AC"+Math.abs(n).toFixed(2).replace(".",","); }
+  function segnato(n){ return (n>=0?"+":"-")+"\u20AC"+Math.abs(n).toFixed(2).replace(".",","); }
+  function trova(id){
+    for(var i=0;i<TIPSTERS.length;i++){ if(TIPSTERS[i].id===id) return TIPSTERS[i]; }
+    // Origine non in elenco (es. "BET Core", le analisi di settembre): si
+    // mostra col suo nome invece di attribuirla a chi sta in cima alla lista.
+    var nome=String(id||"Altro");
+    var iniziali=nome.split(/\s+/).filter(function(x){return /^[A-Za-z]/.test(x);}).slice(0,2)
+      .map(function(x){return x.charAt(0);}).join("").toUpperCase();
+    return { id:nome, nome:nome, corto:nome, sigla:iniziali||"?", tinta:"#6D7F8E" };
+  }
+  // La puntata si dimensiona sul limite del periodo, non sulla cassa:
+  // sono i tetti a governare il rischio, la quota decide come spenderli
+  var QUOTE_PCT = [0.40, 0.30, 0.20, 0.15];
+
+  function calcolaStake(tettoPeriodo, quota){
+    var q = parseFloat(quota);
+    if(!q || q<=1 || !tettoPeriodo) return 0;
+    var p;
+    if(q<=2) p=QUOTE_PCT[0];
+    else if(q<=3.5) p=QUOTE_PCT[1];
+    else if(q<=6) p=QUOTE_PCT[2];
+    else p=QUOTE_PCT[3];
+    return Math.max(0.5, Math.round(tettoPeriodo*p*2)/2);
+  }
+
+  // Spiega in una riga da dove esce la cifra proposta
+  function spiegaProposta(data, quota, disponibile){
+    var q = parseFloat(quota);
+    var p = periodoDi(data);
+    var residuo = Math.max(0, p.tetto - p.giocato);
+    // In percentuale il numero da solo non dice niente: va mostrato da dove
+    // esce, altrimenti sembra un limite fisso calato dall'alto che pero'
+    // cambia da un giorno all'altro.
+    var origine = S.tettiModo === "percentuale"
+      ? "il "+(Number(S.tettiPct[p.chiave])||0)+"% della cassa ("+euro(bankrollCorrente())+
+        ") = "+euro(p.tetto)
+      : "il limite "+p.etichetta.toLowerCase()+" di "+euro(p.tetto);
+    if(!q || q<=1) return "La puntata si calcola su "+origine+". Inserisci la quota.";
+    var fascia = q<=2 ? "fino a 2.00" : q<=3.5 ? "2.00\u20133.50" : q<=6 ? "3.50\u20136.00" : "oltre 6.00";
+    var v = vincoloAttivo(data, q, disponibile);
+    if(v && v.tipo === "cassa"){
+      return "Fascia "+fascia+": spetterebbero "+euro(v.ideale)+
+        ", ma in cassa hai solo "+euro(v.valore)+" liberi.";
+    }
+    if(v && v.tipo === "limite"){
+      return "Fascia "+fascia+": spetterebbero "+euro(v.ideale)+
+        ", ma nel periodo restano solo "+euro(v.valore)+".";
+    }
+    return "Fascia "+fascia+" su "+origine+
+      ". Restano "+euro(residuo)+" nel periodo.";
+  }
+
+  // Quanto propone davvero: mai piu del limite residuo, mai piu dei soldi che ci sono
+  function propostaStake(data, quota, disponibile){
+    var p = periodoDi(data);
+    var residuo = Math.max(0, p.tetto - p.giocato);
+    var ideale = calcolaStake(p.tetto, quota);
+    if(!ideale) return 0;
+    var v = Math.min(ideale, residuo);
+    if(disponibile !== undefined && disponibile !== null){
+      v = Math.min(v, Math.max(0, disponibile));
+    }
+    return Math.round(v*100)/100;
+  }
+
+  // Il vincolo che sta stringendo di piu: limite, cassa o nessuno
+  function vincoloAttivo(data, quota, disponibile){
+    var q = parseFloat(quota);
+    if(!q || q<=1) return null;
+    var p = periodoDi(data);
+    var residuo = Math.max(0, p.tetto - p.giocato);
+    var ideale = calcolaStake(p.tetto, q);
+    if(disponibile < ideale && disponibile <= residuo){
+      return { tipo:"cassa", ideale:ideale, valore:Math.max(0,disponibile) };
+    }
+    if(residuo < ideale) return { tipo:"limite", ideale:ideale, valore:residuo };
+    return null;
+  }
+
+  function carica(){
+    try{
+      var g = localStorage.getItem(CHIAVE);
+      if(g){
+        var d = JSON.parse(g);
+        S.giocate = d.giocate || [];
+        S.giocate.forEach(function(x){
+          if(x.evento==null) x.evento=""; if(x.mercato==null) x.mercato="";
+          if(x.quotaCheck==null) x.quotaCheck=null; if(x.confidence==null) x.confidence=null;
+          if(x.debrief==null) x.debrief="";
+          if(x.statoCore==null) x.statoCore = x.osservata ? "scartata" : "ufficiale";
+          x.bookmaker=x.bookmaker||"Sportium"; x.faseIngresso=x.faseIngresso||"PRE";
+          x.classificazione=classificazioneLegacy(x); x.ticketId=x.ticketId||""; x.orarioIngresso=x.orarioIngresso||"";
+          x.tipoSchedina=x.tipoSchedina||(((x.mercato||"").toUpperCase()==="MULTIPLA" || (x.nota||"").toLowerCase().indexOf("multipla")>=0)?"MULTIPLA":"SINGOLA");
+          x.gambe=normalizzaGambe(x.gambe);
+          x.quotaChiusura=x.quotaChiusura==null?null:Number(x.quotaChiusura);
+          x.probabilitaStimata=x.probabilitaStimata==null?null:Number(x.probabilitaStimata);
+          x.probabilitaTimestamp=x.probabilitaTimestamp||"";
+          aggiornaTassonomia(x);
+        });
+        S.giocate=deduplicaGiocate(S.giocate);
+        S.versamenti = d.versamenti || [];
+        S.versamenti.forEach(function(v){ v.tipoMovimento = tipoMovimento(v); });
+        // Migrazione dalla vecchia "cassa iniziale"
+        if(!S.versamenti.length && d.cassaIniziale){
+          S.versamenti = [{ id:1, data: d.primaData || oggi(),
+            importo: d.cassaIniziale, tipoMovimento:"versamento" }];
+        }
+        S.tetti = d.tetti || { sabato:20, domenica:20, feriali:10 };
+        S.budgetMese = (d.budgetMese != null) ? d.budgetMese : 200;
+        S.tettiModo = d.tettiModo === "percentuale" ? "percentuale" : "fisso";
+        S.tettiPct = d.tettiPct || { sabato:PCT_DEFAULT.sabato,
+          domenica:PCT_DEFAULT.domenica, feriali:PCT_DEFAULT.feriali };
+      }
+    }catch(e){}
+  }
+  function salva(soloLocale){
+    try{
+      S.giocate.forEach(aggiornaTassonomia);
+      S.giocate=deduplicaGiocate(S.giocate);
+      localStorage.setItem(CHIAVE, JSON.stringify({
+        giocate:S.giocate, versamenti:S.versamenti,
+        tetti:S.tetti, budgetMese:S.budgetMese,
+        tettiModo:S.tettiModo, tettiPct:S.tettiPct
+      }));
+      S.errore = null;
+      if(!soloLocale && CLOUD.syncEnabled && CLOUD.user) pianificaCloud();
+    }catch(e){
+      S.errore = "Le modifiche non sono state salvate. Scarica il CSV per non perdere i dati.";
+    }
+  }
+
+  function nval(v){ return (v===null || v===undefined || v==="") ? null : Number(v); }
+  function normalizzaEsitoCloud(v){
+    var x=String(v||"aperta").trim().toLowerCase();
+    var m={aperta:"Aperta",open:"Aperta",vinta:"Vinta",vinto:"Vinta",win:"Vinta",won:"Vinta",persa:"Persa",perso:"Persa",loss:"Persa",lost:"Persa",rimborsata:"Rimborsata",rimborsato:"Rimborsata",void:"Rimborsata",push:"Rimborsata",refund:"Rimborsata"};
+    return m[x]||"Aperta";
+  }
+  function pickCloud(g){
+    aggiornaTassonomia(g);
+    return { user_id:CLOUD.user.id, legacy_id:legacyCloud(g), data:g.data, tipster:g.tipster, evento:g.evento||null, mercato:g.mercato||null, nota:g.nota||null,
+      quota:Number(g.quota), quota_check:nval(g.quotaCheck), quota_chiusura:nval(g.quotaChiusura),
+      probabilita_stimata:nval(g.probabilitaStimata), probabilita_timestamp:g.probabilitaTimestamp||null,
+      confidence:nval(g.confidence), debrief:g.debrief||null, stake:Number(g.stake||0),
+      esito:normalizzaEsitoCloud(g.esito), profitto:Number(g.profitto||0), tipo:g.osservata?"osservata":"reale", stato_core:g.statoCore||(g.osservata?"scartata":"ufficiale"), motivo_scarto:g.motivoScarto||null,
+      bookmaker:g.bookmaker||"Sportium", fase_ingresso:g.faseIngresso||"PRE", classificazione:classificazioneLegacy(g),
+      ticket_id:(g.ticketId||"").trim()||null, orario_ingresso:g.orarioIngresso||null,
+      tipo_schedina:g.tipoSchedina||"SINGOLA", gambe:normalizzaGambe(g.gambe),
+      famiglia_mercato:g.famigliaMercato||"NON_CLASSIFICATO", ambito_mercato:g.ambitoMercato||"PARTITA",
+      selezione_normalizzata:g.selezioneNormalizzata||null, linea_mercato:g.lineaMercato||null,
+      componenti_mercato:Array.isArray(g.componentiMercato)?g.componentiMercato:[], versione_tassonomia:g.versioneTassonomia||"v0.1" };
+  }
+  function versaCloud(v){ return {user_id:CLOUD.user.id,
+    legacy_id:String(v.cloudLegacyId||v.id), data:v.data, importo:Number(v.importo),
+    nota:v.nota||null, tipo_movimento:tipoMovimento(v)}; }
+  function pianificaCloud(){
+    if(!CLOUD.syncEnabled || !CLOUD.user) return;
+    CLOUD.pending=true;
+    clearTimeout(CLOUD.timer);
+    CLOUD.timer=setTimeout(function(){
+      if(CLOUD.busy){ pianificaCloud(); return; }
+      CLOUD.pending=false;
+      inviaCloud(true);
+    },120);
+  }
+  async function utenteCloudVerificato(){
+    if(!DB) throw new Error("Supabase non disponibile");
+    var u=await DB.auth.getUser();
+    if(u.error || !u.data || !u.data.user) throw (u.error||new Error("Sessione scaduta: accedi di nuovo"));
+    CLOUD.user=u.data.user; CLOUD.email=CLOUD.user.email||"";
+    return CLOUD.user;
+  }
+  async function inviaCloud(silenzioso){
+    if(!DB || !CLOUD.user || CLOUD.busy) return false;
+    CLOUD.busy=true; CLOUD.stato="Sincronizzazione…"; if(!silenzioso)disegna();
+    try{
+      await utenteCloudVerificato();
+      S.giocate=deduplicaGiocate(S.giocate);
+      // Prima si legge il cloud. Una sync generica non deve piu riscrivere
+      // tutte le righe locali: i record remoti prevalgono, salvo quelli che
+      // l'utente ha appena modificato su questo dispositivo.
+      var lettura=await DB.from("picks").select("*").eq("user_id",CLOUD.user.id);
+      if(lettura.error) throw lettura.error;
+      var remote=(lettura.data||[]).map(daCloudPick);
+      var piano=window.BetCoreSyncMerge.pianifica(S.giocate,remote,legacyCloud);
+      var invio=piano.invio,unite=piano.uniti;
+      if(invio.length){
+        var r2=await DB.from("picks").upsert(invio.map(pickCloud),{onConflict:"user_id,legacy_id"});
+        if(r2.error) throw r2.error;
+        invio.forEach(function(g){g.cloudDirty=false;g.cloudSynced=true;});
+      }
+      S.giocate=deduplicaGiocate(unite);
+
+      var letturaV=await DB.from("versamenti").select("*").eq("user_id",CLOUD.user.id);
+      if(letturaV.error) throw letturaV.error;
+      var remotiV=(letturaV.data||[]).map(function(r){return {
+        id:r.legacy_id||r.id,cloudLegacyId:r.legacy_id||null,data:r.data,
+        importo:Number(r.importo),nota:r.nota||"",tipoMovimento:r.tipo_movimento||"versamento",cloudSynced:true};
+      });
+      var pianoV=window.BetCoreSyncMerge.pianifica(S.versamenti,remotiV,function(v){return String(v.cloudLegacyId||v.id);});
+      var invioV=pianoV.invio,unitiV=pianoV.uniti;
+      if(invioV.length){
+        var r4=await DB.from("versamenti").upsert(invioV.map(versaCloud),{onConflict:"user_id,legacy_id"});
+        if(r4.error) throw r4.error;
+        invioV.forEach(function(v){v.cloudDirty=false;v.cloudSynced=true;});
+      }
+      S.versamenti=unitiV;
+      var letturaI=await DB.from("impostazioni").select("*").eq("user_id",CLOUD.user.id).maybeSingle();
+      if(letturaI.error) throw letturaI.error;
+      if(letturaI.data&&!CLOUD.settingsDirty){
+        S.budgetMese=Number(letturaI.data.budget_mensile);
+        S.tetti={sabato:Number(letturaI.data.limite_sabato),domenica:Number(letturaI.data.limite_domenica),feriali:Number(letturaI.data.limite_feriali)};
+        if(letturaI.data.tetti_modo)S.tettiModo=letturaI.data.tetti_modo==="percentuale"?"percentuale":"fisso";
+        if(letturaI.data.pct_domenica!=null)S.tettiPct={sabato:Number(letturaI.data.pct_sabato),domenica:Number(letturaI.data.pct_domenica),feriali:Number(letturaI.data.pct_feriali)};
+      }
+      var imp={user_id:CLOUD.user.id,budget_mensile:Number(S.budgetMese),limite_sabato:Number(S.tetti.sabato),limite_domenica:Number(S.tetti.domenica),limite_feriali:Number(S.tetti.feriali),updated_at:new Date().toISOString()};
+      // Le colonne del tetto in percentuale sono state aggiunte dopo: se il
+      // database non e' ancora stato migrato, si sincronizza tutto il resto
+      // invece di far fallire l'intera sync per quattro campi. Il modo
+      // percentuale continua a funzionare in locale, semplicemente non
+      // segue su altri dispositivi finche' le colonne non esistono.
+      if(!CLOUD.senzaColonnePct){
+        imp.tetti_modo = S.tettiModo;
+        imp.pct_sabato = Number(S.tettiPct.sabato);
+        imp.pct_domenica = Number(S.tettiPct.domenica);
+        imp.pct_feriali = Number(S.tettiPct.feriali);
+      }
+      if(!letturaI.data||CLOUD.settingsDirty){
+        var r5=await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"});
+        if(r5.error && !CLOUD.senzaColonnePct && /column|schema cache|PGRST204/i.test(r5.error.message||"")){
+          CLOUD.senzaColonnePct = true;
+          delete imp.tetti_modo; delete imp.pct_sabato; delete imp.pct_domenica; delete imp.pct_feriali;
+          r5 = await DB.from("impostazioni").upsert(imp,{onConflict:"user_id"});
+        }
+        if(r5.error) throw r5.error;
+        CLOUD.settingsDirty=false;
+      }
+      await aggiornaConteggioCloud();
+      salva(true);
+      CLOUD.stato="Cloud verificato alle "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+" · "+S.giocate.length+" pick · "+invio.length+" modificate";
+      return true;
+    }catch(e){
+      CLOUD.stato="Sync non riuscita: "+(e.message||e);
+      CLOUD.ultimaSyncOk=false;
+      return false;
+    }finally{
+      CLOUD.busy=false;
+      if(CLOUD.stato.indexOf("Cloud verificato")===0) CLOUD.ultimaSyncOk=true;
+      disegna();
+      if(CLOUD.pending && CLOUD.syncEnabled && CLOUD.user) pianificaCloud();
+    }
+  }
+  function daCloudPick(g){
+    var pick={id:g.legacy_id||g.id,cloudLegacyId:g.legacy_id||null,cloudSynced:true,data:g.data,tipster:g.tipster,evento:g.evento||"",mercato:g.mercato||"",nota:g.nota||"",
+      quota:Number(g.quota),quotaCheck:g.quota_check==null?null:Number(g.quota_check),confidence:g.confidence,debrief:g.debrief||"",
+      quotaChiusura:g.quota_chiusura==null?null:Number(g.quota_chiusura),
+      probabilitaStimata:g.probabilita_stimata==null?null:Number(g.probabilita_stimata),probabilitaTimestamp:g.probabilita_timestamp||"",
+      stake:Number(g.stake||0),esito:String(g.esito||"aperta").toLowerCase(),profitto:Number(g.profitto||0),
+      osservata:g.tipo==="osservata",statoCore:g.stato_core||"candidata",motivoScarto:g.motivo_scarto||"",
+      bookmaker:g.bookmaker||"Sportium",faseIngresso:g.fase_ingresso||"PRE",classificazione:g.classificazione||"NON CLASSIFICATA",
+      ticketId:g.ticket_id||"",orarioIngresso:g.orario_ingresso||"",tipoSchedina:g.tipo_schedina||"SINGOLA",gambe:normalizzaGambe(g.gambe),
+      famigliaMercato:g.famiglia_mercato||"NON_CLASSIFICATO",ambitoMercato:g.ambito_mercato||"PARTITA",
+      selezioneNormalizzata:g.selezione_normalizzata||"",lineaMercato:g.linea_mercato||null,
+      componentiMercato:Array.isArray(g.componenti_mercato)?g.componenti_mercato:[],versioneTassonomia:g.versione_tassonomia||"v0.1"};
+    return aggiornaTassonomia(pick);
+  }
+  function chiavePick(g){
+    if(g.ticketId) return "ticket:"+String(g.ticketId).toUpperCase();
+    if(testoChiave(g.evento)||testoChiave(g.mercato)) return "sem:"+chiaveSemantica(g);
+    return "id:"+String(g.cloudLegacyId||g.id||"");
+  }
+  function riconciliaCloudPicks(remote){
+    var mappa={};
+    S.giocate.forEach(function(g){mappa[chiavePick(g)]=g;});
+    remote.forEach(function(g){
+      var k=chiavePick(g);
+      mappa[k]=g; // il cloud prevale sulla stessa pick
+    });
+    return deduplicaGiocate(Object.keys(mappa).map(function(k){return mappa[k];})).sort(function(a,b){
+      if(a.data===b.data) return String(a.id).localeCompare(String(b.id));
+      return a.data<b.data?-1:1;
+    });
+  }
+  async function aggiornaConteggioCloud(){
+    if(!DB || !CLOUD.user) return;
+    try{
+      await utenteCloudVerificato();
+      var q=await DB.from("picks").select("id",{count:"exact",head:true}).eq("user_id",CLOUD.user.id);
+      if(!q.error) CLOUD.remoteCount=Number(q.count||0);
+    }catch(_e){}
+  }
+
+  async function scaricaCloud(senzaConferma){
+    if(!DB || !CLOUD.user || CLOUD.busy) return false;
+    if(!senzaConferma && !window.confirm("Unire i dati locali con quelli presenti nel cloud? A parita di ADM prevale la copia verificata nel cloud.")) return false;
+    var ok=false;
+    CLOUD.busy=true; CLOUD.stato="Scaricamento…"; disegna();
+    try{
+      await utenteCloudVerificato();
+      var a=await DB.from("picks").select("*").eq("user_id",CLOUD.user.id).order("data",{ascending:true}); if(a.error) throw a.error;
+      var b=await DB.from("versamenti").select("*").eq("user_id",CLOUD.user.id).order("data",{ascending:true}); if(b.error) throw b.error;
+      var c=await DB.from("impostazioni").select("*").eq("user_id",CLOUD.user.id).maybeSingle(); if(c.error) throw c.error;
+      var remotePicks=(a.data||[]).map(daCloudPick);
+      CLOUD.remoteCount=remotePicks.length;
+      CLOUD.lastDownloadCount=remotePicks.length;
+      S.giocate=riconciliaCloudPicks(remotePicks);
+      S.versamenti=(b.data||[]).map(function(v){return {
+        id:v.legacy_id||v.id,cloudLegacyId:v.legacy_id||null,data:v.data,
+        importo:Number(v.importo),nota:v.nota||"",
+        tipoMovimento:v.tipo_movimento||"versamento",cloudSynced:true
+      };});
+      if(c.data){
+        S.budgetMese=Number(c.data.budget_mensile);
+        S.tetti={sabato:Number(c.data.limite_sabato),domenica:Number(c.data.limite_domenica),feriali:Number(c.data.limite_feriali)};
+        // Colonne aggiunte dopo: su un database non ancora migrato arrivano
+        // undefined, e in quel caso si tiene quanto gia' impostato in locale
+        // invece di riportare tutto a "fisso" ad ogni scaricamento.
+        if(c.data.tetti_modo) S.tettiModo = c.data.tetti_modo === "percentuale" ? "percentuale" : "fisso";
+        if(c.data.pct_domenica != null){
+          S.tettiPct={sabato:Number(c.data.pct_sabato),domenica:Number(c.data.pct_domenica),feriali:Number(c.data.pct_feriali)};
+        }
+      }
+      CLOUD.syncEnabled=true; localStorage.setItem("registro-tipster-cloud-sync","1"); salva();
+      CLOUD.stato="Scaricate "+CLOUD.lastDownloadCount+" pick dal cloud · Registro locale: "+S.giocate.length;
+      ok=true;
+    }catch(e){ CLOUD.stato="Download non riuscito: "+(e.message||e); }
+    CLOUD.busy=false; disegna();
+    return ok;
+  }
+  async function proponiRipristinoCloudSeVuoto(){
+    if(!DB || !CLOUD.user || CLOUD.busy || S.giocate.length) return;
+    try{
+      await utenteCloudVerificato();
+      var q=await DB.from("picks").select("id",{count:"exact",head:true}).eq("user_id",CLOUD.user.id);
+      if(q.error) throw q.error;
+      var n=Number(q.count||0);
+      if(n>0){
+        CLOUD.stato=n+" pick trovate nel cloud";
+        disegna();
+        if(window.confirm("Ho trovato "+n+" pick nel cloud e questo browser non ha dati locali. Vuoi scaricarle adesso?")){
+          await scaricaCloud(true);
+        }
+      }
+    }catch(e){
+      CLOUD.stato="Controllo cloud non riuscito: "+(e.message||e);
+      disegna();
+    }
+  }
+
+  async function loginCloud(email,password,crea){
+    if(!DB) {CLOUD.stato="Libreria Supabase non caricata: controlla la connessione Internet.";disegna();return;}
+    CLOUD.busy=true; CLOUD.stato=crea?"Creazione account…":"Accesso…"; disegna();
+    try{
+      var r=crea ? await DB.auth.signUp({email:email,password:password}) : await DB.auth.signInWithPassword({email:email,password:password});
+      if(r.error) throw r.error;
+      CLOUD.user=r.data.user||null; CLOUD.email=email;
+      if(CLOUD.user && localStorage.getItem("registro-tipster-cloud-sync")==="1") CLOUD.syncEnabled=true;
+      CLOUD.stato=CLOUD.user && r.data.session ? "Accesso effettuato" : "Account creato: se richiesto, conferma l’email e poi accedi.";
+      if(CLOUD.user && r.data.session && !crea) setTimeout(async function(){
+        await aggiornaConteggioCloud();
+        if(CLOUD.syncEnabled && localStorage.getItem("registro-tipster-guided-v1")!=="1"){
+          var ok=await scaricaCloud(true);
+          if(ok) localStorage.setItem("registro-tipster-guided-v1","1");
+        }else{
+          disegna();proponiRipristinoCloudSeVuoto();
+        }
+      },150);
+    }catch(e){CLOUD.stato=(e.message||String(e));}
+    CLOUD.busy=false; disegna();
+  }
+  async function logoutCloud(){ if(DB) await DB.auth.signOut(); CLOUD.user=null; CLOUD.syncEnabled=false; localStorage.removeItem("registro-tipster-cloud-sync"); CLOUD.stato="Disconnesso"; disegna(); }
+  async function initCloud(){
+    if(!DB) return;
+    try{
+      var r=await DB.auth.getSession();
+      CLOUD.user=r.data.session?r.data.session.user:null;
+      CLOUD.email=CLOUD.user?CLOUD.user.email:"";
+      if(CLOUD.user && localStorage.getItem("registro-tipster-cloud-sync")==="1") CLOUD.syncEnabled=true;
+      if(CLOUD.user){
+        try{
+          await utenteCloudVerificato();
+          if(CLOUD.syncEnabled && localStorage.getItem("registro-tipster-guided-v1")!=="1"){
+            var ok=await scaricaCloud(true);
+            if(ok) localStorage.setItem("registro-tipster-guided-v1","1");
+          }else if(!S.giocate.length){
+            setTimeout(function(){proponiRipristinoCloudSeVuoto();},250);
+          }
+        }catch(_e){
+          CLOUD.user=null;CLOUD.email="";CLOUD.syncEnabled=false;
+          localStorage.removeItem("registro-tipster-cloud-sync");
+        }
+      }
+      DB.auth.onAuthStateChange(function(evt,session){CLOUD.user=session?session.user:null;CLOUD.email=CLOUD.user?CLOUD.user.email:"";setTimeout(disegna,0);});
+    }catch(e){}
+  }
+
+  // Tre tipi di movimento: versamento (soldi messi), prelievo (soldi tolti,
+  // importo salvato positivo) e rettifica (allineamento al saldo reale,
+  // puo' essere negativa). Prelievi aggiunti il 06/10/2026.
+  function tipoMovimento(v){
+    if(v && v.tipoMovimento === "prelievo") return "prelievo";
+    if(v && v.tipoMovimento === "rettifica") return "rettifica";
+    if(v && /^rettifica contabile/i.test(String(v.nota||""))) return "rettifica";
+    return "versamento";
+  }
+  // Effetto del movimento sulla cassa: il prelievo la riduce.
+  function importoCassa(v){
+    var n = Number(v && v.importo || 0);
+    return tipoMovimento(v) === "prelievo" ? -Math.abs(n) : n;
+  }
+  function totaleMovimenti(){
+    var t = 0;
+    for(var i=0;i<S.versamenti.length;i++) t += importoCassa(S.versamenti[i]);
+    return t;
+  }
+  function totalePrelevato(){
+    var t = 0;
+    for(var i=0;i<S.versamenti.length;i++){
+      if(tipoMovimento(S.versamenti[i]) === "prelievo") t += Math.abs(Number(S.versamenti[i].importo||0));
+    }
+    return t;
+  }
+  function totaleVersato(){
+    var t = 0;
+    for(var i=0;i<S.versamenti.length;i++){
+      if(tipoMovimento(S.versamenti[i]) === "versamento") t += Number(S.versamenti[i].importo||0);
+    }
+    return t;
+  }
+  function totaleRettifiche(){
+    var t = 0;
+    for(var i=0;i<S.versamenti.length;i++){
+      if(tipoMovimento(S.versamenti[i]) === "rettifica") t += Number(S.versamenti[i].importo||0);
+    }
+    return t;
+  }
+
+  // Solo i depositi reali consumano il budget mensile.
+  function versatoQuestoMese(){
+    var mese = oggi().slice(0,7), t = 0;
+    for(var i=0;i<S.versamenti.length;i++){
+      if(String(S.versamenti[i].data).slice(0,7) === mese &&
+          tipoMovimento(S.versamenti[i]) === "versamento"){
+        t += Number(S.versamenti[i].importo||0);
+      }
+    }
+    return t;
+  }
+
+  function conti(){
+    var chiuse=[], aperte=[], i, g;
+    for(i=0;i<S.giocate.length;i++){
+      g = S.giocate[i];
+      if(g.osservata || (g.statoCore && g.statoCore!=="ufficiale")) continue; // solo le ufficiali incidono sui soldi veri
+      if(g.esito==="aperta") aperte.push(g);
+      else chiuse.push(g);
+    }
+    var profitto=0, impegnato=0;
+    for(i=0;i<chiuse.length;i++) profitto += chiuse[i].profitto;
+    for(i=0;i<aperte.length;i++) impegnato += aperte[i].stake;
+    var versato = totaleVersato();
+    var rettifiche = totaleRettifiche();
+    var prelevato = totalePrelevato();
+    var bankroll = totaleMovimenti() + profitto;
+    // Risultato reale = quanto hai adesso meno quanto hai versato. A
+    // differenza di "profitto" (solo le giocate registrate) include le
+    // rettifiche: il 06/10/2026 una rettifica di -50,42 per allinearsi al
+    // saldo Sportbet faceva mostrare +46,6% sul versato a chi era a -5,6%.
+    // I prelievi sono soldi gia' incassati: si sommano a quelli ancora in cassa.
+    return { chiuse:chiuse, aperte:aperte, profitto:profitto, versato:versato,
+      rettifiche:rettifiche, prelevato:prelevato, bankroll:bankroll, impegnato:impegnato,
+      reale:bankroll-versato+prelevato,
+      disponibile:bankroll-impegnato };
+  }
+
+  // Tutte le giocate chiuse, comprese quelle solo osservate
+  function chiuseTutte(){
+    return S.giocate.filter(function(g){ return g.esito !== "aperta"; });
+  }
+
+  // Una pick analitica puo essere distribuita su piu ticket reali.
+  // Il denaro resta sempre calcolato sulle singole righe; i contatori Core
+  // raggruppano invece data, tipster, evento e mercato.
+  function rigaRealeCore(g){
+    return !g.osservata && (!g.statoCore || g.statoCore === "ufficiale");
+  }
+  function testoCore(v){
+    return String(v == null ? "" : v).trim().toLowerCase().replace(/\s+/g," ");
+  }
+  function chiaveLogicaCore(g){
+    var evento=testoCore(g.evento), mercato=testoCore(g.mercato);
+    if(evento && mercato){
+      return [g.data||"",testoCore(g.tipster),evento,mercato].join("|");
+    }
+    // Lo storico precedente non aveva evento/mercato: non deduplicarlo alla cieca.
+    return "storico|"+chiavePick(g);
+  }
+  function gruppiCore(righe){
+    var mappa={}, ordine=[];
+    righe.forEach(function(g){
+      var k=chiaveLogicaCore(g), gruppo=mappa[k], reale=rigaRealeCore(g);
+      if(!gruppo){
+        gruppo=mappa[k]={
+          chiave:k, data:g.data, tipster:g.tipster, evento:g.evento||"", mercato:g.mercato||"",
+          righe:[], ticket:0, ticketReali:0, reale:false, osservata:false,
+          stake:0, profitto:0, confidence:null, haDebrief:false, checkN:0
+        };
+        ordine.push(k);
+      }
+      gruppo.righe.push(g); gruppo.ticket++;
+      if(reale){
+        gruppo.reale=true; gruppo.ticketReali++;
+        gruppo.stake += Number(g.stake||0); gruppo.profitto += Number(g.profitto||0);
+        if(g.confidence!=null && g.confidence!==""){
+          var conf=Number(g.confidence); if(gruppo.confidence==null || conf>gruppo.confidence) gruppo.confidence=conf;
+        }
+        if(g.quotaCheck && g.quotaCheck>1 && g.quota>1){
+          gruppo.checkN++;
+        }
+      }
+      if(g.debrief && String(g.debrief).trim()) gruppo.haDebrief=true;
+      if(!reale) gruppo.osservata=true;
+    });
+    return ordine.map(function(k){
+      var gruppo=mappa[k];
+      // Se la stessa analisi ha ticket reali e righe di osservazione, prevale
+      // lo stato reale e la pick viene contata una volta sola.
+      if(gruppo.reale) gruppo.osservata=false;
+      return gruppo;
+    });
+  }
+  function riepilogoGruppiCore(gruppi){
+    var stake=0, profitto=0;
+    gruppi.forEach(function(g){ stake+=g.stake; profitto+=g.profitto; });
+    return {n:gruppi.length,stake:stake,profitto:profitto,roi:stake?(profitto/stake)*100:0};
+  }
+
+  // Il modulo v0.2 usa l'esito esplicito (mai il profitto), include le
+  // osservate a stake zero, separa PRE/LIVE e deduplica le letture correlate.
+  // Il benchmark mercato usa 1/quota senza fingere di conoscere il margine
+  // completo; lo shrink 50/50 e' diagnostico, non un peso addestrato.
+  function statisticheMercati(_righeChiuse,righePeriodo){
+    (righePeriodo||[]).forEach(aggiornaTassonomia);
+    var metriche=window.BetCoreMarketMetrics;
+    return metriche&&metriche.calcola?metriche.calcola(righePeriodo||[]):[];
+  }
+
+  // Ricostruisce il saldo documentato a fine giornata. I versamenti entrano
+  // nella loro data reale: usare subito il totale versato fino a oggi
+  // sposterebbe all'indietro i versamenti futuri e inventerebbe falsi picchi.
+  // Lo storico legacy non conserva l'ora di liquidazione di tutte le giocate,
+  // quindi il massimo intraday non e' ricostruibile con sufficiente precisione.
+  function andamento(chiuse){
+    var giorni={};
+    function aggiungi(data,delta){
+      var d=String(data||"0000-00-00");
+      giorni[d]=(giorni[d]||0)+(Number(delta)||0);
+    }
+    S.versamenti.forEach(function(v){
+      // Un prelievo toglie soldi dalla cassa ma non e' una perdita: se
+      // entrasse qui, ogni prelievo comparirebbe come un calo dal massimo.
+      if(v && v.tipoMovimento==="prelievo") return;
+      aggiungi(v.data,v.importo);
+    });
+    chiuse.forEach(function(g){
+      aggiungi(g.data,g.profitto);
+    });
+    var corrente=0,picco=0,dataPicco="";
+    Object.keys(giorni).sort().forEach(function(d){
+      corrente+=giorni[d];
+      if(corrente>picco){picco=corrente;dataPicco=d;}
+    });
+    var giu=Math.max(0,picco-corrente);
+    return {picco:picco,drawdown:giu,pct:picco>0?(giu/picco)*100:0,dataPicco:dataPicco};
+  }
+
+  // Quanto pesa il campione: senza questo un ROI e solo rumore
+  function affidabilita(n){
+    if(n === 0) return null;
+    if(n < 20) return "su "+n+(n===1?" giocata":" giocate")+": troppo presto per giudicare";
+    if(n < 50) return "su "+n+" giocate: indizio, non ancora una prova";
+    if(n < 100) return "su "+n+" giocate: il segnale inizia a contare";
+    return "su "+n+" giocate: campione solido";
+  }
+
+  // Giorno della settimana senza problemi di fuso: 0 domenica ... 6 sabato
+  function giornoSettimana(iso){
+    var p = String(iso).split("-");
+    return new Date(Date.UTC(+p[0], +p[1]-1, +p[2])).getUTCDay();
+  }
+
+  // Lunedi della settimana a cui appartiene la data
+  function lunediDi(iso){
+    var p = String(iso).split("-");
+    var d = new Date(Date.UTC(+p[0], +p[1]-1, +p[2]));
+    var g = d.getUTCDay();
+    var indietro = (g === 0) ? 6 : g - 1;
+    d.setUTCDate(d.getUTCDate() - indietro);
+    return d.toISOString().slice(0,10);
+  }
+  function piuGiorni(iso, n){
+    var p = String(iso).split("-");
+    var d = new Date(Date.UTC(+p[0], +p[1]-1, +p[2]));
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0,10);
+  }
+
+  // Cassa corrente senza costruire le liste di conti(): versamenti piu'
+  // profitti delle giocate chiuse. Serve al tetto in percentuale, che viene
+  // ricalcolato piu' volte per ogni disegno.
+  function bankrollCorrente(){
+    var tot = 0, i;
+    for(i=0;i<S.versamenti.length;i++) tot += importoCassa(S.versamenti[i]);
+    for(i=0;i<S.giocate.length;i++){
+      var g = S.giocate[i];
+      if(g.osservata || (g.statoCore && g.statoCore!=="ufficiale")) continue;
+      if(g.esito !== "aperta") tot += Number(g.profitto)||0;
+    }
+    return tot;
+  }
+
+  // Il tetto di un periodo: cifra fissa, oppure percentuale della cassa.
+  // In percentuale si usa la cassa piena e non quella disponibile: la
+  // percentuale esprime quanto rischiare, mentre i soldi effettivamente
+  // liberi sono un vincolo a parte, gia' applicato da propostaStake.
+  function tettoDi(chiave){
+    if(S.tettiModo !== "percentuale") return Number(S.tetti[chiave])||0;
+    var pct = Number(S.tettiPct[chiave])||0;
+    return Math.max(0, Math.round(bankrollCorrente()*pct/100*2)/2);
+  }
+
+  // Il periodo di riferimento della data: sabato e domenica hanno un tetto
+  // proprio, i feriali condividono un budget unico da lunedi a venerdi
+  function periodoDi(data){
+    var g = giornoSettimana(data);
+    var i, tot = 0;
+    function conta(gi){ return !gi.osservata && (!gi.statoCore || gi.statoCore==="ufficiale"); }
+    if(g === 6){
+      for(i=0;i<S.giocate.length;i++)
+        if(S.giocate[i].data === data && conta(S.giocate[i])) tot += S.giocate[i].stake;
+      return { etichetta:"Sabato", tetto:tettoDi("sabato"), giocato:tot, chiave:"sabato" };
+    }
+    if(g === 0){
+      for(i=0;i<S.giocate.length;i++)
+        if(S.giocate[i].data === data && conta(S.giocate[i])) tot += S.giocate[i].stake;
+      return { etichetta:"Domenica", tetto:tettoDi("domenica"), giocato:tot, chiave:"domenica" };
+    }
+    var lun = lunediDi(data), ven = piuGiorni(lun, 4);
+    for(i=0;i<S.giocate.length;i++){
+      var d = S.giocate[i].data;
+      if(d >= lun && d <= ven && conta(S.giocate[i])) tot += S.giocate[i].stake;
+    }
+    return { etichetta:"Lun\u2013ven", tetto:tettoDi("feriali"), giocato:tot, chiave:"feriali" };
+  }
+
+  // Quanto costerebbe un mese pieno con questi tetti. In percentuale la cifra
+  // e' quella di oggi: i tetti seguono la cassa, quindi la proiezione vale
+  // finche' la cassa resta questa, non e' un impegno fisso come nel modo a
+  // cifra fissa.
+  function proiezioneMese(){
+    var sett = tettoDi("sabato") + tettoDi("domenica") + tettoDi("feriali");
+    return sett * 52 / 12;
+  }
+
+  // Riassume un gruppo di giocate chiuse
+  function riassumi(gruppo){
+    var vinte=0, giocato=0, prof=0, somQ=0;
+    gruppo.forEach(function(g){
+      if(g.esito==="vinta") vinte++;
+      giocato += g.stake; prof += g.profitto; somQ += g.quota;
+    });
+    var n = gruppo.length;
+    return { n:n, vinte:vinte, giocato:giocato, profitto:prof,
+      roi: giocato ? (prof/giocato)*100 : 0,
+      quotaMedia: n ? somQ/n : 0 };
+  }
+
+  // Data limite per la finestra recente
+  function daQuando(giorni){
+    var d = new Date();
+    d.setDate(d.getDate() - giorni);
+    return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  }
+
+  function el(tag, attr, figli){
+    var n = document.createElement(tag), k, s;
+    if(attr){
+      for(k in attr){
+        if(!Object.prototype.hasOwnProperty.call(attr,k)) continue;
+        var v = attr[k];
+        if(v === null || v === undefined || v === false) continue;
+        if(k==="class") n.className = v;
+        else if(k==="text") n.textContent = v;
+        else if(k.slice(0,2)==="on") n.addEventListener(k.slice(2), v);
+        else if(k==="style"){ for(s in v){ if(Object.prototype.hasOwnProperty.call(v,s)) n.style[s]=v[s]; } }
+        else n.setAttribute(k, v);
+      }
+    }
+    if(figli){
+      for(var i=0;i<figli.length;i++){ if(figli[i]) n.appendChild(figli[i]); }
+    }
+    return n;
+  }
+
+  function disegna(){
+    var c = conti();
+    var a = andamento(c.chiuse);
+    var app = document.getElementById("app");
+    while(app.firstChild) app.removeChild(app.firstChild);
+
+    app.appendChild(el("header",null,[
+      el("p",{"class":"etich","text":"Cassa"}),
+      el("div",{"class":"riga-cassa"},[
+        el("span",{"class":"serif tab cassa","text":euro(c.bankroll)}),
+        el("span",{"class":"tab delta","text":segnato(c.reale),
+          "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}})
+      ]),
+      // Il numero che conta davvero: quanto hai messo contro quanto hai
+      el("div",{"class":"netto"},[
+        el("span",{"class":"etich","text":"Versato finora"}),
+        el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},
+          "text":euro(c.versato)})
+      ]),
+      el("p",{"class":"sotto tab","text": c.impegnato>0
+        ? euro(c.impegnato)+" in gioco \u00B7 "+euro(c.disponibile)+" liberi"
+        : "\u00A0"}),
+      a.drawdown > 0.004
+        ? el("p",{"class":"sotto tab","style":{color:"#C8873A"},
+            "text":"\u2193 "+euro(a.drawdown)+" dal massimo documentato di "+euro(a.picco)+
+                   " ("+a.pct.toFixed(0)+"%)"})
+        : (c.chiuse.length ? el("p",{"class":"sotto tab","text":"sei al massimo storico"}) : null),
+      S.errore ? el("p",{"class":"errore","text":S.errore}) : null
+    ]));
+
+    var nav = el("nav");
+    [["registro","Registro"],["nuova","Nuova"],["core","Core"],["tipster","Rendimento"],
+     ["cassa","Cassa"],["dati","Dati"],["guida","?"]].forEach(function(v){
+      nav.appendChild(el("button",{
+        "class": (S.vista===v[0] ? "on" : "")+(v[0]==="guida" ? " nav-aiuto" : ""),
+        "text":v[1],
+        "onclick": function(){ S.vista=v[0]; disegna(); window.scrollTo(0,0); }
+      }));
+    });
+    app.appendChild(nav);
+
+    if(S.vista==="nuova") app.appendChild(vistaNuova(c));
+    else if(S.vista==="registro") app.appendChild(vistaRegistro());
+    else if(S.vista==="core") app.appendChild(vistaCore(c));
+    else if(S.vista==="cassa") app.appendChild(vistaCassa(c));
+    else if(S.vista==="dati") app.appendChild(vistaDati());
+    else if(S.vista==="guida") app.appendChild(vistaGuida(c));
+    else app.appendChild(vistaTipster(c));
+  }
+
+  function vistaNuova(c){
+    var per=periodoDi(S.form.data);
+    S.form.statoCore=statoDaClassificazione(S.form.classificazione);
+    var libera=(S.form.osservata || S.form.statoCore!=="ufficiale") ? Infinity : c.disponibile;
+    var sug=propostaStake(S.form.data,S.form.quota,libera);
+    var qOk=!!(S.form.quota && parseFloat(S.form.quota)>1);
+    var inEdit=!!S.editingId;
+    var vessillo=inEdit ? el("div",{"class":"vessillo-edit","text":"Stai modificando una giocata esistente"}) : null;
+
+    var scelte=el("div",{"class":"tre"});
+    TIPSTERS.forEach(function(t){
+      scelte.appendChild(el("button",{
+        "class":"scelta pic"+(S.form.tipster===t.id?" on":""),"text":t.corto,
+        "style":S.form.tipster===t.id?{borderColor:t.tinta}:null,
+        "onclick":function(){
+          S.form.tipster=t.id;
+          if(S.form.classificazione==="PERSONALE" || S.form.classificazione==="TIPSTER")
+            S.form.classificazione=t.id==="io"?"PERSONALE":"TIPSTER";
+          disegna();
+        }
+      }));
+    });
+
+    var inClass=selectGuidato(CLASSIFICAZIONI,S.form.classificazione,function(v){
+      S.form.classificazione=v; S.form.statoCore=statoDaClassificazione(v);
+      if(v==="SCARTATA") S.form.osservata=true;
+      disegna();
+    });
+    var inTipo=selectGuidato([["SINGOLA","Singola"],["MULTIPLA","Multipla"]],S.form.tipoSchedina,function(v){
+      S.form.tipoSchedina=v;
+      if(v==="MULTIPLA" && (!S.form.gambe || S.form.gambe.length<2)) S.form.gambe=[{evento:"",mercato:""},{evento:"",mercato:""}];
+      disegna();
+    });
+    var inFase=selectGuidato([["PRE","Pre-match"],["LIVE","Live"]],S.form.faseIngresso,function(v){S.form.faseIngresso=v;});
+    var inBook=selectGuidato([["Sportium","Sportium"],["Sportbet","Sportbet"],["Lottomatica","Lottomatica"],["Goldbet","Goldbet"],["SNAI","SNAI"],["Eurobet","Eurobet"],["Bet365","Bet365"],["Altro","Altro"]],S.form.bookmaker,function(v){S.form.bookmaker=v;});
+    var inTicket=el("input",{"type":"text","placeholder":"Codice ADM / Ref. della schedina","value":S.form.ticketId||"","autocomplete":"off"});
+    inTicket.addEventListener("input",function(){S.form.ticketId=this.value.toUpperCase().replace(/\s/g,"");});
+    var inOra=el("input",{"type":"datetime-local","value":S.form.orarioIngresso||""});
+    inOra.addEventListener("change",function(){S.form.orarioIngresso=this.value;});
+    var inData=el("input",{"type":"date","value":S.form.data});
+    inData.addEventListener("change",function(){S.form.data=this.value;});
+
+    var contenutoSchedina=el("div");
+    if(S.form.tipoSchedina==="SINGOLA"){
+      var inEvento=el("input",{"type":"text","placeholder":"Lazio - Genoa","value":S.form.evento||""});
+      inEvento.addEventListener("input",function(){S.form.evento=this.value;});
+      contenutoSchedina.appendChild(el("div",{"class":"gruppo"},[el("label",{"text":"Evento / partita"}),inEvento]));
+      contenutoSchedina.appendChild(el("div",{"class":"gruppo"},[
+        el("label",{"text":"Mercato"}),
+        campoMercato(S.form.mercato||"",function(v){S.form.mercato=v;})
+      ]));
+    }else{
+      S.form.gambe=S.form.gambe||[];
+      S.form.gambe.forEach(function(gamba,idx){
+        var ev=el("input",{"type":"text","placeholder":"Evento "+(idx+1),"value":gamba.evento||""});
+        ev.addEventListener("input",function(){gamba.evento=this.value;});
+        var rimuovi=S.form.gambe.length>2 ? el("button",{"class":"secondario","text":"Rimuovi","onclick":function(){S.form.gambe.splice(idx,1);disegna();}}) : null;
+        contenutoSchedina.appendChild(el("div",{"class":"gamba"},[
+          el("div",{"class":"gamba-top"},[el("span",{"class":"etich","text":"Gamba "+(idx+1)}),rimuovi]),
+          ev,
+          campoMercato(gamba.mercato||"",function(v){gamba.mercato=v;})
+        ]));
+      });
+      contenutoSchedina.appendChild(el("button",{"class":"secondario","text":"+ Aggiungi gamba","onclick":function(){S.form.gambe.push({evento:"",mercato:""});disegna();}}));
+    }
+
+    var inQuota=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"2.30","value":S.form.quota,"class":"tab"});
+    inQuota.addEventListener("input",function(){S.form.quota=this.value;if(!S.form.toccato)S.form.stake="";aggiornaConsiglio(c);aggiornaTetto(c);aggiornaEV();});
+    var inQuotaCheck=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"Quota al primo check","value":S.form.quotaCheck||"","class":"tab"});
+    inQuotaCheck.addEventListener("input",function(){S.form.quotaCheck=this.value;});
+    var inQuotaChiusura=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"Quota di chiusura","value":S.form.quotaChiusura||"","class":"tab"});
+    inQuotaChiusura.addEventListener("input",function(){S.form.quotaChiusura=this.value;});
+    var inProbabilita=el("input",{"type":"number","inputmode":"decimal","step":"0.1","min":"0.1","max":"99.9","placeholder":"52.0","value":S.form.probabilitaStimata||"","class":"tab"});
+    inProbabilita.addEventListener("input",function(){
+      S.form.probabilitaStimata=this.value;
+      if(this.value && !S.form.probabilitaTimestamp) S.form.probabilitaTimestamp=valoreDataOraLocale(new Date().toISOString());
+      aggiornaEV();
+    });
+    // Quota equa ed EV calcolati mentre si scrive. Sono le formule della
+    // sezione 3 del framework, che l'app finora non mostrava da nessuna parte:
+    // la probabilità congelata smette di essere un campo da compilare e
+    // diventa lo strumento che dice se il prezzo conviene, nel momento in cui
+    // serve saperlo. Senza probabilità la riga dice cosa si sta perdendo,
+    // perché Brier, log loss e calibrazione non sono ricostruibili dopo.
+    var evLive=el("p",{"class":"avviso","id":"ev-live","text":testoEV(),"style":{margin:"8px 0 0"}});
+    var inConfidence=selectGuidato([["","—"],["1","1 - bassa"],["2","2"],["3","3 - media"],["4","4"],["5","5 - alta"]],String(S.form.confidence||""),function(v){S.form.confidence=v;});
+    var inNota=el("input",{"type":"text","placeholder":"Motivo sintetico / fonte","value":S.form.nota||""});
+    inNota.addEventListener("input",function(){S.form.nota=this.value;});
+    var inDebrief=el("textarea",{"placeholder":"Lettura corretta, errore, movimento quota, informazione mancata…"});
+    inDebrief.value=S.form.debrief||""; inDebrief.addEventListener("input",function(){S.form.debrief=this.value;});
+    var inStake=el("input",{"type":"number","inputmode":"decimal","step":"0.1","class":"tab","placeholder":sug?sug.toFixed(2):"0.00","value":S.form.stake});
+    inStake.id="campo-stake"; inStake.addEventListener("input",function(){S.form.stake=this.value;S.form.toccato=true;});
+
+    var modo=el("div",{"class":"due"});
+    [[false,"Giocata reale"],[true,"Solo osservata"]].forEach(function(m){
+      modo.appendChild(el("button",{"class":"scelta"+(!!S.form.osservata===m[0]?" on":""),"text":m[1],
+        "style":!!S.form.osservata===m[0]?{borderColor:m[0]?"#6D7F8E":"#C8873A",background:m[0]?"#6D7F8E1F":"#C8873A1F"}:null,
+        "onclick":function(){S.form.osservata=m[0];disegna();}}));
+    });
+
+    var ufficialeUI=S.form.statoCore==="ufficiale";
+    var cifra=el("span",{"class":"serif tab cifra","text":qOk&&sug?euro(sug):"\u20AC\u2014","style":{color:qOk?"#E8EDF2":"#33424F"}}); cifra.id="cifra-stake";
+    var pct=el("span",{"class":"etich tab","text":qOk&&sug?((sug/per.tetto)*100).toFixed(0)+"% del limite "+per.etichetta.toLowerCase():"\u2014"}); pct.id="pct-stake";
+    var ritorno=el("p",{"class":"tab","text":qOk&&sug?euro(sug*parseFloat(S.form.quota)):"\u2014","style":{color:"#4FB286",fontSize:"14px",margin:"0"}}); ritorno.id="ritorno-stake";
+
+    var dettagli=el("details",{"class":"scheda","style":{marginBottom:"16px"}});
+    dettagli.appendChild(el("summary",{"style":{padding:"14px 16px",cursor:"pointer",color:"#AAB6C0",fontSize:"14px"},"text":"Analisi e dati secondari"}));
+    dettagli.appendChild(el("div",{"style":{padding:"0 16px 14px"}},[
+      el("div",{"class":"gruppo due"},[
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Data evento"}),inData]),
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Confidence"}),inConfidence])
+      ]),
+      el("div",{"class":"gruppo due"},[
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Quota al check"}),inQuotaCheck]),
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Quota di chiusura"}),inQuotaChiusura])
+      ]),
+      el("div",{"class":"gruppo"},[el("label",{"text":"Nota analisi"}),inNota]),
+      inEdit?el("div",{"class":"gruppo"},[el("label",{"text":"Debrief"}),inDebrief]):null
+    ]));
+
+    var elementi=[vessillo,
+      pannelloRicevuta(),
+      TIPSTERS.length>1 ? el("div",{"class":"gruppo"},[el("label",{"text":"Origine"}),scelte]) : null,
+      el("div",{"class":"gruppo due"},[
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Classificazione"}),inClass]),
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Tipo"}),inTipo])
+      ]),
+      el("div",{"class":"gruppo"},[el("label",{"text":"Registrazione"}),modo]),
+      contenutoSchedina,
+      // Quota e probabilità sono le due facce della stessa decisione: quanto
+      // credo che accada, quanto mi pagano. Tenerle separate, con la seconda
+      // chiusa dentro "dati secondari", è il motivo per cui la probabilità è
+      // rimasta vuota in tutte le 60 righe del registro.
+      el("div",{"class":"gruppo due"},[
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Quota presa"}),inQuota]),
+        el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":"Probabilità stimata (%)"}),inProbabilita])
+      ]),
+      el("div",{"class":"gruppo"},[evLive]),
+      el("div",{"class":"gruppo"},[el("label",{"text":"Fase di ingresso"}),inFase]),
+      el("div",{"class":"scheda","style":{padding:"14px",marginBottom:"16px"}},[
+        el("p",{"class":"etich","text":"Ricevuta bookmaker","style":{margin:"0 0 12px"}}),
+        el("div",{"class":"due"},[inBook,inTicket]),
+        el("div",{"style":{marginTop:"10px"}},[inOra]),
+        el("p",{"class":"avviso","text":"Il codice ADM rende automatico il confronto con lo screenshot Sportium e impedisce i doppioni."})
+      ]),
+      el("div",{"class":"gruppo"},[
+        el("p",{"class":"avviso","text":ufficialeUI?"Questa classificazione entra nella cassa e nel debrief reale.":"Resta nel Core come candidata/osservazione e non impegna la cassa."})
+      ]),
+      dettagli
+    ];
+
+    if(ufficialeUI){
+      elementi.push(el("div",{"class":"riquadro"},[
+        el("div",{"class":"riq-top"},[el("span",{"class":"etich","text":"Puntata consigliata"}),pct]),
+        el("div",{"class":"riq-mid"},[cifra,el("div",{"style":{textAlign:"right"}},[el("p",{"class":"etich","text":"Ritorno se vince","style":{margin:"0 0 4px"}}),ritorno])]),
+        el("div",{"class":"riq-sez"},[el("p",{"id":"spiega-stake","text":spiegaProposta(S.form.data,S.form.quota,libera),"style":{fontSize:"11px",color:"#6D7F8E",margin:"0",lineHeight:"1.5"}})]),
+        el("div",{"class":"riq-fondo"},[el("label",{"class":"etich","text":"Punto invece","style":{display:"block",margin:"16px 0 8px"}}),inStake])
+      ]));
+      elementi.push(costruisciTetto(c));
+    }
+
+    var bottone=el("button",{"class":"principale","text":inEdit?"Salva modifica":(ufficialeUI?"Registra giocata":"Salva nel Core"),"onclick":function(){
+      var q=parseFloat(S.form.quota);
+      if(!q || q<=1){bloccaConErrore("Inserisci una quota valida.");return;}
+      var qClose=S.form.quotaChiusura?parseFloat(S.form.quotaChiusura):null;
+      if(qClose!==null && (!qClose || qClose<=1)){bloccaConErrore("La quota di chiusura deve essere maggiore di 1.");return;}
+      var prob=S.form.probabilitaStimata?parseFloat(S.form.probabilitaStimata):null;
+      if(prob!==null && (!prob || prob<=0 || prob>=100)){bloccaConErrore("La probabilità stimata deve essere compresa tra 0 e 100.");return;}
+      var gambe=normalizzaGambe(S.form.gambe);
+      var gambeCompilate=gambe.filter(function(x){return x.evento.trim() || x.mercato.trim();});
+      if(S.form.tipoSchedina==="SINGOLA" && (!(S.form.evento||"").trim() || !(S.form.mercato||"").trim())){bloccaConErrore("Completa evento e mercato.");return;}
+      // Le multiple inserite a mano prima che esistesse il campo gambe non ne
+      // hanno nessuna registrata. Pretenderle anche in modifica rende
+      // incorreggibili quelle giocate — nel registro reale sono 20 su 71 — e
+      // il salvataggio esce in silenzio prima ancora di leggere la puntata.
+      // La regola serve a non CREARE multiple vuote: si applica alla
+      // creazione, e in modifica solo se almeno una gamba e' stata compilata.
+      if(inEdit && S.form.tipoSchedina==="MULTIPLA" && gambeCompilate.length===0){
+        gambe=[]; // resta senza gambe, invece di salvarne due vuote
+      }else if(S.form.tipoSchedina==="MULTIPLA" && (gambe.length<2 || gambe.some(function(x){return !x.evento.trim() || !x.mercato.trim();}))){
+        bloccaConErrore("Completa almeno due gambe della multipla.");return;
+      }
+      var ticket=(S.form.ticketId||"").trim().toUpperCase();
+      if(ticket){
+        var doppio=S.giocate.some(function(x){return String(x.id)!==String(S.editingId||"") && String(x.ticketId||"").toUpperCase()===ticket;});
+        if(doppio){bloccaConErrore("Questo ticket ADM è già presente nel registro.");return;}
+      }
+      var sNow=propostaStake(S.form.data,S.form.quota,libera);
+      var s=ufficialeUI?(parseFloat(S.form.stake)||sNow):0;
+      if(ufficialeUI && !S.form.osservata && (!s || s<=0)){bloccaConErrore("Inserisci la puntata reale.");return;}
+      // Su una multipla storica senza gambe il titolo automatico diventerebbe
+      // "Multipla · 0 gambe", cancellando il nome con cui la giocata e' sempre
+      // stata in registro (per quelle vecchie il titolo e' la nota). Si
+      // rinomina solo quando le gambe ci sono davvero.
+      var evento=(S.form.tipoSchedina==="MULTIPLA" && gambe.length)
+        ? "Multipla · "+gambe.length+" gambe"
+        : (S.form.evento||"").trim();
+      var mercato=S.form.tipoSchedina==="MULTIPLA"?"MULTIPLA":(S.form.mercato||"").trim();
+      var dati={data:S.form.data,tipster:S.form.tipster,evento:evento,mercato:mercato,nota:(S.form.nota||"").trim(),quota:q,
+        quotaCheck:parseFloat(S.form.quotaCheck)||null,quotaChiusura:qClose,
+        probabilitaStimata:prob!==null?prob/100:null,
+        probabilitaTimestamp:S.form.probabilitaStimata?isoDaDataOraLocale(S.form.probabilitaTimestamp||valoreDataOraLocale(new Date().toISOString())):null,
+        confidence:parseInt(S.form.confidence,10)||null,debrief:(S.form.debrief||"").trim(),
+        statoCore:statoDaClassificazione(S.form.classificazione),stake:s,osservata:!!S.form.osservata,
+        bookmaker:S.form.bookmaker||"Sportium",faseIngresso:S.form.faseIngresso||"PRE",classificazione:S.form.classificazione,
+        ticketId:ticket,orarioIngresso:isoDaDataOraLocale(S.form.orarioIngresso),tipoSchedina:S.form.tipoSchedina,gambe:S.form.tipoSchedina==="MULTIPLA"?gambe:[]};
+      if(inEdit){
+        S.giocate.forEach(function(g){if(String(g.id)===String(S.editingId)){Object.keys(dati).forEach(function(k){g[k]=dati[k];});g.cloudDirty=true;if(g.esito==="vinta")g.profitto=g.stake*g.quota-g.stake;else if(g.esito==="persa")g.profitto=-g.stake;}});
+        S.editingId=null;
+      }else{
+        dati.id=Date.now();dati.esito="aperta";dati.profitto=0;dati.cloudDirty=true;S.giocate.unshift(dati);
+      }
+      S.errore=null;salva();
+      S.form=formVuoto(S.form.data,S.form.tipster);OCR.stato="idle";OCR.risultato=null;S.vista="registro";disegna();window.scrollTo(0,0);
+    }});
+    bottone.id="bottone-registra"; if(!qOk)bottone.disabled=true;
+    elementi.push(bottone);
+    if(inEdit) elementi.push(el("button",{"class":"secondario","text":"Annulla modifica","style":{marginTop:"10px"},"onclick":function(){S.editingId=null;S.form=formVuoto(oggi(),"io");OCR.stato="idle";OCR.risultato=null;S.vista="registro";disegna();}}));
+    return el("div",{"class":"pag"},elementi);
+  }
+
+  function vistaGuida(){
+    return el("div",{"class":"pag"},[
+      el("p",{"class":"guida-intro","text":"Registra ogni schedina una sola volta: i campi guidati alimentano cassa, archivio Supabase e debrief giornaliero."}),
+      el("div",{"class":"guida-sez"},[
+        el("h2",{"class":"guida-tit","text":"Classificazione"}),
+        el("p",{"class":"guida-p","text":"BET CORE e BET PILOT identificano le selezioni del framework; Personale e Tipster separano le altre origini. Candidata e Watchlist non impegnano la cassa."})
+      ]),
+      el("div",{"class":"guida-sez"},[
+        el("h2",{"class":"guida-tit","text":"Ricevuta Sportium"}),
+        el("p",{"class":"guida-p","text":"Scegli lo screenshot: la lettura avviene sul telefono e compila evento, mercato, quota, stake, orario e ADM. Controlla il riepilogo e salva; il codice ADM impedisce i doppioni."})
+      ]),
+      el("div",{"class":"guida-sez"},[
+        el("h2",{"class":"guida-tit","text":"Singola o multipla"}),
+        el("p",{"class":"guida-p","text":"Per una multipla aggiungi ogni gamba con evento e mercato. Nel debrief potremo così capire quale selezione ha deciso l'esito, non soltanto il risultato totale."})
+      ]),
+      el("div",{"class":"guida-sez"},[
+        el("h2",{"class":"guida-tit","text":"Market Lab"}),
+        el("p",{"class":"guida-p","text":"Ogni mercato viene classificato automaticamente in una famiglia confrontabile. Il Lab mostra ROI, quota media, CLV, calibrazione e maturità del campione, ma non promuove da solo una giocata nel Core."})
+      ]),
+      el("div",{"class":"guida-sez"},[
+        el("h2",{"class":"guida-tit","text":"Sincronizzazione"}),
+        el("p",{"class":"guida-p","text":"Quando il cloud è attivo, ogni modifica aggiorna soltanto la riga interessata in Supabase. La prima apertura di questa versione riconcilia i dati completi senza cancellare il registro."})
+      ])
+    ]);
+  }
+
+  // aggiorna solo i numeri, senza ridisegnare (cosi la tastiera non si chiude)
+  function aggiornaConsiglio(c){
+    var per = periodoDi(S.form.data);
+    var libera = (S.form.osservata || (S.form.statoCore && S.form.statoCore!=="ufficiale")) ? Infinity : c.disponibile;
+    var sug = propostaStake(S.form.data, S.form.quota, libera);
+    var qOk = !!(S.form.quota && parseFloat(S.form.quota)>1);
+    var cifra = document.getElementById("cifra-stake");
+    var pct = document.getElementById("pct-stake");
+    var rit = document.getElementById("ritorno-stake");
+    var bot = document.getElementById("bottone-registra");
+    var camp = document.getElementById("campo-stake");
+    if(cifra){
+      cifra.textContent = qOk && sug ? euro(sug) : "\u20AC\u2014";
+      cifra.style.color = qOk ? "#E8EDF2" : "#33424F";
+    }
+    if(pct) pct.textContent = qOk && sug
+      ? ((sug/per.tetto)*100).toFixed(0)+"% del limite "+per.etichetta.toLowerCase() : "\u2014";
+    var sp = document.getElementById("spiega-stake");
+    if(sp) sp.textContent = spiegaProposta(S.form.data, S.form.quota, libera);
+    if(rit) rit.textContent = qOk && sug ? euro(sug*parseFloat(S.form.quota)) : "\u2014";
+    if(bot) bot.disabled = !qOk;
+    if(camp && !S.form.toccato){ camp.value=""; camp.placeholder = sug ? sug.toFixed(2) : "0.00"; }
+  }
+
+  // Pannello del limite giornaliero
+  function costruisciTetto(c){
+    var libera = (S.form.osservata || (S.form.statoCore && S.form.statoCore!=="ufficiale")) ? Infinity : c.disponibile;
+    var sug = propostaStake(S.form.data, S.form.quota, libera);
+    var qOk = !!(S.form.quota && parseFloat(S.form.quota)>1);
+    var p = periodoDi(S.form.data);
+    var residuo = Math.max(0, p.tetto - p.giocato);
+    var proposta = parseFloat(S.form.stake) || sug;
+    var sfora = qOk && proposta > residuo + 0.001;
+    var oltreCassa = qOk && !S.form.osservata && proposta > c.disponibile + 0.001;
+
+    var barra = el("div",{"class":"barra"});
+    barra.appendChild(el("div",{"class":"barra-piena","style":{
+      width: Math.min(100, p.tetto>0 ? (p.giocato/p.tetto)*100 : 0)+"%",
+      background: p.giocato >= p.tetto ? "#D4635F" : "#C8873A"
+    }}));
+
+    return el("div",{"class":"tetto","id":"pannello-tetto"},[
+      el("div",{"class":"tetto-riga"},[
+        el("span",{"class":"etich","text":"Limite "+p.etichetta}),
+        el("span",{"class":"tab","style":{fontSize:"12px",
+          color: p.giocato >= p.tetto ? "#D4635F" : "#8C9BA8"},
+          "text": euro(p.giocato)+" di "+euro(p.tetto)})
+      ]),      barra,
+      (!S.form.osservata)
+        ? el("div",{"class":"tetto-riga","style":{marginTop:"10px",marginBottom:"0"}},[
+            el("span",{"class":"etich","text":"Liberi in cassa"}),
+            el("span",{"class":"tab","style":{fontSize:"12px",
+              color: c.disponibile <= 0 ? "#D4635F" : "#8C9BA8"},
+              "text": euro(c.disponibile)})
+          ])
+        : null,
+      oltreCassa
+        ? el("p",{"class":"tetto-avviso",
+            "text": c.disponibile <= 0
+              ? "In cassa non hai soldi liberi. Registra un versamento prima di giocare."
+              : "In cassa hai "+euro(c.disponibile)+" liberi: questa giocata li supera di "+
+                euro(proposta - c.disponibile)+"."})
+        : null,
+      sfora
+        ? el("p",{"class":"tetto-avviso",
+            "text": residuo <= 0
+              ? "Limite gia raggiunto. Questa giocata lo supera."
+              : "Restano "+euro(residuo)+". Questa giocata sfora di "+euro(proposta-residuo)+"."})
+        : null,
+      (sfora && residuo > 0)
+        ? el("button",{"class":"tetto-azione","text":"Riduci a "+euro(residuo),
+            "onclick": function(){
+              S.form.stake = String(Math.round(residuo*100)/100);
+              S.form.toccato = true; disegna();
+            }})
+        : null
+    ]);
+  }
+
+  // Ridisegna solo il pannello del limite, senza chiudere la tastiera
+  function aggiornaTetto(c){
+    var vecchio = document.getElementById("pannello-tetto");
+    if(!vecchio) return;
+    var nuovo = costruisciTetto(c);
+    vecchio.parentNode.replaceChild(nuovo, vecchio);
+  }
+
+  // Giocate aperte da piu di N giorni: probabilmente dimenticate
+  function apertePromemoria(soglia){
+    var lim = piuGiorni(oggi(), -(soglia||2));
+    return S.giocate.filter(function(g){
+      return g.esito==="aperta" && !g.osservata && g.data <= lim;
+    });
+  }
+
+  async function eliminaGiocata(g){
+    if(!g || !window.confirm("Eliminare definitivamente questa pick?")) return;
+    try{
+      if(DB && CLOUD.user){
+        await utenteCloudVerificato();
+        var rr=await DB.from("picks").delete()
+          .eq("user_id",CLOUD.user.id).eq("legacy_id",legacyCloud(g));
+        if(rr.error) throw rr.error;
+      }
+      S.giocate=S.giocate.filter(function(x){return String(x.id)!==String(g.id);});
+      salva(true);
+      CLOUD.stato="Pick eliminata dal registro e dal cloud";
+      await aggiornaConteggioCloud();
+      S.errore=null;
+    }catch(e){
+      S.errore="Eliminazione non riuscita: "+(e.message||e);
+    }
+    disegna();
+  }
+
+  function vistaRegistro(){
+    var wrap = el("div");
+
+    var scadute = apertePromemoria(2);
+    if(scadute.length){
+      wrap.appendChild(el("div",{"class":"promemoria"},[
+        el("span",{"text": scadute.length===1
+          ? "Hai 1 giocata aperta da piu di 2 giorni. Sara finita: chiudila."
+          : "Hai "+scadute.length+" giocate aperte da piu di 2 giorni. Saranno finite: chiudile."}),
+        el("button",{"text":"Mostra solo quelle","onclick":function(){
+          S.filtro = "scadute"; disegna();
+        }})
+      ]));
+    }
+
+    var filtri = el("div",{"class":"filtri"});
+    var opzioni = [["tutti","Tutte"]];
+    if(TIPSTERS.length>1) TIPSTERS.forEach(function(t){ opzioni.push([t.id,t.corto]); });
+    if(scadute.length) opzioni.push(["scadute","Da chiudere"]);
+    opzioni.forEach(function(o){
+      filtri.appendChild(el("button",{
+        "class":"chip"+(S.filtro===o[0]?" on":""), "text":o[1],
+        "onclick":function(){ S.filtro=o[0]; disegna(); }
+      }));
+    });
+    wrap.appendChild(filtri);
+
+    var idScadute = {};
+    scadute.forEach(function(g){ idScadute[g.id] = true; });
+    var visibili = S.filtro==="tutti" ? S.giocate.slice()
+      : S.filtro==="scadute" ? S.giocate.filter(function(g){ return idScadute[g.id]; })
+      : S.giocate.filter(function(g){ return g.tipster===S.filtro; });
+
+    // Registro: sempre le pick più recenti in cima, anche dopo download dal cloud.
+    visibili.sort(function(a,b){
+      if(a.data!==b.data) return a.data>b.data ? -1 : 1;
+      var ai=String(a.id==null?"":a.id), bi=String(b.id==null?"":b.id);
+      return bi.localeCompare(ai,undefined,{numeric:true});
+    });
+
+    if(!visibili.length){
+      wrap.appendChild(el("div",{"class":"vuoto"},[
+        el("h2",{"class":"serif","text":"Registro vuoto"}),
+        el("p",{"text":"Aggiungi la prima schedina per iniziare a vedere chi rende."}),
+        el("button",{"text":"Nuova giocata","onclick":function(){ S.vista="nuova"; disegna(); }})
+      ]));
+      return wrap;
+    }
+
+    var lista = el("ul");
+    visibili.forEach(function(g){
+      var t = trova(g.tipster);
+      var colore = g.esito==="vinta" ? "#4FB286"
+        : g.esito==="persa" ? "#D4635F"
+        : g.esito==="rimborsata" ? "#8C9BA8" : "#6D7F8E";
+
+      var azioni;
+      function cambiaStato(st){
+        g.statoCore=st;
+        if(st==="scartata"){g.osservata=true;g.classificazione="SCARTATA";}
+        else if(st==="monitoraggio"){g.classificazione="WATCHLIST";}
+        else if(st==="ufficiale"){
+          g.osservata=false;
+          if(g.classificazione==="CANDIDATA" || g.classificazione==="WATCHLIST" || g.classificazione==="SCARTATA")
+            g.classificazione=g.tipster==="io"?"PERSONALE":"TIPSTER";
+        }
+        g.cloudDirty=true;
+        salva(); disegna();
+      }
+      function apriModifica(){
+        S.editingId = g.id;
+        S.form=formDaGiocata(g); OCR.stato="idle"; OCR.risultato=null;
+        S.vista="nuova"; disegna(); window.scrollTo(0,0);
+      }
+      if(g.esito==="aperta"){
+        azioni = el("div",null,[
+          (g.statoCore==="ufficiale" || g.statoCore==="scartata") ? el("div",{"class":"azioni"},[
+            el("button",{"text":"Vinta","style":{borderColor:"#2C4A3C",color:"#4FB286"},
+              "onclick":function(){ void chiudi(g.id,"vinta"); }}),
+            el("button",{"text":"Persa","style":{borderColor:"#4A2C2C",color:"#D4635F"},
+              "onclick":function(){ void chiudi(g.id,"persa"); }}),
+            el("button",{"text":"Rimborsata","style":{color:"#8C9BA8"},
+              "onclick":function(){ void chiudi(g.id,"rimborsata"); }})
+          ]) : el("p",{"class":"avviso","text":"Prima completa la decisione BET Core: Ufficiale oppure Scarta."}),
+          el("div",{"class":"azioni"},[
+            (g.statoCore!=="monitoraggio" && g.statoCore!=="ufficiale") ? el("button",{"text":"Monitora","onclick":function(){ cambiaStato("monitoraggio"); }}) : null,
+            g.statoCore!=="ufficiale" ? el("button",{"text":"Ufficiale","style":{borderColor:"#2C4A3C",color:"#4FB286"},"onclick":function(){ cambiaStato("ufficiale"); }}) : null,
+            (g.statoCore!=="scartata" && g.statoCore!=="ufficiale") ? el("button",{"text":"Scarta","style":{borderColor:"#4A2C2C",color:"#D4635F"},"onclick":function(){ cambiaStato("scartata"); }}) : null
+          ]),
+          el("div",{"class":"minori"},[
+            el("button",{"text":"Modifica","onclick":apriModifica}),
+            el("button",{"text":"Elimina","onclick":function(){void eliminaGiocata(g);}})
+          ])
+        ]);
+      } else {
+        azioni = el("div",{"class":"minori"},[
+          el("button",{"text":"Modifica","onclick":apriModifica}),
+          el("button",{"text":"Correggi esito","onclick":function(){ void correggiEsito(g.id); }}),
+          el("button",{"text":"Elimina","onclick":function(){void eliminaGiocata(g);}})
+        ]);
+      }
+
+      lista.appendChild(el("li",{"class":"voce"+(g.osservata?" voce-oss":"")},[
+        el("span",{"class":"sigla","text":t.sigla,
+          "style": g.osservata
+            ? {background:"#1B2733",color:"#6D7F8E",border:"1px dashed #33424F"}
+            : {background:t.tinta+"26",color:t.tinta}}),
+        el("div",{"class":"corpo"},[
+          el("div",{"class":"titolo-riga"},[
+            el("span",{"class":"nota","text":g.evento || g.nota || "Schedina"}),
+            el("span",{"class":"esito tab","style":{color: idScadute[g.id] ? "#C8873A" : colore},
+              "text": g.esito==="aperta"
+                ? (idScadute[g.id] ? "da chiudere" : "in corso")
+                : segnato(g.profitto)})
+          ]),
+          el("p",{"class":"meta tab",
+            "text": breve(g.data)+(g.mercato ? " · "+g.mercato : "")+" · quota "+g.quota.toFixed(2)+
+              (g.quotaCheck ? " → "+g.quotaCheck.toFixed(2) : "")+(g.confidence ? " · C"+g.confidence : "")+" · "+
+              "["+classificazioneLegacy(g)+"] · "+
+              (g.osservata || (g.statoCore && g.statoCore!=="ufficiale") ? "non impegnata ("+euro(g.stake)+" teorici)" : "puntati "+euro(g.stake))}),
+          el("div",null,[
+            el("span",{"class":"badge-meta","text":g.tipoSchedina||"SINGOLA"}),
+            el("span",{"class":"badge-meta","text":(g.bookmaker||"Sportium")+" · "+(g.faseIngresso||"PRE")}),
+            g.famigliaMercato!=="NON_CLASSIFICATO"?el("span",{"class":"badge-meta","text":"LAB · "+etichettaFamiglia(g)}):null,
+            g.ticketId?el("span",{"class":"badge-meta","text":"ADM "+g.ticketId}):null,
+            // Segnalato, non impedito: una pick senza probabilità congelata
+            // resta valida per la cassa ma esce dal campione statistico, e
+            // conviene vederlo nell'elenco invece che scoprirlo al debrief.
+            (g.probabilitaStimata==null&&!g.osservata)
+              ?el("span",{"class":"badge-meta","text":"SENZA p · non misurabile","style":{color:"#C8873A",borderColor:"#C8873A55"}}):null
+          ]),
+          g.tipoSchedina==="MULTIPLA" && g.gambe && g.gambe.length
+            ? el("p",{"class":"core-dett","text":g.gambe.map(function(x,i){return (i+1)+". "+x.evento+" — "+x.mercato;}).join(" · ")}) : null,
+          g.debrief ? el("p",{"class":"core-dett","text":"Debrief: "+g.debrief}) : null,
+          azioni
+        ])
+      ]));
+    });
+    wrap.appendChild(lista);
+    return wrap;
+  }
+
+  async function rigaCloudPerPick(g){
+    if(!DB || !CLOUD.user) return null;
+    await utenteCloudVerificato();
+    var rr=await DB.from("picks")
+      .select("id,legacy_id,data,tipster,evento,mercato,nota,quota,quota_check,quota_chiusura,probabilita_stimata,probabilita_timestamp,confidence,debrief,stake,esito,profitto,tipo,stato_core,motivo_scarto,bookmaker,fase_ingresso,classificazione,ticket_id,orario_ingresso,tipo_schedina,gambe,famiglia_mercato,ambito_mercato,selezione_normalizzata,linea_mercato,componenti_mercato,versione_tassonomia")
+      .eq("user_id",CLOUD.user.id)
+      .eq("legacy_id",legacyCloud(g))
+      .maybeSingle();
+    if(rr.error) throw rr.error;
+    return rr.data||null;
+  }
+
+  function ripristinaDaRigaCloud(g,r){
+    if(!r) return;
+    g.data=r.data; g.tipster=r.tipster; g.evento=r.evento||""; g.mercato=r.mercato||""; g.nota=r.nota||"";
+    g.quota=Number(r.quota); g.quotaCheck=r.quota_check==null?null:Number(r.quota_check);
+    g.quotaChiusura=r.quota_chiusura==null?null:Number(r.quota_chiusura);
+    g.probabilitaStimata=r.probabilita_stimata==null?null:Number(r.probabilita_stimata); g.probabilitaTimestamp=r.probabilita_timestamp||"";
+    g.confidence=r.confidence; g.debrief=r.debrief||""; g.stake=Number(r.stake||0);
+    g.osservata=r.tipo==="osservata"; g.statoCore=r.stato_core||"candidata"; g.motivoScarto=r.motivo_scarto||"";
+    g.bookmaker=r.bookmaker||"Sportium"; g.faseIngresso=r.fase_ingresso||"PRE"; g.classificazione=r.classificazione||classificazioneLegacy(g);
+    g.ticketId=r.ticket_id||""; g.orarioIngresso=r.orario_ingresso||""; g.tipoSchedina=r.tipo_schedina||"SINGOLA"; g.gambe=normalizzaGambe(r.gambe);
+    g.famigliaMercato=r.famiglia_mercato||"NON_CLASSIFICATO";g.ambitoMercato=r.ambito_mercato||"PARTITA";
+    g.selezioneNormalizzata=r.selezione_normalizzata||"";g.lineaMercato=r.linea_mercato||null;
+    g.componentiMercato=Array.isArray(r.componenti_mercato)?r.componenti_mercato:[];g.versioneTassonomia=r.versione_tassonomia||"v0.1";
+    aggiornaTassonomia(g);
+  }
+
+  async function correggiEsito(id){
+    var g=null;
+    for(var i=0;i<S.giocate.length;i++) if(String(S.giocate[i].id)===String(id)){g=S.giocate[i];break;}
+    if(!g) return;
+    try{
+      var r=await rigaCloudPerPick(g);
+      if(r) ripristinaDaRigaCloud(g,r);
+      g.esito="aperta"; g.profitto=0;
+      if(DB && CLOUD.user){
+        var up=await DB.from("picks").update({esito:"Aperta",profitto:0})
+          .eq("user_id",CLOUD.user.id).eq("legacy_id",legacyCloud(g));
+        if(up.error) throw up.error;
+      }
+      salva(true);
+      S.errore=null;
+    }catch(e){
+      S.errore="Impossibile recuperare la pick originale dal cloud: "+(e.message||e);
+    }
+    disegna();
+  }
+
+  async function chiudi(id, esito){
+    var g=null;
+    for(var i=0;i<S.giocate.length;i++) if(String(S.giocate[i].id)===String(id)){g=S.giocate[i];break;}
+    if(!g) return;
+
+    try{
+      var r=await rigaCloudPerPick(g);
+      if(r) ripristinaDaRigaCloud(g,r);
+
+      var stakeNum=Number(g.stake||0), quotaNum=Number(g.quota||0);
+      if(g.statoCore==="ufficiale" && stakeNum<=0) throw new Error("stake ufficiale mancante nel cloud");
+      if(quotaNum<=1) throw new Error("quota iniziale non valida nel cloud");
+
+      var profitto = esito==="vinta" ? (stakeNum*quotaNum-stakeNum)
+        : esito==="persa" ? -stakeNum : 0;
+
+      // Aggiornamento atomico della sola riga: non riscrive tutte le picks.
+      if(DB && CLOUD.user){
+        await utenteCloudVerificato();
+        var up=await DB.from("picks").update({
+          esito:normalizzaEsitoCloud(esito),
+          profitto:Number(profitto.toFixed(2))
+        }).eq("user_id",CLOUD.user.id).eq("legacy_id",legacyCloud(g));
+        if(up.error) throw up.error;
+      }
+
+      g.esito=esito;
+      g.profitto=Number(profitto.toFixed(2));
+      salva(true); // evita il vecchio full-table replace dopo la chiusura
+      CLOUD.stato="Esito sincronizzato nel cloud";
+      S.errore=null;
+    }catch(e){
+      S.errore="Chiusura non salvata: "+(e.message||e);
+    }
+    disegna();
+  }
+
+  function vistaCore(c){
+    var pag = el("div",{"class":"pag"});
+    try{
+      var tutteChiuse = chiuseTutte();
+
+      // Compatibilita mobile: niente Set/Array.from/padStart nella vista Core.
+      function valoriUnici(arr){
+        var out=[], seen={}, i, v, k;
+        for(i=0;i<arr.length;i++){
+          v=arr[i];
+          if(v===null || v===undefined || v==="") continue;
+          k=String(v);
+          if(!seen[k]){ seen[k]=true; out.push(v); }
+        }
+        return out;
+      }
+      function dueCifre(n){ n=String(n); return n.length<2 ? "0"+n : n; }
+
+      var anni = valoriUnici(S.giocate.map(function(g){return annoData(g.data);})).sort(function(a,b){return b-a;});
+      var stagioni = valoriUnici(S.giocate.map(function(g){return stagioneData(g.data);})).sort().reverse();
+
+      var filtroBox=el("div",{"class":"scheda"});
+      filtroBox.appendChild(el("div",{"class":"scheda-top"},[
+        el("span",{"class":"serif scheda-nome","text":"Periodo di analisi"})
+      ]));
+      var fr=el("div",{"style":{padding:"14px 16px",display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"10px"}});
+
+      function selectFiltro(valori,valore,placeholder,onchange){
+        var sel=el("select",{"style":{width:"100%",padding:"11px 8px",borderRadius:"8px",background:"#101B24",color:"#DCE4EA",border:"1px solid #263642",fontSize:"14px"}});
+        sel.appendChild(el("option",{"value":"","text":placeholder}));
+        valori.forEach(function(x){
+          var v=String(x[0]), o=el("option",{"value":v,"text":x[1]}); if(String(valore)===v)o.selected=true; sel.appendChild(o);
+        });
+        sel.addEventListener("change",function(){onchange(this.value);disegna();});
+        return sel;
+      }
+      fr.appendChild(selectFiltro(anni.map(function(a){return [a,String(a)];}),S.coreAnno,"Tutti gli anni",function(v){S.coreAnno=v;}));
+      fr.appendChild(selectFiltro(Array.apply(null, Array(12)).map(function(_,i){return [i+1,nomeMese(i+1)];}),S.coreMese,"Tutti i mesi",function(v){S.coreMese=v;}));
+      fr.appendChild(selectFiltro(stagioni.map(function(x){return [x,x];}),S.coreStagione,"Tutte le stagioni",function(v){S.coreStagione=v;}));
+      filtroBox.appendChild(fr);
+
+      function nelFiltroCore(g){
+        if(S.coreAnno && String(annoData(g.data))!==String(S.coreAnno)) return false;
+        if(S.coreMese && String(meseData(g.data))!==String(S.coreMese)) return false;
+        if(S.coreStagione && stagioneData(g.data)!==S.coreStagione) return false;
+        return true;
+      }
+      var righePeriodo=S.giocate.filter(nelFiltroCore);
+      var righeChiuse=tutteChiuse.filter(nelFiltroCore);
+      var chiuse=gruppiCore(righeChiuse);
+      var reali=chiuse.filter(function(g){return g.reale;});
+      var osservate=chiuse.filter(function(g){return g.osservata;});
+      var marketStats=statisticheMercati(righeChiuse,righePeriodo);
+      var ticketTotali=righeChiuse.length;
+      var etPeriodo=[];
+      if(S.coreMese) etPeriodo.push(nomeMese(S.coreMese));
+      if(S.coreAnno) etPeriodo.push(S.coreAnno);
+      if(S.coreStagione) etPeriodo.push("stag. "+S.coreStagione);
+      filtroBox.appendChild(el("p",{"class":"guida-p","style":{padding:"0 16px 14px",margin:"0"},"text":"Campione: "+(etPeriodo.length?etPeriodo.join(" · "):"tutto lo storico")+" · "+chiuse.length+" pick chiuse · "+reali.length+" reali · "+osservate.length+" osservate · "+ticketTotali+" ticket"}));
+      pag.appendChild(filtroBox);
+
+      var clvN=marketStats.reduce(function(a,x){return a+x.clvN;},0);
+      var clvSomma=marketStats.reduce(function(a,x){return a+x.clvSomma;},0);
+      var clv=clvN?clvSomma/clvN:0;
+      var conConfidence=reali.filter(function(g){return g.confidence!=null;});
+      var alta = reali.filter(function(g){ return (g.confidence||0)>=4; });
+      var ra = riepilogoGruppiCore(alta);
+      var debriefati = chiuse.filter(function(g){ return g.haDebrief; }).length;
+      var cards = el("div",{"class":"core-grid"});
+      [["Pick chiuse",String(chiuse.length),reali.length+" reali · "+osservate.length+" osservate · "+ticketTotali+" ticket"],
+       ["CLV chiusura",clvN ? (clv>=0?"+":"")+clv.toFixed(1)+"%" : "—",clvN+"/"+reali.length+" pick reali con closing line"+(clvN<10?" · campione insufficiente":"")],
+       ["Confidence 4–5",alta.length ? (ra.roi>=0?"+":"")+ra.roi.toFixed(0)+"% ROI" : "—",alta.length+" C4–5 · copertura "+conConfidence.length+"/"+reali.length],
+       ["Debrief",chiuse.length ? Math.round(debriefati/chiuse.length*100)+"%" : "—",debriefati+"/"+chiuse.length+" pick compilate"]].forEach(function(x){
+         cards.appendChild(el("div",{"class":"core-card"},[el("p",{"class":"k","text":x[0]}),el("p",{"class":"v serif tab","text":x[1]}),el("p",{"class":"core-dett","text":x[2]})]));
+      });
+      pag.appendChild(cards);
+
+      var tassonomia=window.BetCoreMarketTaxonomy;
+      var lab=el("div",{"class":"scheda"});
+      lab.appendChild(el("div",{"class":"scheda-top"},[
+        el("span",{"class":"serif scheda-nome","text":"Market Lab v0.2"}),
+        el("span",{"class":"badge-meta","text":marketStats.length+" campioni famiglia/fase"})
+      ]));
+      lab.appendChild(el("p",{"class":"lab-intro","text":"Confronto prospettico per famiglia e fase PRE/LIVE. Brier e Log Loss usano l'esito esplicito e includono anche PASS/Watchlist a stake zero; il mercato e' il benchmark grezzo 1/quota. Shrink 50/50 e' solo diagnostico e non modifica il Core."}));
+      if(!marketStats.length){
+        lab.appendChild(el("p",{"class":"lab-intro","text":"Nessun mercato disponibile nel periodo selezionato."}));
+      }else marketStats.forEach(function(d){
+        var fase=tassonomia&&tassonomia.faseCampione?tassonomia.faseCampione(d.n):{etichetta:"Osservazione",nota:"Campione descrittivo"};
+        var nome=tassonomia&&tassonomia.etichetta?tassonomia.etichetta(d.famiglia):d.famiglia.replace(/_/g," ");
+        var roiTesto=d.n?((d.roi>=0?"+":"")+d.roi.toFixed(1)+"% ROI"):"in attesa";
+        var stato=[];
+        if(d.aperte) stato.push(d.aperte+" aperte");
+        if(d.osservate) stato.push(d.osservate+" osservate");
+        lab.appendChild(el("div",{"class":"lab-riga"},[
+          el("div",{"class":"lab-riga-top"},[
+            el("span",{"class":"lab-riga-nome","text":nome+" · "+d.fase+(d.famiglia==="NON_CLASSIFICATO"?" · storico non inferito":"")}),
+            el("span",{"class":"lab-riga-roi tab","style":{color:d.n?(d.roi>=0?"#4FB286":"#D4635F"):"#6D7F8E"},"text":roiTesto})
+          ]),
+          el("div",{"class":"lab-metriche"},[
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Campione"}),el("p",{"class":"v tab","text":d.n+" chiuse"+(stato.length?" · "+stato.join(" · "):"")})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Esiti"}),el("p",{"class":"v tab","text":d.vinte+" V · "+d.perse+" P"+(d.rimborsate?" · "+d.rimborsate+" R":"")})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Stake / P&L"}),el("p",{"class":"v tab","text":euro(d.stake)+" · "+segnato(d.profitto)})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Quota media"}),el("p",{"class":"v tab","text":d.quotaMedia?"@"+d.quotaMedia.toFixed(2):"—"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"CLV chiusura"}),el("p",{"class":"v tab","text":d.clvN?((d.clv>=0?"+":"")+d.clv.toFixed(1)+"% · "+d.clvN+"/"+d.n):"— · 0/"+d.n})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Modello"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.brier.toFixed(3)+" · LL "+d.logLoss.toFixed(3):"— · 0/"+d.n})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Mercato grezzo"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.marketBrier.toFixed(3)+" · LL "+d.marketLogLoss.toFixed(3):"—"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Shrink 50/50"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.shrinkBrier.toFixed(3)+" · LL "+d.shrinkLogLoss.toFixed(3):"—"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Calibrazione / edge"}),el("p",{"class":"v tab","text":d.scoreN?("gap "+(d.calibrationGap*100).toFixed(1)+"% · edge "+(d.edgeMedio>=0?"+":"")+(d.edgeMedio*100).toFixed(1)+"%"):"—"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Copertura"}),el("p",{"class":"v tab","text":d.scoreN+"/"+d.n+" misurabili · "+d.missingP+" senza p · "+d.missingTimestamp+" senza ora"})]),
+            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Esclusi"}),el("p",{"class":"v tab","text":d.rimborsate+" push · "+d.conflitti+" conflitti · "+d.missingQuote+" senza quota"})])
+          ]),
+          el("div",{"class":"lab-fase"},[
+            el("span",{"text":fase.etichetta}),el("span",{"text":fase.nota})
+          ])
+        ]));
+      });
+      pag.appendChild(lab);
+
+      if(chiuse.length){
+        var ultimaData=chiuse.reduce(function(a,g){return !a || g.data>a ? g.data : a;},"");
+        var ultimoGiorno=chiuse.filter(function(g){return g.data===ultimaData;});
+        var mancantiUltimo=ultimoGiorno.filter(function(g){return !g.haDebrief;});
+        if(mancantiUltimo.length){
+          pag.appendChild(el("div",{"class":"scheda"},[
+            el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Debrief da completare"})]),
+            el("p",{"class":"avviso","style":{margin:"14px 16px"},"text":"Debrief "+breve(ultimaData)+" mancanti: "+mancantiUltimo.length+" su "+ultimoGiorno.length+" pick. I ticket multipli della stessa selezione contano una volta sola."})
+          ]));
+        }
+      }
+
+      if(!chiuse.length){
+        pag.appendChild(el("div",{"class":"scheda"},[
+          el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Nessuna pick chiusa nel filtro"})]),
+          el("p",{"class":"guida-p","style":{padding:"14px 16px",margin:"0"},"text":"Se hai appena chiuso una giocata, prova Tutti gli anni / Tutti i mesi / Tutte le stagioni. Se il contatore resta a 0, il dato è registrato ma non viene riconosciuto come chiuso."})
+        ]));
+      }
+
+      var perMese={};
+      righeChiuse.forEach(function(g){
+        var k=String(annoData(g.data))+"-"+dueCifre(meseData(g.data));
+        if(!perMese[k]) perMese[k]=[];
+        perMese[k].push(g);
+      });
+      var mesiKeys=Object.keys(perMese).sort().reverse().slice(0,12);
+      if(mesiKeys.length){
+        var trend=el("div",{"class":"scheda"});
+        trend.appendChild(el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Andamento mensile"})]));
+        var body=el("div",{"style":{padding:"6px 16px 12px"}});
+        mesiKeys.forEach(function(k){
+          var gruppiMese=gruppiCore(perMese[k]);
+          var realiMese=gruppiMese.filter(function(g){return g.reale;});
+          var osservateMese=gruppiMese.filter(function(g){return g.osservata;});
+          var rr=riepilogoGruppiCore(realiMese);
+          var pp=k.split("-");
+          body.appendChild(el("div",{"style":{display:"flex",justifyContent:"space-between",gap:"12px",padding:"10px 0",borderBottom:"1px solid #20313D"}},[
+            el("span",{"text":nomeMese(Number(pp[1]))+" "+pp[0]}),
+            el("span",{"class":"tab","text":realiMese.length+" reali · "+(rr.n?((rr.roi>=0?"+":"")+rr.roi.toFixed(0)+"% ROI"):"—")+(osservateMese.length?" · "+osservateMese.length+" osservate":"")})
+          ]));
+        });
+        trend.appendChild(body); pag.appendChild(trend);
+      }
+
+      pag.appendChild(el("div",{"class":"scheda"},[
+        el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Disciplina BET Core"})]),
+        el("div",{"style":{padding:"14px 16px"}},[
+          el("p",{"class":"guida-p","text":"Anno, mese e stagione sono ricavati automaticamente dalla data della pick."}),
+          el("p",{"class":"guida-p","text":"Una selezione giocata con piu ticket conta come una sola pick; stake e profitto sommano comunque tutti i ticket reali."}),
+          el("p",{"class":"guida-p","text":"Il CLV confronta la quota presa con la closing line sulle sole pick reali: positivo significa che sei entrato a un prezzo migliore del mercato in chiusura."}),
+          el("p",{"class":"guida-p","text":"Le pick osservate ("+osservate.length+") non toccano la cassa ma restano nel campione."}),
+          el("p",{"class":"guida-p","text":"Il debrief trasforma il risultato in informazione e riduce il rischio di giudicare il framework soltanto da vinta/persa."})
+        ])
+      ]));
+    }catch(err){
+      pag.appendChild(el("div",{"class":"scheda"},[
+        el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Core — errore di visualizzazione"})]),
+        el("div",{"style":{padding:"14px 16px"}},[
+          el("p",{"class":"guida-p","text":"Le giocate non sono state modificate. Errore: "+(err && err.message ? err.message : String(err))}),
+          el("p",{"class":"guida-p","text":"Pick totali locali: "+S.giocate.length+" · pick chiuse logiche rilevate: "+gruppiCore(chiuseTutte()).length})
+        ])
+      ]));
+    }
+    return pag;
+  }
+
+  // La scheda Cassa descrive movimenti reali: ogni riga ufficiale chiusa e'
+  // un ticket, anche quando due multiple hanno lo stesso titolo generico.
+  // Il raggruppamento per ipotesi analitica resta confinato alla scheda Core.
+  function riepilogoMensile(){
+    var mesi={}, i;
+    var reali=chiuseTutte().filter(rigaRealeCore);
+    reali.forEach(function(g){
+      var m=String(g.data||"").slice(0,7);
+      if(!m) return;
+      if(!mesi[m]) mesi[m]={mese:m,n:0,giocato:0,profitto:0};
+      mesi[m].n++; mesi[m].giocato+=Number(g.stake||0); mesi[m].profitto+=Number(g.profitto||0);
+    });
+    var versPerMese={}, rettPerMese={}, prelPerMese={};
+    for(i=0;i<S.versamenti.length;i++){
+      var vm=String(S.versamenti[i].data||"").slice(0,7);
+      if(!vm) continue;
+      var tipoM=tipoMovimento(S.versamenti[i]);
+      var destinazione=tipoM==="rettifica" ? rettPerMese : tipoM==="prelievo" ? prelPerMese : versPerMese;
+      destinazione[vm]=(destinazione[vm]||0)+(tipoM==="prelievo"?Math.abs(Number(S.versamenti[i].importo||0)):Number(S.versamenti[i].importo||0));
+    }
+    var chiavi=Object.keys(mesi).concat(Object.keys(versPerMese),Object.keys(rettPerMese),Object.keys(prelPerMese));
+    var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
+    return uniche.sort().reverse().map(function(m){
+      var d=mesi[m]||{mese:m,n:0,giocato:0,profitto:0};
+      return {mese:m,n:d.n,giocato:d.giocato,profitto:d.profitto,
+        roi:d.giocato?(d.profitto/d.giocato)*100:0,
+        versato:versPerMese[m]||0,rettifica:rettPerMese[m]||0,prelevato:prelPerMese[m]||0};
+    });
+  }
+
+  // Stesso identico schema di riepilogoMensile, granularita' giornaliera:
+  // per ogni giorno conta anche vinte/perse/rimborsate, non solo il numero
+  // totale, cosi' il debrief giornaliero non deve ricontarle a mano.
+  function riepilogoGiornaliero(){
+    var giorni={}, i;
+    var reali=chiuseTutte().filter(rigaRealeCore);
+    reali.forEach(function(g){
+      var d=String(g.data||"");
+      if(!d) return;
+      if(!giorni[d]) giorni[d]={giorno:d,n:0,vinte:0,perse:0,rimborsate:0,giocato:0,profitto:0};
+      giorni[d].n++; giorni[d].giocato+=Number(g.stake||0); giorni[d].profitto+=Number(g.profitto||0);
+      var esito=g.esito;
+      if(esito==="vinta") giorni[d].vinte++;
+      else if(esito==="persa") giorni[d].perse++;
+      else if(esito==="rimborsata") giorni[d].rimborsate++;
+    });
+    var versPerGiorno={}, rettPerGiorno={}, prelPerGiorno={};
+    for(i=0;i<S.versamenti.length;i++){
+      var vd=String(S.versamenti[i].data||"");
+      if(!vd) continue;
+      var tipoG=tipoMovimento(S.versamenti[i]);
+      var destinazione=tipoG==="rettifica" ? rettPerGiorno : tipoG==="prelievo" ? prelPerGiorno : versPerGiorno;
+      destinazione[vd]=(destinazione[vd]||0)+(tipoG==="prelievo"?Math.abs(Number(S.versamenti[i].importo||0)):Number(S.versamenti[i].importo||0));
+    }
+    var chiavi=Object.keys(giorni).concat(Object.keys(versPerGiorno),Object.keys(rettPerGiorno),Object.keys(prelPerGiorno));
+    var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
+    return uniche.sort().reverse().map(function(d){
+      var x=giorni[d]||{giorno:d,n:0,vinte:0,perse:0,rimborsate:0,giocato:0,profitto:0};
+      return {giorno:d,n:x.n,vinte:x.vinte,perse:x.perse,rimborsate:x.rimborsate,
+        giocato:x.giocato,profitto:x.profitto,
+        roi:x.giocato?(x.profitto/x.giocato)*100:0,
+        versato:versPerGiorno[d]||0,rettifica:rettPerGiorno[d]||0,prelevato:prelPerGiorno[d]||0};
+    });
+  }
+
+  // "versati 10,00 · prelevati 150,00 · rettifica -50,42" per i riepiloghi
+  function testoMovimenti(x){
+    var parti=[];
+    if(x.versato>0) parti.push("versati "+euro(x.versato));
+    if(x.prelevato>0) parti.push("prelevati "+euro(x.prelevato));
+    if(x.rettifica) parti.push("rettifica "+segnato(x.rettifica));
+    return parti.join(" \u00B7 ");
+  }
+
+  async function eliminaVersamento(v){
+    if(!v || !window.confirm("Eliminare definitivamente questo movimento?")) return;
+    try{
+      if(DB && CLOUD.user){
+        await utenteCloudVerificato();
+        var rr=await DB.from("versamenti").delete()
+          .eq("user_id",CLOUD.user.id).eq("legacy_id",String(v.cloudLegacyId||v.id));
+        if(rr.error) throw rr.error;
+      }
+      S.versamenti=S.versamenti.filter(function(x){return String(x.id)!==String(v.id);});
+      salva(true);
+      CLOUD.stato="Versamento eliminato dal registro e dal cloud";
+      S.errore=null;
+    }catch(e){
+      S.errore="Eliminazione del versamento non riuscita: "+(e.message||e);
+    }
+    disegna();
+  }
+
+  function vistaCassa(c){
+    var pag = el("div",{"class":"pag"});
+    var mese = versatoQuestoMese();
+    var restaMese = Math.max(0, S.budgetMese - mese);
+
+    // Il verdetto: cosa hai messo, cosa hai adesso
+    pag.appendChild(el("div",{"class":"verdetto"},[
+      el("p",{"class":"etich","text":"Risultato reale"}),
+      el("p",{"class":"serif tab verdetto-cifra",
+        "text": segnato(c.reale),
+        "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}}),
+      el("p",{"class":"verdetto-nota",
+        "text": c.versato > 0
+          ? "Hai versato "+euro(c.versato)+
+            (c.prelevato ? ", prelevato "+euro(c.prelevato) : "")+
+            (c.rettifiche ? " e registrato rettifiche "+segnato(c.rettifiche) : "")+
+            "; in cassa hai "+euro(c.bankroll)+"."
+          : "Registra il primo versamento per iniziare."}),
+      c.versato > 0
+        ? el("p",{"class":"verdetto-nota","style":{marginTop:"4px"},
+            "text":"Rendimento sul versato: "+
+              (c.reale>=0?"+":"")+((c.reale/c.versato)*100).toFixed(1)+"%"})
+        : null,
+      // Le sole giocate, separate dalle rettifiche: dicono come va il metodo,
+      // mentre il risultato reale dice come vanno i soldi.
+      c.chiuse.length
+        ? el("p",{"class":"verdetto-nota","style":{marginTop:"4px"},
+            "text":"Dalle giocate: "+segnato(c.profitto)+" · ROI "+
+              (riassumi(c.chiuse).roi>=0?"+":"")+riassumi(c.chiuse).roi.toFixed(1)+"% su "+
+              euro(riassumi(c.chiuse).giocato)+" puntati"})
+        : null
+    ]));
+
+    // Budget del mese
+    var barraM = el("div",{"class":"barra"});
+    barraM.appendChild(el("div",{"class":"barra-piena","style":{
+      width: Math.min(100, S.budgetMese>0 ? (mese/S.budgetMese)*100 : 0)+"%",
+      background: mese >= S.budgetMese ? "#D4635F" : "#C8873A"
+    }}));
+
+    pag.appendChild(el("div",{"class":"tetto"},[
+      el("div",{"class":"tetto-riga"},[
+        el("span",{"class":"etich","text":"Versato questo mese"}),
+        el("span",{"class":"tab","style":{fontSize:"12px",
+          color: mese >= S.budgetMese ? "#D4635F" : "#8C9BA8"},
+          "text": euro(mese)+" di "+euro(S.budgetMese)})
+      ]),
+      barraM,
+      el("p",{"class":"avviso","text": mese >= S.budgetMese
+        ? "Budget del mese esaurito. Il prossimo versamento lo supera."
+        : "Restano "+euro(restaMese)+" di budget questo mese."})
+    ]));
+
+    // Riepilogo mese per mese
+    var mesi = riepilogoMensile();
+    if(mesi.length){
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
+        "text":"Riepilogo mensile"}));
+      var listaMesi = el("div");
+      mesi.forEach(function(m, idx){
+        listaMesi.appendChild(el("div",{"class":"mese"+(idx===0?" mese-corrente":"")},[
+          el("div",{"class":"mese-top"},[
+            el("span",{"text":nomeMese(m.mese)}),
+            el("span",{"class":"tab","style":{fontWeight:"600",
+              color: m.n===0 ? "#4A5A68" : m.profitto>=0 ? "#4FB286" : "#D4635F"},
+              "text": m.n===0 ? "\u2014" : segnato(m.profitto)})
+          ]),
+          el("div",{"class":"mese-riga"},[
+            el("span",{"text": m.n
+              ? m.n+(m.n===1?" ticket reale":" ticket reali")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
+              : "nessuna giocata"}),
+            el("span",{"class":"tab","text":testoMovimenti(m)})
+          ])
+        ]));
+      });
+      pag.appendChild(listaMesi);
+    }
+
+    // Riepilogo giorno per giorno: stesso schema del mensile, ma con vinte/
+    // perse/rimborsate esplicite, cosi' l'impatto sulla cassa si legge senza
+    // dover riaprire il registro giornata per giornata.
+    var giorni = riepilogoGiornaliero();
+    if(giorni.length){
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
+        "text":"Riepilogo giornaliero"}));
+      var listaGiorni = el("div");
+      giorni.forEach(function(g, idx){
+        var dettaglio = g.n
+          ? [g.vinte&&(g.vinte+(g.vinte===1?" vinta":" vinte")),
+             g.perse&&(g.perse+(g.perse===1?" persa":" perse")),
+             g.rimborsate&&(g.rimborsate+" rimb.")]
+            .filter(Boolean).join(", ")
+          : "nessuna giocata";
+        listaGiorni.appendChild(el("div",{"class":"mese"+(idx===0?" mese-corrente":"")},[
+          el("div",{"class":"mese-top"},[
+            el("span",{"class":"tab","text":breve(g.giorno)}),
+            el("span",{"class":"tab","style":{fontWeight:"600",
+              color: g.n===0 ? "#4A5A68" : g.profitto>=0 ? "#4FB286" : "#D4635F"},
+              "text": g.n===0 ? "—" : segnato(g.profitto)})
+          ]),
+          el("div",{"class":"mese-riga"},[
+            el("span",{"text": g.n
+              ? dettaglio+" · ROI "+(g.roi>=0?"+":"")+g.roi.toFixed(0)+"%"
+              : dettaglio}),
+            el("span",{"class":"tab","text":testoMovimenti(g)})
+          ])
+        ]));
+      });
+      pag.appendChild(listaGiorni);
+    }
+
+    // Nuovo versamento
+    var inImporto = el("input",{"type":"number","inputmode":"decimal","step":"10",
+      "class":"tab","placeholder":"100.00"});
+    var inDataV = el("input",{"type":"date","value":oggi()});
+
+    function registraMovimento(tipo){
+      var v = parseFloat(inImporto.value);
+      if(!v || v<=0) return;
+      S.versamenti.push({ id:Date.now(), data:inDataV.value||oggi(),
+        importo:v, tipoMovimento:tipo, cloudDirty:true });
+      salva(); disegna();
+    }
+    pag.appendChild(el("div",{"class":"gruppo"},[
+      el("label",{"text":"Nuovo movimento"}),
+      el("div",{"class":"due","style":{marginBottom:"12px"}},[ inImporto, inDataV ]),
+      el("div",{"class":"due"},[
+        el("button",{"class":"principale","text":"Registra versamento","onclick":function(){ registraMovimento("versamento"); }}),
+        el("button",{"class":"secondario","text":"Registra prelievo","onclick":function(){ registraMovimento("prelievo"); }})
+      ])
+    ]));
+
+    // Storico versamenti
+    if(S.versamenti.length){
+      var lista = el("ul",{"style":{marginTop:"8px"}});
+      S.versamenti.slice().sort(function(a,b){
+        return a.data < b.data ? 1 : -1;
+      }).forEach(function(v){
+        lista.appendChild(el("li",{"class":"vers"},[
+          el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},
+            "text":breve(v.data)+" · "+tipoMovimento(v)}),
+          el("span",{"class":"tab","style":{fontSize:"14px"},
+            "text":tipoMovimento(v)==="versamento" ? euro(v.importo) : segnato(importoCassa(v))}),
+          el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E",
+            "textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})
+        ]));
+      });
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px"},"text":"Storico movimenti"}));
+      pag.appendChild(lista);
+    }
+
+    // Impostazioni budget e limite
+    var inBudget = el("input",{"type":"number","inputmode":"decimal","class":"tab",
+      "step":"10","value":S.budgetMese});
+    inBudget.addEventListener("change",function(){
+      S.budgetMese = parseFloat(this.value)||0; CLOUD.settingsDirty=true; salva(); disegna();
+    });
+
+    var inPercentuale = S.tettiModo === "percentuale";
+
+    // Selettore del modo. In percentuale i tetti seguono la cassa da soli:
+    // se la cassa cala calano anche le puntate, che e' il punto di tutta la
+    // modifica.
+    var selModo = el("div",{"class":"due","style":{marginBottom:"12px"}});
+    [["fisso","Cifra fissa"],["percentuale","% della cassa"]].forEach(function(x){
+      selModo.appendChild(el("button",{
+        "class": "scelta"+(S.tettiModo===x[0] ? " on" : ""),
+        "text": x[1],
+        "onclick": function(){ S.tettiModo = x[0]; CLOUD.settingsDirty=true; salva(); disegna(); }
+      }));
+    });
+
+    var campiTetti = el("div",{"class":"tre","style":{marginBottom:"8px"}});
+    [["sabato","Sabato"],["domenica","Domenica"],["feriali","Lun\u2013ven"]].forEach(function(x){
+      var inp = el("input",{"type":"number","inputmode":"decimal","class":"tab",
+        "step": inPercentuale ? "5" : "5",
+        "value": inPercentuale ? S.tettiPct[x[0]] : S.tetti[x[0]]});
+      inp.addEventListener("change",function(){
+        var v = Math.max(0, parseFloat(this.value)||0);
+        if(inPercentuale) S.tettiPct[x[0]] = Math.min(100, v);
+        else S.tetti[x[0]] = v;
+        CLOUD.settingsDirty=true;
+        salva(); disegna();
+      });
+      // In percentuale il numero da solo non dice quanto si sta rischiando:
+      // accanto va la cifra che ne esce oggi.
+      var sotto = inPercentuale
+        ? el("p",{"class":"avviso","style":{margin:"4px 0 0",fontSize:"11px"},
+            "text": "= "+euro(tettoDi(x[0]))})
+        : null;
+      var blocco = [
+        el("label",{"class":"etich","style":{display:"block",marginBottom:"6px"},"text":x[1]}),
+        inp
+      ];
+      if(sotto) blocco.push(sotto);
+      campiTetti.appendChild(el("div",null,blocco));
+    });
+
+    var proiez = proiezioneMese();
+    var sfondaBudget = proiez > S.budgetMese + 0.01;
+
+    pag.appendChild(el("div",{"style":{marginTop:"28px","paddingTop":"20px",
+      "borderTop":"1px solid #22303C"}},[
+      el("div",{"class":"gruppo"},[
+        el("label",{"text":"Tetto ai versamenti del mese (\u20AC)"}), inBudget,
+        el("p",{"class":"avviso","style":{marginTop:"6px"},
+          "text":"Quanto puoi versare in un mese, non quanto puoi giocare. "+
+            "E l'unico limite che regge se, quando manca capienza, si versa "+
+            "per coprire il piano."})
+      ]),
+      el("div",{"class":"gruppo"},[
+        el("label",{"text":"Limiti di gioco"}),
+        selModo,
+        campiTetti,
+        el("p",{"class":"avviso","text": inPercentuale
+          ? "I tetti seguono la cassa: se scende scendono anche le puntate, "+
+            "se una giornata chiude in utile si apre spazio per quella dopo. "+
+            "Sabato e domenica hanno una percentuale ciascuno, da lunedi a "+
+            "venerdi la percentuale e unica per tutta la settimana."
+          : "Sabato e domenica hanno un tetto ciascuno. Da lunedi a venerdi il tetto e "+
+            "unico per tutta la settimana."}),
+        // Volume giocato e versamenti sono grandezze diverse: giocare \u20ac156 in
+        // un mese non significa perderne \u20ac156. Se pero' il volume supera cio'
+        // che si puo' versare, la differenza puo' arrivare solo dalle vincite
+        // rigiocate \u2014 ed e' quello che dice la riga, invece di dichiarare un
+        // superamento che confronterebbe mele con pere.
+        el("p",{"class":"avviso","style":{color: sfondaBudget ? "#D4635F" : "#4A5A68"},
+          "text": "A pieno regime: "+euro(proiez)+" giocati al mese"+
+            (inPercentuale ? " con la cassa di adesso ("+euro(bankrollCorrente())+")" : "")+
+            (sfondaBudget
+              ? " \u2014 con "+euro(S.budgetMese)+" di versamenti, almeno "+
+                euro(proiez - S.budgetMese)+" devono arrivare dalle vincite rigiocate"
+              : " \u2014 coperti dai versamenti anche senza vincere nulla")})
+      ])
+    ]));
+
+    return pag;
+  }
+
+  function analizzaCSV(testo){
+    var righe=[],riga=[],campo="",virgolette=false,s=String(testo||"").replace(/^\uFEFF/,"");
+    for(var i=0;i<s.length;i++){
+      var ch=s[i];
+      if(virgolette){
+        if(ch==='"' && s[i+1]==='"'){campo+='"';i++;}
+        else if(ch==='"') virgolette=false;
+        else campo+=ch;
+      }else if(ch==='"') virgolette=true;
+      else if(ch===','){riga.push(campo);campo="";}
+      else if(ch==='\n'){riga.push(campo);righe.push(riga);riga=[];campo="";}
+      else if(ch!=='\r') campo+=ch;
+    }
+    if(campo!==""||riga.length){riga.push(campo);righe.push(riga);}
+    return righe.filter(function(x){return x.some(function(v){return String(v).trim()!=="";});});
+  }
+
+  function righeInGiocate(righe){
+    if(!righe||!righe.length) return {ok:[],erroreFormato:true};
+    var intestazione=righe[0].map(function(x){return String(x||"").trim().toLowerCase();});
+    var indice={};intestazione.forEach(function(x,i){indice[x]=i;});
+    if(indice.data==null||indice.quota==null||indice.stake==null) return {ok:[],erroreFormato:true};
+    function valore(r,k){return indice[k]==null?"":String(r[indice[k]]==null?"":r[indice[k]]).trim();}
+    function numero(v){var n=Number(String(v||"").replace(",","."));return isFinite(n)?n:null;}
+    function tipsterId(v){
+      var s=testoChiave(v);
+      if(s.indexOf("rubino")>=0||s.indexOf("fabrizio")>=0||s.indexOf("mercante")>=0)return null;
+      return "io";
+    }
+    var ok=[];
+    righe.slice(1).forEach(function(r,idx){
+      var data=valore(r,"data"),quota=numero(valore(r,"quota")),stake=numero(valore(r,"stake"));
+      if(tipsterId(valore(r,"tipster"))===null)return; // tipster eliminato
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(data)||!quota||quota<=1||stake===null||stake<0)return;
+      var tipo=valore(r,"tipo").toLowerCase(),stato=valore(r,"stato_core")||"ufficiale";
+      var gambe=[];try{gambe=JSON.parse(valore(r,"gambe")||"[]");}catch(_e){gambe=[];}
+      var p={id:Date.now()+idx,data:data,tipster:tipsterId(valore(r,"tipster")),evento:valore(r,"evento"),mercato:valore(r,"mercato"),
+        nota:valore(r,"nota"),quota:quota,quotaCheck:numero(valore(r,"quota_check")),quotaChiusura:numero(valore(r,"quota_chiusura")),
+        probabilitaStimata:numero(valore(r,"probabilita_stimata")),probabilitaTimestamp:valore(r,"probabilita_timestamp"),
+        confidence:numero(valore(r,"confidence")),debrief:valore(r,"debrief"),statoCore:stato,
+        classificazione:valore(r,"classificazione")||"NON CLASSIFICATA",stake:stake,
+        esito:(valore(r,"esito")||"aperta").toLowerCase(),profitto:numero(valore(r,"profitto"))||0,
+        osservata:tipo==="osservata"||stato==="scartata",tipoSchedina:valore(r,"tipo_schedina")||"SINGOLA",
+        bookmaker:valore(r,"bookmaker")||"Sportium",faseIngresso:valore(r,"fase_ingresso")||"PRE",
+        ticketId:valore(r,"ticket_id"),orarioIngresso:valore(r,"orario_ingresso"),gambe:normalizzaGambe(gambe),
+        famigliaMercato:valore(r,"famiglia_mercato")||"NON_CLASSIFICATO",ambitoMercato:valore(r,"ambito_mercato")||"PARTITA",
+        selezioneNormalizzata:valore(r,"selezione_normalizzata"),lineaMercato:valore(r,"linea_mercato")||null,
+        versioneTassonomia:valore(r,"versione_tassonomia")||"v0.1"};
+      try{p.componentiMercato=JSON.parse(valore(r,"componenti_mercato")||"[]");}catch(_e2){p.componentiMercato=[];}
+      p.classificazione=classificazioneLegacy(p);ok.push(aggiornaTassonomia(p));
+    });
+    return {ok:ok,erroreFormato:false};
+  }
+
+  function esportaCSV(){
+    function q(v){return '"'+String(v==null?"":v).replace(/"/g,'""')+'"';}
+    var righe = [["data","anno","mese","stagione","tipster","evento","mercato","nota","quota","quota_check","quota_chiusura","probabilita_stimata","probabilita_timestamp","confidence","debrief","stato_core","classificazione","stake","esito","profitto","tipo","tipo_schedina","bookmaker","fase_ingresso","ticket_id","orario_ingresso","gambe","famiglia_mercato","ambito_mercato","selezione_normalizzata","linea_mercato","componenti_mercato","versione_tassonomia"]];
+    S.giocate.forEach(function(g){
+      aggiornaTassonomia(g);
+      righe.push([g.data, annoData(g.data)||"", meseData(g.data)||"", stagioneData(g.data), trova(g.tipster).nome,
+        q(g.evento),q(g.mercato),q(g.nota),g.quota.toFixed(2),g.quotaCheck?g.quotaCheck.toFixed(2):"",g.quotaChiusura?g.quotaChiusura.toFixed(2):"",
+        g.probabilitaStimata==null?"":g.probabilitaStimata,q(g.probabilitaTimestamp||""),g.confidence||"",q(g.debrief),
+        g.statoCore||(g.osservata?"scartata":"ufficiale"),classificazioneLegacy(g),g.stake.toFixed(2),g.esito,g.profitto.toFixed(2),
+        g.osservata?"osservata":"giocata",g.tipoSchedina||"SINGOLA",g.bookmaker||"Sportium",g.faseIngresso||"PRE",q(g.ticketId||""),
+        q(g.orarioIngresso||""),q(JSON.stringify(normalizzaGambe(g.gambe))),g.famigliaMercato||"NON_CLASSIFICATO",g.ambitoMercato||"PARTITA",
+        q(g.selezioneNormalizzata||""),q(g.lineaMercato||""),q(JSON.stringify(g.componentiMercato||[])),g.versioneTassonomia||"v0.1"]);
+    });
+    var csv="\uFEFF"+righe.map(function(r){return r.join(",");}).join("\r\n");
+    var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}); var url=URL.createObjectURL(blob); var a=document.createElement("a");
+    a.href=url; a.download="registro-"+oggi()+".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  }
+  function importaFileCSV(file){
+    var lettore=new FileReader();
+    lettore.onload=function(){
+      var righe; try{righe=analizzaCSV(String(lettore.result));}catch(e){S.errore="File non leggibile.";disegna();return;}
+      if(righe.length<2){S.errore="Il file sembra vuoto.";disegna();return;}
+      var esito=righeInGiocate(righe); if(esito.erroreFormato){S.errore="Colonne non riconosciute. Sono supportati anche i CSV della versione precedente.";disegna();return;}
+      if(!esito.ok.length){S.errore="Nessuna riga valida trovata nel file.";disegna();return;}
+      if(!window.confirm("Trovate "+esito.ok.length+" giocate valide. Importarle senza cancellare quelle presenti?")) return;
+      var esistenti={}; S.giocate.forEach(function(g){esistenti[chiavePick(g)]=true;}); var aggiunte=0;
+      esito.ok.forEach(function(g){var k=chiavePick(g);if(esistenti[k])return;esistenti[k]=true;g.cloudDirty=true;S.giocate.push(g);aggiunte++;});
+      salva(); S.errore=null; disegna(); window.alert(aggiunte+" giocate importate.");
+    };
+    lettore.readAsText(file,"utf-8");
+  }
+  function vistaDati(){
+    var pag=el("div",{"class":"pag"});
+    pag.appendChild(el("div",{"class":"scheda"},[
+      el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Backup e trasferimento dati"})]),
+      el("div",{"style":{padding:"16px"}},[
+        el("p",{"class":"guida-p","text":"Qui trovi importazione ed esportazione in modo permanente. Il CSV della vecchia versione e compatibile: i nuovi campi BET Core resteranno vuoti o verranno ricostruiti come Ufficiale/Scartata."})
+      ])
+    ]));
+    var input=el("input",{"type":"file","accept":".csv,text/csv","style":{display:"none"}});
+    input.addEventListener("change",function(){var f=this.files&&this.files[0];this.value="";if(f)importaFileCSV(f);});
+    var cloudCard=el("div",{"class":"scheda","style":{marginTop:"16px"}});
+    cloudCard.appendChild(el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Cloud Supabase"}),el("span",{"class":"tab","style":{fontSize:"11px",color:CLOUD.user?"#4FB286":"#8C9BA8"},"text":CLOUD.user?"CONNESSO":"LOCALE"})]));
+    var cloudBody=el("div",{"style":{padding:"16px"}});
+    if(!CLOUD.user){
+      cloudBody.appendChild(el("p",{"class":"guida-p","text":"Crea il tuo accesso personale. La password resta gestita da Supabase e non viene salvata nella webapp."}));
+      var em=el("input",{"type":"email","placeholder":"La tua email","autocomplete":"email","style":{marginBottom:"10px"}});
+      var pw=el("input",{"type":"password","placeholder":"Password (almeno 6 caratteri)","autocomplete":"current-password","style":{marginBottom:"10px"}});
+      cloudBody.appendChild(em); cloudBody.appendChild(pw);
+      cloudBody.appendChild(el("div",{"class":"due"},[
+        el("button",{"class":"principale","text":"Accedi","onclick":function(){loginCloud(em.value.trim(),pw.value,false);}}),
+        el("button",{"class":"secondario","text":"Crea account","onclick":function(){loginCloud(em.value.trim(),pw.value,true);}})
+      ]));
+    }else{
+      cloudBody.appendChild(el("p",{"class":"guida-p","text":"Connesso come "+CLOUD.email+". Il cloud e protetto per utente con RLS."}));
+      cloudBody.appendChild(el("p",{"class":"avviso","text":"Locale: "+S.giocate.length+" pick · Cloud: "+(CLOUD.remoteCount===null?"controllo…":CLOUD.remoteCount+" pick")}));
+      if(CLOUD.remoteCount===null) setTimeout(function(){aggiornaConteggioCloud().then(disegna);},50);
+      if(!S.giocate.length) cloudBody.appendChild(el("p",{"class":"avviso","text":"Questo browser non ha ancora dati locali. Se esiste uno storico nel cloud, te ne proporro automaticamente il ripristino."}));
+      if(!CLOUD.syncEnabled){
+        cloudBody.appendChild(el("button",{"class":"principale","text":"Attiva sync e invia questi dati","onclick":async function(){if(window.confirm("Inviare al cloud lo storico attualmente presente su questo dispositivo?")){var ok=await inviaCloud(false);if(ok){CLOUD.syncEnabled=true;localStorage.setItem("registro-tipster-cloud-sync","1");CLOUD.stato="Sync automatica attiva";disegna();}}}}));
+      }else{
+        cloudBody.appendChild(el("p",{"class":"avviso","text":"Sync istantanea attiva: ogni salvataggio, modifica, stato o esito viene inviato subito al cloud."}));
+        cloudBody.appendChild(el("div",{"class":"due","style":{marginTop:"10px"}},[
+          el("button",{"class":"secondario","text":"Invia ora","onclick":function(){inviaCloud(false);}}),
+          el("button",{"class":"secondario","text":"Scarica dal cloud","onclick":scaricaCloud})
+        ]));
+      }
+      cloudBody.appendChild(el("button",{"class":"secondario","style":{marginTop:"10px"},"text":"Disconnetti","onclick":logoutCloud}));
+    }
+    if(CLOUD.stato) cloudBody.appendChild(el("p",{"class":"avviso","text":CLOUD.stato}));
+    cloudCard.appendChild(cloudBody); pag.appendChild(cloudCard);
+
+    pag.appendChild(el("div",{"class":"due","style":{marginTop:"16px"}},[
+      el("button",{"class":"secondario","text":"Esporta CSV","onclick":function(){if(S.giocate.length)esportaCSV();}}),
+      el("button",{"class":"principale","text":"Importa CSV","onclick":function(){input.click();}})
+    ]));
+    pag.appendChild(input);
+    pag.appendChild(el("p",{"class":"avviso","text":"L'importazione aggiunge i dati e salta i doppioni banali; non cancella lo storico gia presente."}));
+    return pag;
+  }
+
+  function vistaTipster(c){
+    var pag = el("div",{"class":"pag"});
+    if(!c.chiuse.length){
+      pag.appendChild(el("p",{"text":"I numeri compaiono appena chiudi la prima giocata.",
+        "style":{fontSize:"14px",color:"#6D7F8E",textAlign:"center",padding:"32px 0"}}));
+    }
+
+    var tutte = chiuseTutte();
+
+    TIPSTERS.forEach(function(t){
+      var sue = c.chiuse.filter(function(g){ return g.tipster===t.id; });
+      var loro = tutte.filter(function(g){ return g.tipster===t.id; });
+      var oss = loro.filter(function(g){ return g.osservata; });
+      var soglia = daQuando(30);
+      var recenti = sue.filter(function(g){ return g.data >= soglia; });
+      var tot = riassumi(sue);
+      var rec = riassumi(recenti);
+      var glob = riassumi(loro);
+      var n = tot.n;
+      var pend = c.aperte.filter(function(g){ return g.tipster===t.id; }).length;
+
+      var celle = el("div",{"class":"celle"});
+      [["Giocate", n?String(n):"\u2014"],
+       ["Vinte", n? tot.vinte+"/"+n : "\u2014"],
+       ["ROI", n? (tot.roi>=0?"+":"")+tot.roi.toFixed(0)+"%" : "\u2014"],
+       ["Quota med.", n? tot.quotaMedia.toFixed(2) : "\u2014"]
+      ].forEach(function(x){
+        celle.appendChild(el("div",{"class":"cella"},[
+          el("p",{"class":"k","text":x[0]}), el("p",{"class":"v tab","text":x[1]})
+        ]));
+      });
+
+      // Ultimi 30 giorni: la forma recente puo divergere dallo storico
+      var recente = null;
+      if(n){
+        recente = el("div",{"class":"recente"},[
+          el("span",{"class":"k","text":"Ultimi 30 giorni"}),
+          rec.n
+            ? el("span",{"class":"tab","style":{fontSize:"12px",
+                color: rec.profitto>=0 ? "#4FB286" : "#D4635F"},
+                "text": segnato(rec.profitto)+"  \u00B7  "+
+                  (rec.roi>=0?"+":"")+rec.roi.toFixed(0)+"% su "+rec.n})
+            : el("span",{"style":{fontSize:"12px",color:"#4A5A68"},"text":"nessuna giocata"})
+        ]);
+      }
+
+      // Se ci sono osservate, il vero rendimento del tipster e su tutte le sue proposte
+      var globale = null;
+      if(oss.length){
+        globale = el("div",{"class":"recente"},[
+          el("span",{"class":"k","text":"Tutte le sue proposte"}),
+          el("span",{"class":"tab","style":{fontSize:"12px",
+            color: glob.profitto>=0 ? "#4FB286" : "#D4635F"},
+            "text": (glob.roi>=0?"+":"")+glob.roi.toFixed(0)+"% su "+glob.n+
+              " ("+oss.length+" non giocate)"})
+        ]);
+      }
+
+      pag.appendChild(el("div",{"class":"scheda"},[
+        el("div",{"class":"scheda-top"},[
+          el("span",{"class":"serif scheda-nome","text":t.nome,"style":{color:t.tinta}}),
+          el("span",{"class":"scheda-tot tab",
+            "text": n ? segnato(tot.profitto) : "\u2014",
+            "style":{color: !n ? "#4A5A68" : tot.profitto>=0 ? "#4FB286" : "#D4635F"}})
+        ]),
+        celle,
+        recente,
+        globale,
+        (n || glob.n) ? el("p",{"class":"campione","text":affidabilita(glob.n)}) : null,
+        pend ? el("p",{"class":"pendenti",
+          "text": pend+(pend===1?" giocata ancora aperta":" giocate ancora aperte")}) : null
+      ]));
+    });
+
+    // Dove si guadagna e dove si perde: le giocate ufficiali chiuse divise
+    // per tipo di mercato (le multiple stanno insieme sotto "Multipla").
+    // Ordinate per profitto, cosi' in cima c'e' cio' che rende di piu'.
+    var famiglie={};
+    c.chiuse.forEach(function(g){
+      var k=g.famigliaMercato||"NON_CLASSIFICATO";
+      if(!famiglie[k]) famiglie[k]={nome:etichettaFamiglia(g),giocate:[]};
+      famiglie[k].giocate.push(g);
+    });
+    var righe=Object.keys(famiglie).map(function(k){
+      var r=riassumi(famiglie[k].giocate); r.nome=famiglie[k].nome; return r;
+    }).sort(function(a,b){ return b.profitto-a.profitto; });
+    if(righe.length){
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
+        "text":"Per tipo di mercato"}));
+      var lista=el("div");
+      righe.forEach(function(r){
+        lista.appendChild(el("div",{"class":"mese"},[
+          el("div",{"class":"mese-top"},[
+            el("span",{"text":r.nome}),
+            el("span",{"class":"tab","style":{fontWeight:"600",color:r.profitto>=0?"#4FB286":"#D4635F"},
+              "text":segnato(r.profitto)})
+          ]),
+          el("div",{"class":"mese-riga"},[
+            el("span",{"text":r.vinte+"/"+r.n+(r.n===1?" vinta":" vinte")+" \u00B7 ROI "+(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%"}),
+            el("span",{"class":"tab","text":"quota media "+r.quotaMedia.toFixed(2)})
+          ])
+        ]));
+      });
+      pag.appendChild(lista);
+      pag.appendChild(el("p",{"class":"campione","text":"Conta le giocate ufficiali chiuse. Con poche giocate per tipo i numeri sono indicativi."}));
+    }
+
+    return pag;
+  }
+
+  try{
+    carica();
+    disegna();
+    void initCloud();
+  }catch(err){
+    document.getElementById("app").innerHTML =
+      '<div style="padding:32px;font-size:14px;color:#D4635F">Errore di avvio: '+
+      String(err && err.message ? err.message : err)+'</div>';
+  }
+})();
+
+// Rende BET Core installabile come PWA autonoma, senza barra del browser.
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("./sw.js").catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
