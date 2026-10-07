@@ -159,4 +159,58 @@ Multipla Ref. DF07EA09193211DA6903 | 25/09/2026 19:59
 assert.equal(dueSchedine.ticketId,"DF07EA091931B226C50A");
 assert.equal(dueSchedine.eventi.length,2);
 
+// Schedina vera del 07/10/2026 (multipla con selezioni ancora aperte): testo
+// OCR dell'immagine ingrandita 2x. Sportbet aggiunge la colonna "Selezioni
+// aperte 2/2", cosi' "Importo" non e' a inizio riga e i valori stanno su
+// tre righe; "Vincita" esce come "\\/jncita". Prima: importo non letto e
+// primo mercato letto "1X + UNDER/OVER 3.5 1X + UN" (classificato Over!).
+const aperte=P.parseRicevuta(`13:48 © —                                            BAR
+—                             Spartbet                -
+=
+= [WE (sportier             94,02 €
+LIVE 0  IN CORSO @  CONCLUSE 7  CASHOUT Q
+Multipla (2)                                  Dettagli -
+Evento                        SEGNO            QUOTA ESITO
+
+«2 Brasile | Brasileiro Serie A | 08/10/2026 00:30
+
+Internacional - Corinthians
+
+1X + Under/Over 3.5                     1X + UN              1.64       o
+
+&2 Brasile | Brasileiro Serie A | 08/10/2026 01:00
+
+EC Vitoria BA - Chapecoense SC
+
+1X2                                            1                  1.52       ®
+Selezioni  Importo Bonus    Quota
+aperte                totale \\/jncita potenziale 25,00 €
+
+10,00 € 0,07 €
+
+2/2                           2.49
+
+Questo ticket puo essere riscosso prima          Ce |      Cashout
+
+della sua chiusura, per una cifra di 1,99 €                       1,99 €
+Multipla                    Ref. DFO7EAOA083IDCOIBEOC | 07/10/2026 13:48
+
+® Esitovincente         Esito perdente  @ Esito in corsc
+@    ®     4     od
+Prematch      Live      Carrello Mie scommesse Casino
+`);
+assert.equal(aperte.bookmaker,"Sportbet");
+assert.equal(aperte.stake,10);
+assert.equal(aperte.bonus,0.07);
+assert.equal(aperte.quota,2.49);
+assert.equal(aperte.esitoBook,"aperta");
+assert.equal(aperte.vincitaPotenziale,25);
+assert.equal(aperte.orarioIngresso,"2026-10-07T13:48");
+assert.deepEqual(aperte.eventi.map(x=>[x.evento,x.mercato,x.quota]),[
+  ["Internacional vs Corinthians","1X + UNDER 3.5",1.64],
+  ["EC Vitoria BA vs Chapecoense SC","1",1.52]
+]);
+// Limite noto: l'OCR legge "9" come "O" nel Ref. (vero: DF07EA0A0831DC91BE0C).
+assert.equal(aperte.ticketId,"DF07EA0A0831DC01BE0C");
+
 console.log("receipt-parser: ok");
