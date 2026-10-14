@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.23 · Market Lab</title>
+<title>Registro BET Core v4.24 · Market Lab</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -156,6 +156,9 @@ li.vers{display:flex;justify-content:space-between;align-items:baseline;gap:12px
 .ricevuta-import p{font-size:11px;line-height:1.5;color:var(--tenue2);margin:6px 0 0}
 .ricevuta-azione{width:auto;flex:0 0 auto;padding:10px 12px;border:1px solid var(--oro);
   border-radius:4px;color:var(--oro);font-size:12px;font-weight:600}
+.proposta-voce{display:block;width:100%;text-align:left;margin-top:10px;padding:10px 12px;border:1px solid var(--bordo);border-radius:4px;background:none;color:var(--testo);font:inherit}
+.proposta-voce strong{display:block;font-size:12px;color:var(--oro);margin-bottom:4px}
+.proposta-voce span{display:block;font-size:11px;line-height:1.5;color:var(--tenue2)}
 .ricevuta-azione:disabled{border-color:var(--bordo);color:var(--spento)}
 .ricevuta-progresso{height:4px;background:var(--bordo2);border-radius:99px;overflow:hidden;margin-top:12px}
 .ricevuta-progresso span{display:block;height:100%;background:var(--oro);transition:width .2s}
@@ -193,10 +196,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261014a"></script>
-<script src="./market-metrics.js?v=20261014a"></script>
-<script src="./sync-merge.js?v=20261014a"></script>
-<script src="./receipt-parser.js?v=20261014a"></script>
+<script src="./market-taxonomy.js?v=20261014b"></script>
+<script src="./market-metrics.js?v=20261014b"></script>
+<script src="./sync-merge.js?v=20261014b"></script>
+<script src="./receipt-parser.js?v=20261014b"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -241,6 +244,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   var DB = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
   var CLOUD = { user:null, email:"", stato:"", busy:false, syncEnabled: localStorage.getItem("registro-tipster-cloud-sync")==="1", timer:null, pending:false, ultimaSyncOk:null, remoteCount:null, lastDownloadCount:null, settingsDirty:false};
   var OCR = { stato:"idle", progresso:0, fase:"", messaggio:"", risultato:null, libreria:null };
+  var PROP = { stato:"idle", aperto:false, lista:[], messaggio:"" };
   var OCR_CDN = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
   // Percentuali di default del tetto, in un posto solo: erano duplicate fra
   // l'inizializzatore e il fallback di carica(), e quello di carica() vinceva
@@ -290,7 +294,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       quotaChiusura:"", probabilitaStimata:"", probabilitaTimestamp:"",
       confidence:"", debrief:"", statoCore:"ufficiale", stake:"", toccato:false, osservata:false,
       bookmaker:ultimoBookmaker(), faseIngresso:"PRE", classificazione:"PERSONALE",
-      ticketId:"", orarioIngresso:valoreDataOraLocale(new Date().toISOString()), tipoSchedina:"SINGOLA", gambe:[] };
+      ticketId:"", orarioIngresso:valoreDataOraLocale(new Date().toISOString()), tipoSchedina:"SINGOLA", gambe:[],
+      propostaVeggenteId:null, propostaTipo:"", propostaVariante:false, propostaGambe:0 };
   }
 
   function origineValida(v){
@@ -423,7 +428,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       debrief:g.debrief||"", statoCore:g.statoCore||"candidata", stake:String(g.stake), toccato:true, osservata:!!g.osservata,
       bookmaker:g.bookmaker||"Sportium", faseIngresso:g.faseIngresso||"PRE", classificazione:classificazioneLegacy(g),
       ticketId:g.ticketId||"", orarioIngresso:valoreDataOraLocale(g.orarioIngresso), tipoSchedina:g.tipoSchedina||"SINGOLA",
-      gambe:normalizzaGambe(g.gambe) };
+      gambe:normalizzaGambe(g.gambe), propostaVeggenteId:g.propostaVeggenteId||null, propostaTipo:g.propostaTipo||"",
+      propostaVariante:!!g.propostaVariante, propostaGambe:0 };
   }
 
   function caricaLibreriaOCR(){
@@ -652,6 +658,82 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return el("div",{"class":"ricevuta-import"},figli);
   }
 
+  var TIPI_PROPOSTA = { RADDOPPIO:"Raddoppio", MULTIPLA_5:"Multipla quota 5", PERSONALE:"Personale", ALTRA:"Altra" };
+  function nomeProposta(t){ return TIPI_PROPOSTA[t]||"Proposta"; }
+
+  // Proposte degli ultimi tre giorni dal database del Veggente. Le tabelle
+  // veggente_ restano chiuse: le legge una funzione che risponde solo
+  // all'account di Carmine (migrazione del 14/10/2026).
+  async function caricaProposte(){
+    if(!DB || !CLOUD.user){
+      PROP.stato="error"; PROP.messaggio="Serve il cloud attivo: accedi dalla scheda Dati."; disegna(); return;
+    }
+    PROP.stato="loading"; PROP.messaggio=""; disegna();
+    try{
+      await utenteCloudVerificato();
+      var r=await DB.rpc("proposte_veggente_app",{p_dal:piuGiorni(oggi(),-2)});
+      if(r.error) throw r.error;
+      PROP.lista=Array.isArray(r.data)?r.data:[];
+      PROP.stato="ready";
+      PROP.messaggio=PROP.lista.length?"":"Nessuna proposta negli ultimi tre giorni.";
+    }catch(e){
+      PROP.stato="error"; PROP.messaggio="Proposte non lette: "+(e.message||e);
+    }
+    disegna();
+  }
+
+  // Dalla proposta al modulo: origine, data, gambe, quote. Puntata e
+  // ricevuta arrivano poi dallo screenshot o a mano.
+  function applicaProposta(p){
+    var f=S.form, gambe=Array.isArray(p.gambe)?p.gambe:[];
+    f.origine="VEGGENTE"; f.data=p.data||f.data;
+    f.propostaVeggenteId=Number(p.id); f.propostaTipo=p.tipo||""; f.propostaGambe=gambe.length; f.propostaVariante=false;
+    if(gambe.length>=2){
+      f.tipoSchedina="MULTIPLA";
+      f.gambe=normalizzaGambe(gambe.map(function(x){return {evento:x.partita,mercato:x.mercato,quota:x.quota};}));
+    }else if(gambe.length===1){
+      f.tipoSchedina="SINGOLA"; f.evento=gambe[0].partita||""; f.mercato=gambe[0].mercato||""; f.gambe=[];
+    }
+    var q=Number(p.quota_totale);
+    if(!(q>1) && gambe.length && gambe.every(function(x){return Number(x.quota)>1;}))
+      q=Math.round(gambe.reduce(function(a,x){return a*Number(x.quota);},1)*100)/100;
+    if(q>1) f.quota=q.toFixed(2);
+    PROP.aperto=false; S.errore=null; disegna();
+  }
+
+  function scollegaProposta(){
+    var f=S.form;
+    f.propostaVeggenteId=null; f.propostaTipo=""; f.propostaGambe=0; f.propostaVariante=false;
+  }
+
+  function pannelloProposte(){
+    var f=S.form;
+    if(f.propostaVeggenteId){
+      return el("div",{"class":"ricevuta-import"},[el("div",{"class":"ricevuta-import-top"},[
+        el("div",null,[el("h2",{"text":"Collegata a: "+nomeProposta(f.propostaTipo)+" #"+f.propostaVeggenteId}),
+          el("p",{"text":"Se cambi il numero di gambe resta collegata come variante. Ora carica lo screenshot per puntata e ricevuta."})]),
+        el("button",{"class":"ricevuta-azione","text":"Scollega","onclick":function(){scollegaProposta();disegna();}})
+      ])]);
+    }
+    var occupato=PROP.stato==="loading";
+    var figli=[el("div",{"class":"ricevuta-import-top"},[
+      el("div",null,[el("h2",{"text":"Da proposta Veggente"}),el("p",{"text":"Compila partite, mercati e quote dalla proposta che hai giocato."})]),
+      el("button",{"class":"ricevuta-azione","text":occupato?"Lettura…":(PROP.aperto?"Chiudi":"Scegli proposta"),"disabled":occupato,
+        "onclick":function(){ if(PROP.aperto){PROP.aperto=false;disegna();} else {PROP.aperto=true;void caricaProposte();} }})
+    ])];
+    if(PROP.aperto && PROP.stato==="ready"){
+      PROP.lista.forEach(function(p){
+        var gambe=(p.gambe||[]).map(function(x){return x.partita+" — "+x.mercato+(x.quota?" @"+Number(x.quota).toFixed(2):"");}).join(" · ");
+        figli.push(el("button",{"class":"proposta-voce","onclick":function(){applicaProposta(p);}},[
+          el("strong",{"text":nomeProposta(p.tipo)+" · "+breve(p.data)+(p.quota_totale?" · quota "+Number(p.quota_totale).toFixed(2):"")+(p.giocata?" · già giocata":"")}),
+          el("span",{"text":gambe||"nessuna gamba"})
+        ]));
+      });
+    }
+    if(PROP.aperto && PROP.messaggio) figli.push(el("p",{"text":PROP.messaggio}));
+    return el("div",{"class":"ricevuta-import"},figli);
+  }
+
   function selectGuidato(opzioni,valore,cambia){
     var s=el("select");
     opzioni.forEach(function(x){
@@ -797,7 +879,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       tipo_schedina:g.tipoSchedina||"SINGOLA", gambe:normalizzaGambe(g.gambe),
       famiglia_mercato:g.famigliaMercato||"NON_CLASSIFICATO", ambito_mercato:g.ambitoMercato||"PARTITA",
       selezione_normalizzata:g.selezioneNormalizzata||null, linea_mercato:g.lineaMercato||null,
-      componenti_mercato:Array.isArray(g.componentiMercato)?g.componentiMercato:[], versione_tassonomia:g.versioneTassonomia||"v0.1" };
+      componenti_mercato:Array.isArray(g.componentiMercato)?g.componentiMercato:[], versione_tassonomia:g.versioneTassonomia||"v0.1",
+      proposta_veggente_id:g.propostaVeggenteId||null, proposta_tipo:g.propostaTipo||null, proposta_variante:!!g.propostaVariante };
   }
   function versaCloud(v){ return {user_id:CLOUD.user.id,
     legacy_id:String(v.cloudLegacyId||v.id), data:v.data, importo:Number(v.importo),
@@ -910,7 +993,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       ticketId:g.ticket_id||"",orarioIngresso:g.orario_ingresso||"",tipoSchedina:g.tipo_schedina||"SINGOLA",gambe:normalizzaGambe(g.gambe),
       famigliaMercato:g.famiglia_mercato||"NON_CLASSIFICATO",ambitoMercato:g.ambito_mercato||"PARTITA",
       selezioneNormalizzata:g.selezione_normalizzata||"",lineaMercato:g.linea_mercato||null,
-      componentiMercato:Array.isArray(g.componenti_mercato)?g.componenti_mercato:[],versioneTassonomia:g.versione_tassonomia||"v0.1"};
+      componentiMercato:Array.isArray(g.componenti_mercato)?g.componenti_mercato:[],versioneTassonomia:g.versione_tassonomia||"v0.1",
+      propostaVeggenteId:g.proposta_veggente_id==null?null:Number(g.proposta_veggente_id),propostaTipo:g.proposta_tipo||"",propostaVariante:!!g.proposta_variante};
     pick.origine=origineDi(pick);
     return aggiornaTassonomia(pick);
   }
@@ -1467,6 +1551,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     inData.addEventListener("change",function(){f.data=this.value;});
 
     var elementi=[vessillo,
+      pannelloProposte(),
       pannelloRicevuta(),
       el("div",{"class":"gruppo due"},[campo("Origine",inOrigine),campo("Tipo",inTipo)]),
       contenutoSchedina,
@@ -1554,6 +1639,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
       : (f.evento||"").trim();
     var mercato=f.tipoSchedina==="MULTIPLA"?"MULTIPLA":(f.mercato||"").trim();
     var classificazione=f.osservata ? f.classificazione : classificazioneDaOrigine(origine,f.classificazione);
+    // Collegamento alla proposta: solo per le giocate Veggente. Variante se
+    // il numero di gambe non e' quello della proposta; in modifica, senza
+    // la proposta sotto mano, resta quello salvato.
+    var idProposta=origine==="VEGGENTE"&&f.propostaVeggenteId?Number(f.propostaVeggenteId):null;
+    var nGambe=f.tipoSchedina==="MULTIPLA"?gambe.length:1;
+    var variante=idProposta ? (f.propostaGambe ? nGambe!==f.propostaGambe : !!f.propostaVariante) : false;
     var dati={data:f.data,tipster:f.tipster||"io",origine:origine,evento:evento,mercato:mercato,nota:(f.nota||"").trim(),quota:q,
       quotaCheck:parseFloat(f.quotaCheck)||null,quotaChiusura:qClose,
       probabilitaStimata:prob!==null?prob/100:null,
@@ -1561,7 +1652,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       confidence:parseInt(f.confidence,10)||null,debrief:(f.debrief||"").trim(),
       statoCore:f.osservata?(f.statoCore||"scartata"):"ufficiale",stake:s,osservata:!!f.osservata,
       bookmaker:f.bookmaker||"Sportbet",faseIngresso:f.faseIngresso||"PRE",classificazione:classificazione,
-      ticketId:ticket,orarioIngresso:isoDaDataOraLocale(f.orarioIngresso),tipoSchedina:f.tipoSchedina,gambe:f.tipoSchedina==="MULTIPLA"?gambe:[]};
+      ticketId:ticket,orarioIngresso:isoDaDataOraLocale(f.orarioIngresso),tipoSchedina:f.tipoSchedina,gambe:f.tipoSchedina==="MULTIPLA"?gambe:[],
+      propostaVeggenteId:idProposta,propostaTipo:idProposta?f.propostaTipo:"",propostaVariante:variante};
     try{ localStorage.setItem(CHIAVE_BOOK,dati.bookmaker); }catch(e){}
     if(inEdit){
       S.giocate.forEach(function(g){if(String(g.id)===String(S.editingId)){Object.keys(dati).forEach(function(k){g[k]=dati[k];});g.cloudDirty=true;if(g.esito==="vinta")g.profitto=g.stake*g.quota-g.stake;else if(g.esito==="persa")g.profitto=-g.stake;}});
@@ -1578,7 +1670,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("p",{"class":"guida-intro","text":"Registra ogni schedina una sola volta: i campi guidati alimentano cassa, archivio Supabase e debrief giornaliero."}),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Origine"}),
-        el("p",{"class":"guida-p","text":"Ogni giocata dice da dove arriva. Veggente: dalle analisi del Veggente. BET Core: dal protocollo, e solo allora compaiono probabilità e quota di chiusura. Libera: quando la spingi tu. Il Rendimento le tiene separate."})
+        el("p",{"class":"guida-p","text":"Ogni giocata dice da dove arriva. Veggente: dalle analisi del Veggente. BET Core: dal protocollo, e solo allora compaiono probabilità e quota di chiusura. Libera: quando la spingi tu. Il Rendimento le tiene separate. Con \"Da proposta Veggente\" scegli la proposta che hai giocato: compila le gambe e la segna come giocata nel registro del Veggente."})
       ]),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Ricevuta Sportbet o Sportium"}),
@@ -1749,6 +1841,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           el("div",null,[
             el("span",{"class":"badge-meta","text":g.tipoSchedina||"SINGOLA"}),
             el("span",{"class":"badge-meta","text":g.bookmaker||"Sportium"}),
+            g.propostaVeggenteId?el("span",{"class":"badge-meta","text":nomeProposta(g.propostaTipo)+(g.propostaVariante?" · variante":"")}):null,
             g.tipoSchedina!=="MULTIPLA"&&g.famigliaMercato!=="NON_CLASSIFICATO"?el("span",{"class":"badge-meta","text":etichettaFamiglia(g)}):null,
             // Solo per il protocollo: una pick BET Core senza probabilità
             // congelata esce dal campione statistico, e conviene vederlo
@@ -1774,7 +1867,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(!DB || !CLOUD.user) return null;
     await utenteCloudVerificato();
     var rr=await DB.from("picks")
-      .select("id,legacy_id,data,tipster,origine,evento,mercato,nota,quota,quota_check,quota_chiusura,probabilita_stimata,probabilita_timestamp,confidence,debrief,stake,esito,profitto,tipo,stato_core,motivo_scarto,bookmaker,fase_ingresso,classificazione,ticket_id,orario_ingresso,tipo_schedina,gambe,famiglia_mercato,ambito_mercato,selezione_normalizzata,linea_mercato,componenti_mercato,versione_tassonomia")
+      .select("id,legacy_id,data,tipster,origine,evento,mercato,nota,quota,quota_check,quota_chiusura,probabilita_stimata,probabilita_timestamp,confidence,debrief,stake,esito,profitto,tipo,stato_core,motivo_scarto,bookmaker,fase_ingresso,classificazione,ticket_id,orario_ingresso,tipo_schedina,gambe,famiglia_mercato,ambito_mercato,selezione_normalizzata,linea_mercato,componenti_mercato,versione_tassonomia,proposta_veggente_id,proposta_tipo,proposta_variante")
       .eq("user_id",CLOUD.user.id)
       .eq("legacy_id",legacyCloud(g))
       .maybeSingle();
@@ -1795,6 +1888,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     g.famigliaMercato=r.famiglia_mercato||"NON_CLASSIFICATO";g.ambitoMercato=r.ambito_mercato||"PARTITA";
     g.selezioneNormalizzata=r.selezione_normalizzata||"";g.lineaMercato=r.linea_mercato||null;
     g.componentiMercato=Array.isArray(r.componenti_mercato)?r.componenti_mercato:[];g.versioneTassonomia=r.versione_tassonomia||"v0.1";
+    g.propostaVeggenteId=r.proposta_veggente_id==null?null:Number(r.proposta_veggente_id);g.propostaTipo=r.proposta_tipo||"";g.propostaVariante=!!r.proposta_variante;
     aggiornaTassonomia(g);
   }
 
@@ -2431,6 +2525,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         selezioneNormalizzata:valore(r,"selezione_normalizzata"),lineaMercato:valore(r,"linea_mercato")||null,
         versioneTassonomia:valore(r,"versione_tassonomia")||"v0.1"};
       try{p.componentiMercato=JSON.parse(valore(r,"componenti_mercato")||"[]");}catch(_e2){p.componentiMercato=[];}
+      p.propostaVeggenteId=numero(valore(r,"proposta_veggente_id"))||null;p.propostaTipo=valore(r,"proposta_tipo");
       p.classificazione=classificazioneLegacy(p);p.origine=origineValida(valore(r,"origine").toUpperCase())||origineDi(p);
       ok.push(aggiornaTassonomia(p));
     });
@@ -2439,7 +2534,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
   function esportaCSV(){
     function q(v){return '"'+String(v==null?"":v).replace(/"/g,'""')+'"';}
-    var righe = [["data","anno","mese","stagione","tipster","origine","evento","mercato","nota","quota","quota_check","quota_chiusura","probabilita_stimata","probabilita_timestamp","confidence","debrief","stato_core","classificazione","stake","esito","profitto","tipo","tipo_schedina","bookmaker","fase_ingresso","ticket_id","orario_ingresso","gambe","famiglia_mercato","ambito_mercato","selezione_normalizzata","linea_mercato","componenti_mercato","versione_tassonomia"]];
+    var righe = [["data","anno","mese","stagione","tipster","origine","evento","mercato","nota","quota","quota_check","quota_chiusura","probabilita_stimata","probabilita_timestamp","confidence","debrief","stato_core","classificazione","stake","esito","profitto","tipo","tipo_schedina","bookmaker","fase_ingresso","ticket_id","orario_ingresso","gambe","famiglia_mercato","ambito_mercato","selezione_normalizzata","linea_mercato","componenti_mercato","versione_tassonomia","proposta_veggente_id","proposta_tipo"]];
     S.giocate.forEach(function(g){
       aggiornaTassonomia(g);
       righe.push([g.data, annoData(g.data)||"", meseData(g.data)||"", stagioneData(g.data), trova(g.tipster).nome, origineDi(g),
@@ -2448,7 +2543,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         g.statoCore||(g.osservata?"scartata":"ufficiale"),classificazioneLegacy(g),g.stake.toFixed(2),g.esito,g.profitto.toFixed(2),
         g.osservata?"osservata":"giocata",g.tipoSchedina||"SINGOLA",g.bookmaker||"Sportium",g.faseIngresso||"PRE",q(g.ticketId||""),
         q(g.orarioIngresso||""),q(JSON.stringify(normalizzaGambe(g.gambe))),g.famigliaMercato||"NON_CLASSIFICATO",g.ambitoMercato||"PARTITA",
-        q(g.selezioneNormalizzata||""),q(g.lineaMercato||""),q(JSON.stringify(g.componentiMercato||[])),g.versioneTassonomia||"v0.1"]);
+        q(g.selezioneNormalizzata||""),q(g.lineaMercato||""),q(JSON.stringify(g.componentiMercato||[])),g.versioneTassonomia||"v0.1",g.propostaVeggenteId||"",g.propostaTipo||""]);
     });
     var csv="\uFEFF"+righe.map(function(r){return r.join(",");}).join("\r\n");
     var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}); var url=URL.createObjectURL(blob); var a=document.createElement("a");
@@ -2541,6 +2636,24 @@ textarea{width:100%;min-height:78px;resize:vertical}
         "style":{fontSize:"14px",color:"#6D7F8E",textAlign:"center",padding:"32px 0"}}));
     }
 
+    // Il Veggente diviso per proposta giocata: raddoppi, multiple quota 5,
+    // personali e giocate senza proposta collegata (tutte quelle registrate
+    // prima del collegamento del 14/10/2026).
+    function righeProposta(sue){
+      if(!sue.some(function(g){return g.propostaVeggenteId;})) return null;
+      var gruppi=[["RADDOPPIO","Raddoppi"],["MULTIPLA_5","Multiple quota 5"],["PERSONALE","Personali"],["ALTRA","Altre proposte"],["","Senza proposta"]];
+      return el("div",null,gruppi.map(function(t){
+        var r=riassumi(sue.filter(function(g){
+          return t[0] ? (g.propostaVeggenteId && g.propostaTipo===t[0]) : !g.propostaVeggenteId;
+        }));
+        return r.n ? el("div",{"class":"recente"},[
+          el("span",{"class":"k","text":t[1]}),
+          el("span",{"class":"tab","style":{fontSize:"12px",color:r.profitto>=0?"#4FB286":"#D4635F"},
+            "text":segnato(r.profitto)+"  ·  "+r.vinte+"/"+r.n+" vinte  ·  ROI "+(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%"})
+        ]) : null;
+      }));
+    }
+
     ORIGINI.forEach(function(o){
       var sue = chiuse.filter(function(g){ return origineDi(g)===o.id; });
       var pend = c.aperte.filter(function(g){ return origineDi(g)===o.id; }).length;
@@ -2579,6 +2692,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         ]),
         celle,
         perTipo[0], perTipo[1],
+        o.id==="VEGGENTE" ? righeProposta(sue) : null,
         n ? el("div",{"class":"recente"},[
           el("span",{"class":"k","text":"Ultimi 30 giorni"}),
           rec.n

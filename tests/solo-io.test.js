@@ -98,6 +98,16 @@ const db={
     getUser:async()=>({data:{user:session.user}}),
     onAuthStateChange:cb=>{setTimeout(()=>cb("INITIAL_SESSION",session),0);}
   },
+  // Le proposte del Veggente arrivano da una funzione, non da una tabella.
+  rpc:async(nome,parametri)=>{
+    calls.push({azione:"rpc",nome,parametri});
+    return {error:null,data:[
+      {id:64,data:"2026-10-14",tipo:"RADDOPPIO",stato:"PROPOSTA",quota_totale:2.16,giocata:false,
+        gambe:[{partita:"Italia - Israele",mercato:"Over 2.5",quota:1.44,voto:"A"},{partita:"Norvegia - Slovenia",mercato:"1",quota:1.50,voto:"A"}]},
+      {id:65,data:"2026-10-14",tipo:"MULTIPLA_5",stato:"PROPOSTA",quota_totale:4.59,giocata:false,
+        gambe:[{partita:"A - B",mercato:"1",quota:1.5},{partita:"C - D",mercato:"Goal",quota:1.7},{partita:"E - F",mercato:"X2",quota:1.8}]}
+    ]};
+  },
   from:table=>({
     upsert:async(rows,options)=>{calls.push({azione:"upsert",table,rows,options});return {error:null};},
     select:()=>{
@@ -228,6 +238,45 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.equal(nuova.stake,4);
   assert.equal(storage["registro-ultimo-bookmaker"],"SNAI","il bookmaker usato va ricordato");
 
+  // Da proposta Veggente: la proposta compila origine, gambe e quota; la
+  // giocata salvata porta con se' il collegamento. Togliendo una gamba la
+  // giocata resta collegata ma diventa una variante.
+  async function giocaProposta(testoProposta,stake,togliGamba){
+    clickNav(app,"Nuova");
+    findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Scegli proposta").listeners.click();
+    await new Promise(resolve=>setTimeout(resolve,5));
+    const voce=findElement(app,x=>x.tagName==="BUTTON"&&x.className==="proposta-voce"&&x.textContent.startsWith(testoProposta));
+    assert.ok(voce,"proposta non mostrata: "+testoProposta);
+    voce.listeners.click();
+    assert.ok(app.textContent.includes("Collegata a: "+testoProposta),"il modulo deve dire a quale proposta e' collegato");
+    if(togliGamba) findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Rimuovi").listeners.click();
+    const st=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="5.00");
+    st.value=stake; st.listeners.input.call(st);
+    findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra giocata").listeners.click();
+  }
+  await giocaProposta("Raddoppio",10,false);
+  assert.ok(calls.some(c=>c.azione==="rpc"&&c.nome==="proposte_veggente_app"),"le proposte vanno lette dalla funzione dedicata");
+  let regVeg=JSON.parse(storage["registro-tipster-v1"]).giocate;
+  const raddoppio=regVeg.find(g=>g.propostaVeggenteId===64);
+  assert.ok(raddoppio,"giocata collegata al raddoppio non salvata");
+  assert.equal(raddoppio.origine,"VEGGENTE");
+  assert.equal(raddoppio.quota,2.16);
+  assert.equal(raddoppio.gambe.length,2);
+  assert.equal(raddoppio.gambe[1].quota,1.5);
+  assert.equal(raddoppio.propostaTipo,"RADDOPPIO");
+  assert.equal(raddoppio.propostaVariante,false,"giocata tale e quale: non e' una variante");
+
+  await giocaProposta("Multipla quota 5",3,true);
+  regVeg=JSON.parse(storage["registro-tipster-v1"]).giocate;
+  const variante=regVeg.find(g=>g.propostaVeggenteId===65);
+  assert.ok(variante,"giocata collegata alla multipla non salvata");
+  assert.equal(variante.gambe.length,2);
+  assert.equal(variante.propostaVariante,true,"con una gamba in meno e' una variante");
+
+  // Registro e Rendimento mostrano il tipo di proposta.
+  clickNav(app,"Registro");
+  assert.ok(app.textContent.includes("Multipla quota 5 · variante"),"badge della variante mancante nel registro");
+
   // Sync: le righe dei tipster eliminati non vanno rimandate al cloud.
   clickNav(app,"Dati");
   const invia=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora");
@@ -241,7 +290,14 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.equal(origineInviata("Settembre - Vecchia"),"VEGGENTE","dal 15/09 le giocate sono del Veggente");
   assert.equal(origineInviata("Analisi - Settembre"),"BET_CORE","le osservate del protocollo sono BET Core");
   assert.equal(origineInviata("Lazio - Genoa"),"LIBERA");
-  const gambeInviate=up.rows.find(r=>r.tipo_schedina==="MULTIPLA").gambe;
+  const rigaRaddoppio=up.rows.find(r=>r.proposta_veggente_id===64);
+  assert.ok(rigaRaddoppio,"il collegamento alla proposta va mandato al cloud");
+  assert.equal(rigaRaddoppio.proposta_tipo,"RADDOPPIO");
+  assert.equal(rigaRaddoppio.proposta_variante,false);
+  assert.equal(up.rows.find(r=>r.proposta_veggente_id===65).proposta_variante,true);
+  assert.equal(origineInviata("Settembre - Vecchia")&&up.rows.find(r=>r.evento==="Settembre - Vecchia").proposta_veggente_id,null,
+    "le giocate senza proposta restano senza collegamento");
+  const gambeInviate=up.rows.find(r=>r.legacy_id==="6").gambe;
   assert.equal(JSON.stringify(gambeInviate[0]),JSON.stringify({evento:"A - B",mercato:"1",quota:1.5,esito:"vinta"}),"quota ed esito della gamba vanno al cloud");
   const salvate=JSON.parse(storage["registro-tipster-v1"]).giocate;
   assert.ok(!salvate.some(g=>g.tipster==="rubino"||g.tipster==="mercante"),"copia locale ancora con i tipster eliminati");
