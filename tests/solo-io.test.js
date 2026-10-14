@@ -243,6 +243,10 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   // giocata resta collegata ma diventa una variante.
   async function giocaProposta(testoProposta,stake,togliGamba){
     clickNav(app,"Nuova");
+    // Il pannello manuale compare solo per le giocate Veggente.
+    assert.ok(!findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Scegli proposta"),"senza origine Veggente il pannello manuale non serve");
+    const so=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Scegli l'origine…"));
+    so.value="VEGGENTE"; so.listeners.change.call(so);
     findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Scegli proposta").listeners.click();
     await new Promise(resolve=>setTimeout(resolve,5));
     const voce=findElement(app,x=>x.tagName==="BUTTON"&&x.className==="proposta-voce"&&x.textContent.startsWith(testoProposta));

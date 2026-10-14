@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.24 · Market Lab</title>
+<title>Registro BET Core v4.25 · Market Lab</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -196,10 +196,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261014b"></script>
-<script src="./market-metrics.js?v=20261014b"></script>
-<script src="./sync-merge.js?v=20261014b"></script>
-<script src="./receipt-parser.js?v=20261014b"></script>
+<script src="./market-taxonomy.js?v=20261014c"></script>
+<script src="./market-metrics.js?v=20261014c"></script>
+<script src="./sync-merge.js?v=20261014c"></script>
+<script src="./receipt-parser.js?v=20261014c"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -244,7 +244,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   var DB = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
   var CLOUD = { user:null, email:"", stato:"", busy:false, syncEnabled: localStorage.getItem("registro-tipster-cloud-sync")==="1", timer:null, pending:false, ultimaSyncOk:null, remoteCount:null, lastDownloadCount:null, settingsDirty:false};
   var OCR = { stato:"idle", progresso:0, fase:"", messaggio:"", risultato:null, libreria:null };
-  var PROP = { stato:"idle", aperto:false, lista:[], messaggio:"" };
+  var PROP = { stato:"idle", aperto:false, lista:[], messaggio:"", suggerita:null };
   var OCR_CDN = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
   // Percentuali di default del tetto, in un posto solo: erano duplicate fra
   // l'inizializzatore e il fallback di carica(), e quello di carica() vinceva
@@ -583,6 +583,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   async function leggiRicevuta(file){
     if(!file) return;
     if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
+    PROP.suggerita=null;
     OCR.stato="loading";OCR.progresso=1;OCR.fase="Caricamento lettore";OCR.messaggio="";OCR.risultato=null;disegna();
     var worker=null,ultimo=-1,faseLettura="Lettura della ricevuta";
     try{
@@ -621,6 +622,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         if(punteggioRicevuta(alternativa)>punteggioRicevuta(risultato)) risultato=alternativa;
       }
       applicaRicevuta(risultato);
+      void cercaPropostaPerRicevuta();
     }catch(e){
       OCR.stato="error";OCR.progresso=0;OCR.messaggio=e&&e.message?e.message:"Non sono riuscito a leggere questa immagine.";
     }finally{
@@ -706,18 +708,100 @@ textarea{width:100%;min-height:78px;resize:vertical}
     f.propostaVeggenteId=null; f.propostaTipo=""; f.propostaGambe=0; f.propostaVariante=false;
   }
 
+  // Abbinamento automatico ricevuta -> proposta (14/10/2026): dopo la
+  // lettura dello screenshot l'app cerca la proposta con le stesse partite e
+  // chiede solo conferma. Per riconoscere una squadra basta la parola piu'
+  // lunga del suo nome, perche' Sportbet e il Veggente scrivono i nomi in
+  // modo diverso ("Paris Saint-Germain" / "PSG" no, ma "Manchester City" si').
+  function squadre(partita){
+    return String(partita||"").split(/\s+(?:vs\.?|v|-|–)\s+/i).map(function(t){
+      var parole=chiaveEventoRicevuta(t).split(" ").filter(function(w){return w.length>=3;});
+      parole.sort(function(a,b){return b.length-a.length;});
+      return parole[0]||"";
+    }).filter(Boolean);
+  }
+
+  function stessaPartita(partitaProposta,eventoRicevuta){
+    var k=" "+chiaveEventoRicevuta(eventoRicevuta)+" ";
+    return squadre(partitaProposta).some(function(w){return k.indexOf(" "+w+" ")>=0;});
+  }
+
+  // La proposta migliore e' quella con piu' partite in comune; se le gambe
+  // sono le stesse e' giocata tale e quale, altrimenti e' una variante.
+  function abbinaProposta(eventi,lista){
+    var migliore=null;
+    (lista||[]).forEach(function(p){
+      var gambe=p.gambe||[];
+      if(!gambe.length || !eventi.length) return;
+      var usati={}, trovate=0;
+      gambe.forEach(function(g){
+        for(var i=0;i<eventi.length;i++){
+          if(!usati[i] && stessaPartita(g.partita,eventi[i].evento)){ usati[i]=true; trovate++; break; }
+        }
+      });
+      if(!trovate || trovate<Math.min(gambe.length,eventi.length)) return;
+      var esatta=trovate===gambe.length && gambe.length===eventi.length;
+      var punti=trovate*10+(esatta?5:0)-(p.giocata?3:0);
+      if(!migliore || punti>migliore.punti) migliore={proposta:p,punti:punti,esatta:esatta};
+    });
+    return migliore;
+  }
+
+  async function cercaPropostaPerRicevuta(){
+    var f=S.form;
+    PROP.suggerita=null;
+    if(f.propostaVeggenteId || !DB || !CLOUD.user) return;
+    var eventi=f.tipoSchedina==="MULTIPLA" ? normalizzaGambe(f.gambe) : [{evento:f.evento||""}];
+    eventi=eventi.filter(function(x){return String(x.evento||"").trim();});
+    if(!eventi.length) return;
+    try{
+      await utenteCloudVerificato();
+      var r=await DB.rpc("proposte_veggente_app",{p_dal:piuGiorni(f.data||oggi(),-2)});
+      if(r.error) return;
+      PROP.suggerita=abbinaProposta(eventi,Array.isArray(r.data)?r.data:[]);
+    }catch(e){ PROP.suggerita=null; }
+    disegna();
+  }
+
+  // Si collega senza toccare cio' che ha letto lo screenshot: partite,
+  // quote e puntata restano quelle vere della ricevuta.
+  function confermaSuggerita(){
+    var m=PROP.suggerita, f=S.form;
+    if(!m) return;
+    var p=m.proposta;
+    f.origine="VEGGENTE";
+    f.propostaVeggenteId=Number(p.id); f.propostaTipo=p.tipo||"";
+    f.propostaGambe=(p.gambe||[]).length; f.propostaVariante=!m.esatta;
+    PROP.suggerita=null; PROP.aperto=false; S.errore=null; disegna();
+  }
+
   function pannelloProposte(){
     var f=S.form;
+    if(PROP.suggerita && !f.propostaVeggenteId){
+      var sp=PROP.suggerita.proposta;
+      return el("div",{"class":"ricevuta-import"},[
+        el("div",null,[
+          el("h2",{"text":"È questa la proposta? "+nomeProposta(sp.tipo)+" del "+breve(sp.data)}),
+          el("p",{"text":(sp.gambe||[]).map(function(x){return x.partita+" — "+x.mercato;}).join(" · ")}),
+          PROP.suggerita.esatta ? null : el("p",{"text":"Le gambe non sono le stesse: verrà registrata come variante."})
+        ]),
+        el("div",{"class":"due","style":{marginTop:"12px"}},[
+          el("button",{"class":"ricevuta-azione","text":"Sì, collega","onclick":confermaSuggerita}),
+          el("button",{"class":"secondario","text":"No","onclick":function(){PROP.suggerita=null;disegna();}})
+        ])
+      ]);
+    }
     if(f.propostaVeggenteId){
       return el("div",{"class":"ricevuta-import"},[el("div",{"class":"ricevuta-import-top"},[
         el("div",null,[el("h2",{"text":"Collegata a: "+nomeProposta(f.propostaTipo)+" #"+f.propostaVeggenteId}),
-          el("p",{"text":"Se cambi il numero di gambe resta collegata come variante. Ora carica lo screenshot per puntata e ricevuta."})]),
+          el("p",{"text":"Se cambi il numero di gambe resta collegata come variante."+(OCR.stato==="ready"?"":" Ora carica lo screenshot per puntata e ricevuta.")})]),
         el("button",{"class":"ricevuta-azione","text":"Scollega","onclick":function(){scollegaProposta();disegna();}})
       ])]);
     }
+    if(f.origine!=="VEGGENTE") return null;
     var occupato=PROP.stato==="loading";
     var figli=[el("div",{"class":"ricevuta-import-top"},[
-      el("div",null,[el("h2",{"text":"Da proposta Veggente"}),el("p",{"text":"Compila partite, mercati e quote dalla proposta che hai giocato."})]),
+      el("div",null,[el("h2",{"text":"Scegli la proposta a mano"}),el("p",{"text":"Se lo screenshot non l'ha trovata da solo, o per compilare senza ricevuta."})]),
       el("button",{"class":"ricevuta-azione","text":occupato?"Lettura…":(PROP.aperto?"Chiudi":"Scegli proposta"),"disabled":occupato,
         "onclick":function(){ if(PROP.aperto){PROP.aperto=false;disegna();} else {PROP.aperto=true;void caricaProposte();} }})
     ])];
@@ -1551,8 +1635,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
     inData.addEventListener("change",function(){f.data=this.value;});
 
     var elementi=[vessillo,
-      pannelloProposte(),
       pannelloRicevuta(),
+      pannelloProposte(),
       el("div",{"class":"gruppo due"},[campo("Origine",inOrigine),campo("Tipo",inTipo)]),
       contenutoSchedina,
       el("div",{"class":"gruppo due"},[campo(f.tipoSchedina==="MULTIPLA"?"Quota totale":"Quota",inQuota),campo("Puntata",inStake)]),
@@ -1662,7 +1746,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       dati.id=Date.now();dati.esito="aperta";dati.profitto=0;dati.cloudDirty=true;S.giocate.unshift(dati);
     }
     S.errore=null;salva();
-    S.form=formVuoto(f.data,"io");OCR.stato="idle";OCR.risultato=null;S.vista="registro";disegna();window.scrollTo(0,0);
+    S.form=formVuoto(f.data,"io");OCR.stato="idle";OCR.risultato=null;PROP.suggerita=null;PROP.aperto=false;S.vista="registro";disegna();window.scrollTo(0,0);
   }
 
   function vistaGuida(){
@@ -1670,7 +1754,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("p",{"class":"guida-intro","text":"Registra ogni schedina una sola volta: i campi guidati alimentano cassa, archivio Supabase e debrief giornaliero."}),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Origine"}),
-        el("p",{"class":"guida-p","text":"Ogni giocata dice da dove arriva. Veggente: dalle analisi del Veggente. BET Core: dal protocollo, e solo allora compaiono probabilità e quota di chiusura. Libera: quando la spingi tu. Il Rendimento le tiene separate. Con \"Da proposta Veggente\" scegli la proposta che hai giocato: compila le gambe e la segna come giocata nel registro del Veggente."})
+        el("p",{"class":"guida-p","text":"Ogni giocata dice da dove arriva. Veggente: dalle analisi del Veggente. BET Core: dal protocollo, e solo allora compaiono probabilità e quota di chiusura. Libera: quando la spingi tu. Il Rendimento le tiene separate. Dopo lo screenshot l'app cerca la proposta del Veggente con le stesse partite e chiede conferma: collegata, la proposta risulta giocata nel registro del Veggente."})
       ]),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Ricevuta Sportbet o Sportium"}),
