@@ -1,5 +1,5 @@
-const CACHE='bet-core-v4-28-veggente';
-const ASSETS=['./','./index.html','./market-taxonomy.js?v=20261014b','./market-metrics.js?v=20261014b','./sync-merge.js?v=20261014b','./receipt-parser.js?v=20261014b','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE='bet-core-v4-29-abbinamento';
+const ASSETS=['./','./index.html','./market-taxonomy.js?v=20261014c','./market-metrics.js?v=20261014c','./sync-merge.js?v=20261014c','./receipt-parser.js?v=20261014c','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
