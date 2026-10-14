@@ -135,9 +135,12 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
 
   clickNav(app,"Nuova");
   assert.ok(app.textContent.includes("Importa ricevuta Sportium"));
-  // La probabilità stimata sta nel form principale accanto alla quota, non
-  // più chiusa dentro "Analisi e dati secondari": è il campo su cui poggiano
-  // Brier, log loss e calibrazione, e da secondario restava sempre vuoto.
+  // La probabilità stimata compare solo per le giocate BET Core: è il campo
+  // su cui poggiano Brier, log loss e calibrazione del protocollo.
+  assert.ok(!app.textContent.includes("Probabilità stimata"),"fuori da BET Core i campi del protocollo non servono");
+  const selOrigine=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Scegli l'origine…"));
+  assert.ok(selOrigine,"menu dell'origine non trovato");
+  selOrigine.value="BET_CORE"; selOrigine.listeners.change.call(selOrigine);
   assert.ok(app.textContent.includes("Probabilità stimata"));
   assert.ok(!app.textContent.includes("Probabilità indipendente congelata"));
   // Senza probabilità la riga di supporto dice cosa si sta perdendo.
@@ -148,7 +151,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   // calcolo arrivi a schermo, non solo che il campo esista.
   const inQuota=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="2.30");
   const inProb=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="52.0");
-  assert.ok(inQuota&&inProb,"quota e probabilità devono stare entrambe nel form principale");
+  assert.ok(inQuota&&inProb,"per BET Core quota e probabilità devono esserci entrambe");
 
   inProb.value="50"; inProb.listeners.input.call(inProb);
   inQuota.value="2.30"; inQuota.listeners.input.call(inQuota);
@@ -163,7 +166,11 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(rigaBassa.includes("non copre la tua stima"),"atteso avviso prezzo insufficiente: "+rigaBassa);
   assert.ok(rigaBassa.includes("-31.0%"),"EV atteso -31.0%: "+rigaBassa);
   clickNav(app,"Rendimento");
-  assert.ok(app.textContent.includes("Le mie"));
+  // Le giocate di prova sono di agosto: fuori dal periodo di default.
+  const tuttoStorico=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Tutto lo storico");
+  assert.ok(tuttoStorico,"selettore del periodo non trovato");
+  tuttoStorico.listeners.click();
+  assert.ok(app.textContent.includes("BET Core")&&app.textContent.includes("Libera"),"schede per origine attese");
   assert.ok(app.textContent.includes("Per tipo di mercato"));
   clickNav(app,"Cassa");
   assert.ok(app.textContent.includes("Riepilogo mensile"));
@@ -222,6 +229,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.equal(picksUpsert.options.onConflict,"user_id,legacy_id");
   assert.equal(picksUpsert.rows[0].legacy_id,"ticket:ABC1");
   assert.equal(picksUpsert.rows[0].famiglia_mercato,"COMBO");
+  assert.equal(picksUpsert.rows[0].origine,"BET_CORE","una BET PILOT di agosto è del protocollo");
   assert.equal(calls.filter(x=>x.azione==="delete").length,0,"La sync non deve cancellare tabelle");
 
   // Regressione: una multipla storica senza gambe registrate non si riusciva a
@@ -239,8 +247,8 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   // Il campo si cerca per struttura e non con getElementById: nell'app il suo
   // id e' assegnato come proprieta' (inStake.id=...) e non come attributo,
   // quindi il Document finto di questo test non lo indicizza.
-  const bloccoStake=findElement(app,x=>x.children.some(c=>c.tagName==="LABEL"&&c.textContent==="Punto invece"));
-  assert.ok(bloccoStake,"blocco 'Punto invece' assente nel form di modifica");
+  const bloccoStake=findElement(app,x=>x.children.some(c=>c.tagName==="LABEL"&&c.textContent==="Puntata"));
+  assert.ok(bloccoStake,"blocco 'Puntata' assente nel form di modifica");
   const campoStake=bloccoStake.children.find(c=>c.tagName==="INPUT");
   assert.ok(campoStake,"campo puntata assente nel form di modifica");
   campoStake.value="3.00"; campoStake.listeners.input.call(campoStake);

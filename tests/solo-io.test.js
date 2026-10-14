@@ -71,7 +71,7 @@ const picks=[
   {...base,id:4,data:"2026-09-05",tipster:"BET Core",evento:"Analisi - Settembre",mercato:"X2",quota:1.8,stake:0,esito:"persa",profitto:0,osservata:true,statoCore:"scartata",classificazione:"SCARTATA"},
   {...base,id:5,data:"2026-10-02",tipster:"io",evento:"Svezia - Romania",mercato:"1X",quota:1.5,stake:4,esito:"vinta",profitto:2},
   {...base,id:6,data:"2026-10-03",tipster:"io",evento:"Multipla · 3 gambe",mercato:"MULTIPLA",tipoSchedina:"MULTIPLA",quota:5,stake:2,esito:"vinta",profitto:8,
-    gambe:[{evento:"A - B",mercato:"1"},{evento:"C - D",mercato:"Goal"},{evento:"E - F",mercato:"X2"}]},
+    gambe:[{evento:"A - B",mercato:"1",quota:1.5,esito:"vinta"},{evento:"C - D",mercato:"Goal",quota:1.8,esito:"vinta"},{evento:"E - F",mercato:"X2",quota:1.85,esito:"vinta"}]},
   {...base,id:7,data:"2026-10-04",tipster:"io",evento:"Turchia - Italia",mercato:"Over 2.5",quota:1.9,stake:3,esito:"persa",profitto:-3},
   {...base,id:8,data:"2026-10-05",tipster:"io",evento:"Aperta - Ancora",mercato:"1",quota:2,stake:2,esito:"aperta",profitto:0}
 ];
@@ -145,9 +145,17 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(!/\b(MC|FR)\b/.test(reg),"sigle dei tipster eliminati ancora presenti");
   assert.ok(reg.includes("Settembre - Vecchia"),"le giocate di settembre restano visibili nel registro");
 
-  // Nuova giocata: con un solo tipster il selettore Origine non serve.
+  // Nuova giocata: l'origine si sceglie da un menu a tendina con le tre
+  // fonti, e i campi del protocollo non compaiono finche' non e' BET Core.
   clickNav(app,"Nuova");
-  assert.ok(!findElement(app,x=>x.tagName==="LABEL"&&x.textContent==="Origine"),"selettore Origine da nascondere");
+  assert.ok(findElement(app,x=>x.tagName==="LABEL"&&x.textContent==="Origine"),"selettore Origine mancante");
+  const selOrigine=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Scegli l'origine…"));
+  assert.ok(selOrigine,"menu a tendina dell'origine non trovato");
+  assert.equal(selOrigine.children.map(o=>o.value).join(","),",VEGGENTE,BET_CORE,LIBERA");
+  assert.ok(!app.textContent.includes("Probabilità stimata"),"i campi del protocollo vanno nascosti fuori da BET Core");
+  for(const vecchio of ["Classificazione","Solo osservata","Fase di ingresso","Puntata consigliata","Confidence","Quota al check"]){
+    assert.ok(!app.textContent.includes(vecchio),"campo superfluo ancora nel modulo: "+vecchio);
+  }
 
   // Cassa: conta tutto. Versati 30 - prelievo 15 + rettifica -20 + profitti
   // 5 (settembre) + 2 + 8 - 3 = 7. Le perdite di Rubino (-5) e Mercante (-4)
@@ -183,13 +191,42 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   // Rendimento: scheda unica e riepilogo per tipo di mercato, ordinato per profitto.
   clickNav(app,"Rendimento");
   const rend=app.textContent;
-  assert.ok(rend.includes("Le mie")&&!/Rubino|Mercante/.test(rend));
+  assert.ok(rend.includes("Veggente")&&!/Rubino|Mercante/.test(rend));
+  assert.ok(rend.includes("Dal 15/09"),"il periodo di default parte dal 15/09");
   assert.ok(rend.includes("Per tipo di mercato"));
   const iM=rend.indexOf("Multipla+€8,00"),iE=rend.indexOf("Esito 1X2+€5,00"),
     iD=rend.indexOf("Doppia chance+€2,00"),iO=rend.indexOf("Over/Under-€3,00");
   assert.ok(iM>=0&&iE>=0&&iD>=0&&iO>=0,"righe per mercato mancanti: "+rend.slice(rend.indexOf("Per tipo")));
   assert.ok(iM<iE&&iE<iD&&iD<iO,"le righe devono essere ordinate per profitto");
-  assert.ok(rend.includes("Giocate4"),"la scheda conta le 4 chiuse, settembre compreso");
+  assert.ok(rend.includes("Giocate4"),"la scheda Veggente conta le 4 chiuse dal 15/09");
+  assert.ok(rend.includes("Multiple+€8,00")&&rend.includes("Singole+€4,00"),"singole e multiple separate nella scheda");
+  // Le gambe della multipla vinta: tre mercati diversi, tutte passate.
+  assert.ok(rend.includes("Gambe delle multiple per mercato"),"sezione gambe mancante");
+  assert.ok(/Esito 1X2100% passate1\/1 gambe vinteattese 67%/.test(rend),"riga gamba 1X2 attesa: "+rend.slice(rend.indexOf("Gambe delle")));
+
+  // Una giocata nuova senza origine non si registra; con l'origine si',
+  // e il bookmaker usato diventa quello proposto la volta dopo.
+  clickNav(app,"Nuova");
+  const nuovaEv=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="Lazio - Genoa");
+  nuovaEv.value="Lazio - Genoa"; nuovaEv.listeners.input.call(nuovaEv);
+  const selMercato=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Seleziona mercato…"));
+  selMercato.value="1"; selMercato.listeners.change.call(selMercato);
+  for(const [ph,v] of [["2.30","2.10"],["5.00","4"]]){
+    const i=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder===ph); i.value=v; i.listeners.input.call(i);
+  }
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra giocata").listeners.click();
+  assert.ok(app.children[0].textContent.includes("Scegli l'origine"),"senza origine la giocata va bloccata");
+  const sel=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Scegli l'origine…"));
+  sel.value="LIBERA"; sel.listeners.change.call(sel);
+  const selBook=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Lottomatica"));
+  selBook.value="SNAI"; selBook.listeners.change.call(selBook);
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra giocata").listeners.click();
+  const nuova=JSON.parse(storage["registro-tipster-v1"]).giocate.find(g=>g.evento==="Lazio - Genoa");
+  assert.ok(nuova,"giocata nuova non salvata");
+  assert.equal(nuova.origine,"LIBERA");
+  assert.equal(nuova.classificazione,"PERSONALE");
+  assert.equal(nuova.stake,4);
+  assert.equal(storage["registro-ultimo-bookmaker"],"SNAI","il bookmaker usato va ricordato");
 
   // Sync: le righe dei tipster eliminati non vanno rimandate al cloud.
   clickNav(app,"Dati");
@@ -200,6 +237,12 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   const up=calls.find(x=>x.azione==="upsert"&&x.table==="picks");
   assert.ok(up,"upsert picks non eseguito");
   assert.ok(!up.rows.some(r=>r.tipster==="rubino"||r.tipster==="mercante"),"inviate al cloud righe dei tipster eliminati");
+  const origineInviata=ev=>(up.rows.find(r=>r.evento===ev)||{}).origine;
+  assert.equal(origineInviata("Settembre - Vecchia"),"VEGGENTE","dal 15/09 le giocate sono del Veggente");
+  assert.equal(origineInviata("Analisi - Settembre"),"BET_CORE","le osservate del protocollo sono BET Core");
+  assert.equal(origineInviata("Lazio - Genoa"),"LIBERA");
+  const gambeInviate=up.rows.find(r=>r.tipo_schedina==="MULTIPLA").gambe;
+  assert.equal(JSON.stringify(gambeInviate[0]),JSON.stringify({evento:"A - B",mercato:"1",quota:1.5,esito:"vinta"}),"quota ed esito della gamba vanno al cloud");
   const salvate=JSON.parse(storage["registro-tipster-v1"]).giocate;
   assert.ok(!salvate.some(g=>g.tipster==="rubino"||g.tipster==="mercante"),"copia locale ancora con i tipster eliminati");
 
