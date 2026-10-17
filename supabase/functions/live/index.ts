@@ -1,19 +1,24 @@
 // BET CORE Live (17/10/2026).
 // Restituisce le giocate aperte dell'utente con, per ogni gamba, la partita
 // abbinata su API-Football, minuto, punteggio e stato (passa / non passa /
-// vinta / persa). La chiave API resta nel Vault e la legge solo questa
-// funzione; le risposte della fonte passano dalla tabella live_cache per
-// stare nelle 100 richieste al giorno del piano gratuito.
+// vinta / persa).
+//
+// Dalle 18:40 del 17/10/2026 questa funzione NON chiama piu' API-Football:
+// il piano gratuito non accetta richieste dai server cloud condivisi di
+// Supabase (account sospeso). Il calendario lo scarica il telefono di
+// Carmine con la chiave che riceve da qui dopo il login, e lo manda a
+// questa funzione (POST {giorni: {"AAAA-MM-GG": [...]}}), che lo tiene in
+// live_cache. La risposta dice quali giorni scaricare (da_scaricare),
+// rispettando un tetto giornaliero sotto le 100 richieste.
 
 const URL_DB = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
-const API = "https://v3.football.api-sports.io";
 const GIORNO_TTL_MS = 6 * 3600 * 1000; // calendario del giorno: ogni 6 ore
-const LIVE_TTL_MS = 240 * 1000; // con partite in corso: calendario ricaricato al massimo ogni 4 minuti
+const LIVE_TTL_MS = 240 * 1000; // con partite in corso: al massimo ogni 4 minuti
 // (il piano gratuito non permette di chiedere singole partite per id: il
 // calendario del giorno porta gia' minuto e punteggio di tutte)
-const SCORTA_MINIMA = 8; // richieste da lasciare libere ogni giorno
+const TETTO_GIORNO = 90; // scaricamenti al giorno chiesti al telefono (limite fonte: 100)
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -52,25 +57,24 @@ async function cacheScrivi(chiave: string, dati: unknown) {
   });
 }
 
-// ---------- API-Football ----------
-let chiaveApi = "";
-let restanti: number | null = null;
-async function api(path: string) {
-  if (!chiaveApi) chiaveApi = await rest("rpc/live_chiave_api_football", { method: "POST", body: "{}" });
-  const r = await fetch(API + path, { headers: { "x-apisports-key": chiaveApi } });
-  const rr = r.headers.get("x-ratelimit-requests-remaining");
-  if (rr !== null) restanti = Number(rr);
-  const body = await r.json();
-  const err = body.errors && (Array.isArray(body.errors) ? body.errors.length : Object.keys(body.errors).length);
-  if (err) throw new Error("API-Football: " + JSON.stringify(body.errors));
-  return body.response || [];
+// ---------- dati ricevuti dal telefono ----------
+function oggiRoma() {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Rome" }).format(new Date());
 }
-function compatta(f: any) {
+async function contatore(): Promise<number> {
+  const c = await cacheLeggi("contatore:" + oggiRoma());
+  return c ? Number(c.dati?.n || 0) : 0;
+}
+async function conta(n: number) {
+  await cacheScrivi("contatore:" + oggiRoma(), { n: (await contatore()) + n });
+}
+const testo = (v: unknown, max = 120) => (v === null || v === undefined ? null : String(v).slice(0, max));
+const numero = (v: unknown) => (v === null || v === undefined || v === "" || isNaN(Number(v)) ? null : Number(v));
+function pulisci(f: any) {
   return {
-    id: f.fixture?.id, ora: f.fixture?.date, stato: f.fixture?.status?.short, minuto: f.fixture?.status?.elapsed,
-    lega: f.league?.name, paese: f.league?.country, casa: f.teams?.home?.name, ospite: f.teams?.away?.name,
-    gc: f.goals?.home, go: f.goals?.away,
-    ft_c: f.score?.fulltime?.home, ft_o: f.score?.fulltime?.away,
+    id: numero(f?.id), ora: testo(f?.ora, 40), stato: testo(f?.stato, 8), minuto: numero(f?.minuto),
+    lega: testo(f?.lega), paese: testo(f?.paese), casa: testo(f?.casa), ospite: testo(f?.ospite),
+    gc: numero(f?.gc), go: numero(f?.go), ft_c: numero(f?.ft_c), ft_o: numero(f?.ft_o),
   };
 }
 
@@ -212,7 +216,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     // 1. Solo un utente loggato, e solo le sue giocate.
-    let uid = "";
+    let uid = "", utenteVero = false;
     const prova = req.headers.get("x-live-prova") || "";
     if (prova) {
       // Ingresso per le prove lato server: codice nel Vault, utente indicato.
@@ -227,6 +231,27 @@ Deno.serve(async (req) => {
       const utente = await ru.json();
       uid = utente?.id || "";
       if (!uid) return json({ errore: "Utente non riconosciuto." }, 401);
+      utenteVero = true;
+    }
+
+    // La chiave API va solo al telefono di chi ha fatto il login (mai alle prove).
+    if (new URL(req.url).searchParams.get("azione") === "chiave") {
+      if (!utenteVero) return json({ errore: "Solo dall'app." }, 403);
+      return json({ chiave: await rest("rpc/live_chiave_api_football", { method: "POST", body: "{}" }) });
+    }
+
+    // Calendari scaricati dal telefono.
+    const avvisi: string[] = [];
+    if (req.method === "POST") {
+      const corpo = await req.json().catch(() => ({}));
+      const ricevuti = corpo && typeof corpo.giorni === "object" && corpo.giorni ? corpo.giorni : {};
+      let n = 0;
+      for (const d of Object.keys(ricevuti).slice(0, 4)) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !Array.isArray(ricevuti[d])) continue;
+        await cacheScrivi("giorno:" + d, ricevuti[d].slice(0, 6000).map(pulisci).filter((f: any) => f.id !== null));
+        n++;
+      }
+      if (n) await conta(n);
     }
 
     // 2. Giocate aperte degli ultimi 3 giorni.
@@ -246,21 +271,13 @@ Deno.serve(async (req) => {
       ? await rest(`veggente_giocate?id=in.(${gids.join(",")})&select=id,partita,mercato,kickoff`) : [];
     const giocById = new Map(gioc.map((g: any) => [g.id, g]));
 
-    // 4. Calendario dei giorni coinvolti (una richiesta per giorno, poi cache).
-    const avvisi: string[] = [];
+    // 4. Calendario dei giorni coinvolti, dalla cache riempita dal telefono.
     const giorni = [...new Set(picks.map((p: any) => p.data))] as string[];
     const partite: any[] = [];
+    const eta: Record<string, number> = {};
     for (const d of giorni) {
-      const k = "giorno:" + d;
-      let c = await cacheLeggi(k);
-      if (!c || c.eta > GIORNO_TTL_MS) {
-        try {
-          const lista = (await api(`/fixtures?date=${d}&timezone=Europe/Rome`)).map(compatta);
-          await cacheScrivi(k, lista);
-          c = { dati: lista, eta: 0 };
-        } catch (e) { avvisi.push("Calendario del " + d + " non aggiornato: " + String(e)); }
-      }
-      if (c) partite.push(...c.dati);
+      const c = await cacheLeggi("giorno:" + d);
+      if (c) { partite.push(...c.dati); eta[d] = c.eta; }
     }
 
     // 5. Gambe di ogni giocata, abbinate alle partite.
@@ -281,29 +298,25 @@ Deno.serve(async (req) => {
       return { p, prop, gambe: gambe.map((g: any) => ({ ...g, f: abbina(g.evento, partite) })) };
     });
 
-    // 6. Con partite in corso (o al via fra 15 minuti) il calendario di quel
-    //    giorno si ricarica, al massimo ogni 4 minuti, e porta i punteggi.
+    // 6. Cosa deve scaricare il telefono: il giorno che manca, quello vecchio
+    //    di 6 ore, o con partite in corso (o al via fra 15 minuti) ogni 4 minuti.
     const adesso = Date.now();
-    const aggiornati = new Map<number, any>();
+    const daScaricare: string[] = [];
     for (const d of giorni) {
       const vivo = schedine.some((s: any) => s.gambe.some((g: any) => g.f && String(g.f.ora).slice(0, 10) === d &&
         !FINITE.has(g.f.stato) && !NULLE.has(g.f.stato) && new Date(g.f.ora).getTime() - adesso < 15 * 60000));
-      if (!vivo) continue;
-      const k = "giorno:" + d;
-      const c = await cacheLeggi(k);
-      if (c && c.eta <= LIVE_TTL_MS) { for (const f of c.dati) aggiornati.set(f.id, f); continue; }
-      if (restanti !== null && restanti < SCORTA_MINIMA) { avvisi.push("Richieste del giorno quasi finite: punteggi non aggiornati."); continue; }
-      try {
-        const lista = (await api(`/fixtures?date=${d}&timezone=Europe/Rome`)).map(compatta);
-        await cacheScrivi(k, lista);
-        for (const f of lista) aggiornati.set(f.id, f);
-      } catch (e) { avvisi.push("Punteggi non aggiornati: " + String(e)); }
+      if (!(d in eta) || eta[d] > GIORNO_TTL_MS || (vivo && eta[d] > LIVE_TTL_MS)) daScaricare.push(d);
+    }
+    const usati = await contatore();
+    if (daScaricare.length && usati + daScaricare.length > TETTO_GIORNO) {
+      avvisi.push("Richieste del giorno quasi finite: punteggi non aggiornati fino a domani.");
+      daScaricare.length = 0;
     }
 
     // 7. Risposta.
     const out = schedine.map((s: any) => {
       const gambe = s.gambe.map((g: any) => {
-        const f = g.f ? (aggiornati.get(g.f.id) || g.f) : null;
+        const f = g.f || null;
         const m = leggiMercato(g.mercato, g.segni);
         return {
           partita: g.evento, mercato: m.leggibile ? descrivi(m.cond) : (g.mercato || "").slice(0, 40),
@@ -353,7 +366,7 @@ Deno.serve(async (req) => {
         vive: st.filter((x: string) => x === "passa" || x === "vinta").length,
       };
     });
-    return json({ aggiornato: new Date().toISOString(), richieste_restanti: restanti, avvisi, schedine: out });
+    return json({ aggiornato: new Date().toISOString(), da_scaricare: daScaricare, richieste_oggi: usati, avvisi, schedine: out });
   } catch (e) {
     return json({ errore: String(e) }, 500);
   }
