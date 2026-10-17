@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.28 · Market Lab</title>
+<title>Registro BET Core v4.29</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -211,10 +211,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261017c"></script>
-<script src="./market-metrics.js?v=20261017c"></script>
-<script src="./sync-merge.js?v=20261017c"></script>
-<script src="./receipt-parser.js?v=20261017c"></script>
+<script src="./market-taxonomy.js?v=20261017d"></script>
+<script src="./market-metrics.js?v=20261017d"></script>
+<script src="./sync-merge.js?v=20261017d"></script>
+<script src="./receipt-parser.js?v=20261017d"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -694,7 +694,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       figli.push(el("div",{"class":"ricevuta-esito"},[el("strong",{"text":"Ricevuta "+(r.bookmaker||"")+" letta"}),el("p",{"text":OCR.messaggio}),
         esitoBook?el("p",{"text":"Sul book risulta già "+esitoBook+": dopo averla registrata, aggiorna l'esito."}):null,
         el("p",{"class":"mercato-letto","text":mercati}),
-        taxPreview?el("p",{"text":"Market Lab: "+window.BetCoreMarketTaxonomy.etichetta(taxPreview.famiglia)+(taxPreview.selezione?" · "+taxPreview.selezione:"")}):null,
+        taxPreview?el("p",{"text":"Mercato: "+window.BetCoreMarketTaxonomy.etichetta(taxPreview.famiglia)+(taxPreview.selezione?" · "+taxPreview.selezione:"")}):null,
         r.avvisi&&r.avvisi.length?el("p",{"class":"ricevuta-warn","text":"Da controllare: "+r.avvisi.join(" · ")}):null]));
     }else if(OCR.stato==="error"){
       figli.push(el("div",{"class":"ricevuta-esito"},[el("strong",{"style":{color:"#D4635F"},"text":"Lettura non riuscita"}),el("p",{"text":OCR.messaggio})]));
@@ -1341,71 +1341,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return giocateCassa().filter(function(g){ return g.esito !== "aperta"; });
   }
 
-  // Una pick analitica puo essere distribuita su piu ticket reali.
-  // Il denaro resta sempre calcolato sulle singole righe; i contatori Core
-  // raggruppano invece data, tipster, evento e mercato.
+  // Le giocate reali, cioe' quelle che incidono sui soldi veri.
   function rigaRealeCore(g){
     return !g.osservata && (!g.statoCore || g.statoCore === "ufficiale");
-  }
-  function testoCore(v){
-    return String(v == null ? "" : v).trim().toLowerCase().replace(/\s+/g," ");
-  }
-  function chiaveLogicaCore(g){
-    var evento=testoCore(g.evento), mercato=testoCore(g.mercato);
-    if(evento && mercato){
-      return [g.data||"",testoCore(g.tipster),evento,mercato].join("|");
-    }
-    // Lo storico precedente non aveva evento/mercato: non deduplicarlo alla cieca.
-    return "storico|"+chiavePick(g);
-  }
-  function gruppiCore(righe){
-    var mappa={}, ordine=[];
-    righe.forEach(function(g){
-      var k=chiaveLogicaCore(g), gruppo=mappa[k], reale=rigaRealeCore(g);
-      if(!gruppo){
-        gruppo=mappa[k]={
-          chiave:k, data:g.data, tipster:g.tipster, evento:g.evento||"", mercato:g.mercato||"",
-          righe:[], ticket:0, ticketReali:0, reale:false, osservata:false,
-          stake:0, profitto:0, confidence:null, haDebrief:false, checkN:0
-        };
-        ordine.push(k);
-      }
-      gruppo.righe.push(g); gruppo.ticket++;
-      if(reale){
-        gruppo.reale=true; gruppo.ticketReali++;
-        gruppo.stake += Number(g.stake||0); gruppo.profitto += Number(g.profitto||0);
-        if(g.confidence!=null && g.confidence!==""){
-          var conf=Number(g.confidence); if(gruppo.confidence==null || conf>gruppo.confidence) gruppo.confidence=conf;
-        }
-        if(g.quotaCheck && g.quotaCheck>1 && g.quota>1){
-          gruppo.checkN++;
-        }
-      }
-      if(g.debrief && String(g.debrief).trim()) gruppo.haDebrief=true;
-      if(!reale) gruppo.osservata=true;
-    });
-    return ordine.map(function(k){
-      var gruppo=mappa[k];
-      // Se la stessa analisi ha ticket reali e righe di osservazione, prevale
-      // lo stato reale e la pick viene contata una volta sola.
-      if(gruppo.reale) gruppo.osservata=false;
-      return gruppo;
-    });
-  }
-  function riepilogoGruppiCore(gruppi){
-    var stake=0, profitto=0;
-    gruppi.forEach(function(g){ stake+=g.stake; profitto+=g.profitto; });
-    return {n:gruppi.length,stake:stake,profitto:profitto,roi:stake?(profitto/stake)*100:0};
-  }
-
-  // Il modulo v0.2 usa l'esito esplicito (mai il profitto), include le
-  // osservate a stake zero, separa PRE/LIVE e deduplica le letture correlate.
-  // Il benchmark mercato usa 1/quota senza fingere di conoscere il margine
-  // completo; lo shrink 50/50 e' diagnostico, non un peso addestrato.
-  function statisticheMercati(_righeChiuse,righePeriodo){
-    (righePeriodo||[]).forEach(aggiornaTassonomia);
-    var metriche=window.BetCoreMarketMetrics;
-    return metriche&&metriche.calcola?metriche.calcola(righePeriodo||[]):[];
   }
 
   // Ricostruisce il saldo documentato a fine giornata. I versamenti entrano
@@ -1593,12 +1531,6 @@ textarea{width:100%;min-height:78px;resize:vertical}
         el("span",{"class":"tab","style":{fontSize:"13px","color":"#DCE4EA"},
           "text":euro(ccTesta.bankroll)+(ccTesta.impegnato>0?" · "+euro(ccTesta.impegnato)+" in gioco":"")})
       ]) : null,
-      // Il numero che conta davvero: quanto hai messo contro quanto hai
-      el("div",{"class":"netto"},[
-        el("span",{"class":"etich","text":"Versato finora"}),
-        el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},
-          "text":euro(c.versato)})
-      ]),
       el("p",{"class":"sotto tab","text": c.impegnato>0
         ? euro(c.impegnato)+" in gioco \u00B7 "+euro(c.disponibile)+" liberi"
         : "\u00A0"}),
@@ -1611,7 +1543,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ]));
 
     var nav = el("nav");
-    [["registro","Registro"],["nuova","Nuova"],["codici","Codici"],["core","Core"],["tipster","Rendimento"],
+    [["registro","Registro"],["nuova","Nuova"],["codici","Codici"],["tipster","Rendimento"],
      ["cassa","Cassa"],["dati","Dati"],["guida","?"]].forEach(function(v){
       nav.appendChild(el("button",{
         "class": (S.vista===v[0] ? "on" : "")+(v[0]==="guida" ? " nav-aiuto" : ""),
@@ -1623,7 +1555,6 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     if(S.vista==="nuova") app.appendChild(vistaNuova(c));
     else if(S.vista==="registro") app.appendChild(vistaRegistro());
-    else if(S.vista==="core") app.appendChild(vistaCore(c));
     else if(S.vista==="cassa") app.appendChild(vistaCassa(c));
     else if(S.vista==="codici") app.appendChild(vistaCodici());
     else if(S.vista==="dati") app.appendChild(vistaDati());
@@ -1831,10 +1762,6 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Singola o multipla"}),
         el("p",{"class":"guida-p","text":"Per una multipla ogni gamba ha partita, mercato, quota ed esito. Una multipla vinta segna da sola tutte le gambe; su una persa indica in Modifica quale gamba è saltata. Così il Rendimento mostra quali mercati fanno perdere le multiple."})
-      ]),
-      el("div",{"class":"guida-sez"},[
-        el("h2",{"class":"guida-tit","text":"Market Lab"}),
-        el("p",{"class":"guida-p","text":"Ogni mercato viene classificato automaticamente in una famiglia confrontabile. Il Lab mostra ROI, quota media, CLV, calibrazione e maturità del campione, ma non promuove da solo una giocata nel Core."})
       ]),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Sincronizzazione"}),
@@ -2115,193 +2042,6 @@ textarea{width:100%;min-height:78px;resize:vertical}
     disegna();
   }
 
-  function vistaCore(c){
-    var pag = el("div",{"class":"pag"});
-    try{
-      var tutteChiuse = chiuseTutte();
-
-      // Compatibilita mobile: niente Set/Array.from/padStart nella vista Core.
-      function valoriUnici(arr){
-        var out=[], seen={}, i, v, k;
-        for(i=0;i<arr.length;i++){
-          v=arr[i];
-          if(v===null || v===undefined || v==="") continue;
-          k=String(v);
-          if(!seen[k]){ seen[k]=true; out.push(v); }
-        }
-        return out;
-      }
-      function dueCifre(n){ n=String(n); return n.length<2 ? "0"+n : n; }
-
-      var anni = valoriUnici(S.giocate.map(function(g){return annoData(g.data);})).sort(function(a,b){return b-a;});
-      var stagioni = valoriUnici(S.giocate.map(function(g){return stagioneData(g.data);})).sort().reverse();
-
-      var filtroBox=el("div",{"class":"scheda"});
-      filtroBox.appendChild(el("div",{"class":"scheda-top"},[
-        el("span",{"class":"serif scheda-nome","text":"Periodo di analisi"})
-      ]));
-      var fr=el("div",{"style":{padding:"14px 16px",display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"10px"}});
-
-      function selectFiltro(valori,valore,placeholder,onchange){
-        var sel=el("select",{"style":{width:"100%",padding:"11px 8px",borderRadius:"8px",background:"#101B24",color:"#DCE4EA",border:"1px solid #263642",fontSize:"14px"}});
-        sel.appendChild(el("option",{"value":"","text":placeholder}));
-        valori.forEach(function(x){
-          var v=String(x[0]), o=el("option",{"value":v,"text":x[1]}); if(String(valore)===v)o.selected=true; sel.appendChild(o);
-        });
-        sel.addEventListener("change",function(){onchange(this.value);disegna();});
-        return sel;
-      }
-      fr.appendChild(selectFiltro(anni.map(function(a){return [a,String(a)];}),S.coreAnno,"Tutti gli anni",function(v){S.coreAnno=v;}));
-      fr.appendChild(selectFiltro(Array.apply(null, Array(12)).map(function(_,i){return [i+1,nomeMese(i+1)];}),S.coreMese,"Tutti i mesi",function(v){S.coreMese=v;}));
-      fr.appendChild(selectFiltro(stagioni.map(function(x){return [x,x];}),S.coreStagione,"Tutte le stagioni",function(v){S.coreStagione=v;}));
-      filtroBox.appendChild(fr);
-
-      function nelFiltroCore(g){
-        if(S.coreAnno && String(annoData(g.data))!==String(S.coreAnno)) return false;
-        if(S.coreMese && String(meseData(g.data))!==String(S.coreMese)) return false;
-        if(S.coreStagione && stagioneData(g.data)!==S.coreStagione) return false;
-        return true;
-      }
-      var righePeriodo=S.giocate.filter(function(g){ return origineDi(g)!=="CODICI" && nelFiltroCore(g); });
-      var righeChiuse=tutteChiuse.filter(nelFiltroCore);
-      var chiuse=gruppiCore(righeChiuse);
-      var reali=chiuse.filter(function(g){return g.reale;});
-      var osservate=chiuse.filter(function(g){return g.osservata;});
-      var marketStats=statisticheMercati(righeChiuse,righePeriodo);
-      var ticketTotali=righeChiuse.length;
-      var etPeriodo=[];
-      if(S.coreMese) etPeriodo.push(nomeMese(S.coreMese));
-      if(S.coreAnno) etPeriodo.push(S.coreAnno);
-      if(S.coreStagione) etPeriodo.push("stag. "+S.coreStagione);
-      filtroBox.appendChild(el("p",{"class":"guida-p","style":{padding:"0 16px 14px",margin:"0"},"text":"Campione: "+(etPeriodo.length?etPeriodo.join(" · "):"tutto lo storico")+" · "+chiuse.length+" pick chiuse · "+reali.length+" reali · "+osservate.length+" osservate · "+ticketTotali+" ticket"}));
-      pag.appendChild(filtroBox);
-
-      var clvN=marketStats.reduce(function(a,x){return a+x.clvN;},0);
-      var clvSomma=marketStats.reduce(function(a,x){return a+x.clvSomma;},0);
-      var clv=clvN?clvSomma/clvN:0;
-      var conConfidence=reali.filter(function(g){return g.confidence!=null;});
-      var alta = reali.filter(function(g){ return (g.confidence||0)>=4; });
-      var ra = riepilogoGruppiCore(alta);
-      var debriefati = chiuse.filter(function(g){ return g.haDebrief; }).length;
-      var cards = el("div",{"class":"core-grid"});
-      [["Pick chiuse",String(chiuse.length),reali.length+" reali · "+osservate.length+" osservate · "+ticketTotali+" ticket"],
-       ["CLV chiusura",clvN ? (clv>=0?"+":"")+clv.toFixed(1)+"%" : "—",clvN+"/"+reali.length+" pick reali con closing line"+(clvN<10?" · campione insufficiente":"")],
-       ["Confidence 4–5",alta.length ? (ra.roi>=0?"+":"")+ra.roi.toFixed(0)+"% ROI" : "—",alta.length+" C4–5 · copertura "+conConfidence.length+"/"+reali.length],
-       ["Debrief",chiuse.length ? Math.round(debriefati/chiuse.length*100)+"%" : "—",debriefati+"/"+chiuse.length+" pick compilate"]].forEach(function(x){
-         cards.appendChild(el("div",{"class":"core-card"},[el("p",{"class":"k","text":x[0]}),el("p",{"class":"v serif tab","text":x[1]}),el("p",{"class":"core-dett","text":x[2]})]));
-      });
-      pag.appendChild(cards);
-
-      var tassonomia=window.BetCoreMarketTaxonomy;
-      var lab=el("div",{"class":"scheda"});
-      lab.appendChild(el("div",{"class":"scheda-top"},[
-        el("span",{"class":"serif scheda-nome","text":"Market Lab v0.2"}),
-        el("span",{"class":"badge-meta","text":marketStats.length+" campioni famiglia/fase"})
-      ]));
-      lab.appendChild(el("p",{"class":"lab-intro","text":"Confronto prospettico per famiglia e fase PRE/LIVE. Brier e Log Loss usano l'esito esplicito e includono anche PASS/Watchlist a stake zero; il mercato e' il benchmark grezzo 1/quota. Shrink 50/50 e' solo diagnostico e non modifica il Core."}));
-      if(!marketStats.length){
-        lab.appendChild(el("p",{"class":"lab-intro","text":"Nessun mercato disponibile nel periodo selezionato."}));
-      }else marketStats.forEach(function(d){
-        var fase=tassonomia&&tassonomia.faseCampione?tassonomia.faseCampione(d.n):{etichetta:"Osservazione",nota:"Campione descrittivo"};
-        var nome=tassonomia&&tassonomia.etichetta?tassonomia.etichetta(d.famiglia):d.famiglia.replace(/_/g," ");
-        var roiTesto=d.n?((d.roi>=0?"+":"")+d.roi.toFixed(1)+"% ROI"):"in attesa";
-        var stato=[];
-        if(d.aperte) stato.push(d.aperte+" aperte");
-        if(d.osservate) stato.push(d.osservate+" osservate");
-        lab.appendChild(el("div",{"class":"lab-riga"},[
-          el("div",{"class":"lab-riga-top"},[
-            el("span",{"class":"lab-riga-nome","text":nome+" · "+d.fase+(d.famiglia==="NON_CLASSIFICATO"?" · storico non inferito":"")}),
-            el("span",{"class":"lab-riga-roi tab","style":{color:d.n?(d.roi>=0?"#4FB286":"#D4635F"):"#6D7F8E"},"text":roiTesto})
-          ]),
-          el("div",{"class":"lab-metriche"},[
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Campione"}),el("p",{"class":"v tab","text":d.n+" chiuse"+(stato.length?" · "+stato.join(" · "):"")})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Esiti"}),el("p",{"class":"v tab","text":d.vinte+" V · "+d.perse+" P"+(d.rimborsate?" · "+d.rimborsate+" R":"")})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Stake / P&L"}),el("p",{"class":"v tab","text":euro(d.stake)+" · "+segnato(d.profitto)})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Quota media"}),el("p",{"class":"v tab","text":d.quotaMedia?"@"+d.quotaMedia.toFixed(2):"—"})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"CLV chiusura"}),el("p",{"class":"v tab","text":d.clvN?((d.clv>=0?"+":"")+d.clv.toFixed(1)+"% · "+d.clvN+"/"+d.n):"— · 0/"+d.n})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Modello"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.brier.toFixed(3)+" · LL "+d.logLoss.toFixed(3):"— · 0/"+d.n})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Mercato grezzo"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.marketBrier.toFixed(3)+" · LL "+d.marketLogLoss.toFixed(3):"—"})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Shrink 50/50"}),el("p",{"class":"v tab","text":d.scoreN?"Brier "+d.shrinkBrier.toFixed(3)+" · LL "+d.shrinkLogLoss.toFixed(3):"—"})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Calibrazione / edge"}),el("p",{"class":"v tab","text":d.scoreN?("gap "+(d.calibrationGap*100).toFixed(1)+"% · edge "+(d.edgeMedio>=0?"+":"")+(d.edgeMedio*100).toFixed(1)+"%"):"—"})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Copertura"}),el("p",{"class":"v tab","text":d.scoreN+"/"+d.n+" misurabili · "+d.missingP+" senza p · "+d.missingTimestamp+" senza ora"})]),
-            el("div",{"class":"lab-metrica"},[el("p",{"class":"k","text":"Esclusi"}),el("p",{"class":"v tab","text":d.rimborsate+" push · "+d.conflitti+" conflitti · "+d.missingQuote+" senza quota"})])
-          ]),
-          el("div",{"class":"lab-fase"},[
-            el("span",{"text":fase.etichetta}),el("span",{"text":fase.nota})
-          ])
-        ]));
-      });
-      pag.appendChild(lab);
-
-      if(chiuse.length){
-        var ultimaData=chiuse.reduce(function(a,g){return !a || g.data>a ? g.data : a;},"");
-        var ultimoGiorno=chiuse.filter(function(g){return g.data===ultimaData;});
-        var mancantiUltimo=ultimoGiorno.filter(function(g){return !g.haDebrief;});
-        if(mancantiUltimo.length){
-          pag.appendChild(el("div",{"class":"scheda"},[
-            el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Debrief da completare"})]),
-            el("p",{"class":"avviso","style":{margin:"14px 16px"},"text":"Debrief "+breve(ultimaData)+" mancanti: "+mancantiUltimo.length+" su "+ultimoGiorno.length+" pick. I ticket multipli della stessa selezione contano una volta sola."})
-          ]));
-        }
-      }
-
-      if(!chiuse.length){
-        pag.appendChild(el("div",{"class":"scheda"},[
-          el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Nessuna pick chiusa nel filtro"})]),
-          el("p",{"class":"guida-p","style":{padding:"14px 16px",margin:"0"},"text":"Se hai appena chiuso una giocata, prova Tutti gli anni / Tutti i mesi / Tutte le stagioni. Se il contatore resta a 0, il dato è registrato ma non viene riconosciuto come chiuso."})
-        ]));
-      }
-
-      var perMese={};
-      righeChiuse.forEach(function(g){
-        var k=String(annoData(g.data))+"-"+dueCifre(meseData(g.data));
-        if(!perMese[k]) perMese[k]=[];
-        perMese[k].push(g);
-      });
-      var mesiKeys=Object.keys(perMese).sort().reverse().slice(0,12);
-      if(mesiKeys.length){
-        var trend=el("div",{"class":"scheda"});
-        trend.appendChild(el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Andamento mensile"})]));
-        var body=el("div",{"style":{padding:"6px 16px 12px"}});
-        mesiKeys.forEach(function(k){
-          var gruppiMese=gruppiCore(perMese[k]);
-          var realiMese=gruppiMese.filter(function(g){return g.reale;});
-          var osservateMese=gruppiMese.filter(function(g){return g.osservata;});
-          var rr=riepilogoGruppiCore(realiMese);
-          var pp=k.split("-");
-          body.appendChild(el("div",{"style":{display:"flex",justifyContent:"space-between",gap:"12px",padding:"10px 0",borderBottom:"1px solid #20313D"}},[
-            el("span",{"text":nomeMese(Number(pp[1]))+" "+pp[0]}),
-            el("span",{"class":"tab","text":realiMese.length+" reali · "+(rr.n?((rr.roi>=0?"+":"")+rr.roi.toFixed(0)+"% ROI"):"—")+(osservateMese.length?" · "+osservateMese.length+" osservate":"")})
-          ]));
-        });
-        trend.appendChild(body); pag.appendChild(trend);
-      }
-
-      pag.appendChild(el("div",{"class":"scheda"},[
-        el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Disciplina BET Core"})]),
-        el("div",{"style":{padding:"14px 16px"}},[
-          el("p",{"class":"guida-p","text":"Anno, mese e stagione sono ricavati automaticamente dalla data della pick."}),
-          el("p",{"class":"guida-p","text":"Una selezione giocata con piu ticket conta come una sola pick; stake e profitto sommano comunque tutti i ticket reali."}),
-          el("p",{"class":"guida-p","text":"Il CLV confronta la quota presa con la closing line sulle sole pick reali: positivo significa che sei entrato a un prezzo migliore del mercato in chiusura."}),
-          el("p",{"class":"guida-p","text":"Le pick osservate ("+osservate.length+") non toccano la cassa ma restano nel campione."}),
-          el("p",{"class":"guida-p","text":"Il debrief trasforma il risultato in informazione e riduce il rischio di giudicare il framework soltanto da vinta/persa."})
-        ])
-      ]));
-    }catch(err){
-      pag.appendChild(el("div",{"class":"scheda"},[
-        el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Core — errore di visualizzazione"})]),
-        el("div",{"style":{padding:"14px 16px"}},[
-          el("p",{"class":"guida-p","text":"Le giocate non sono state modificate. Errore: "+(err && err.message ? err.message : String(err))}),
-          el("p",{"class":"guida-p","text":"Pick totali locali: "+S.giocate.length+" · pick chiuse logiche rilevate: "+gruppiCore(chiuseTutte()).length})
-        ])
-      ]));
-    }
-    return pag;
-  }
-
-  // La scheda Cassa descrive movimenti reali: ogni riga ufficiale chiusa e'
-  // un ticket, anche quando due multiple hanno lo stesso titolo generico.
-  // Il raggruppamento per ipotesi analitica resta confinato alla scheda Core.
   function riepilogoMensile(){
     var mesi={}, i;
     var reali=chiuseTutte().filter(rigaRealeCore), mov=movimentiCassa();

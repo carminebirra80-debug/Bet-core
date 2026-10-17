@@ -125,13 +125,10 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   await new Promise(resolve=>setTimeout(resolve,5));
   const app=document.getElementById("app");
   assert.equal(app.children[1].tagName,"NAV");
-  clickNav(app,"Core");
-
-  const text=app.textContent;
-  for(const expected of ["Market Lab v0.2","Combo · PRE","1 chiuse · 1 aperte","CLV chiusura","Brier 0.090","Log Loss","Shrink 50/50","Osservazione"]){
-    assert.ok(text.includes(expected),"Testo UI mancante: "+expected);
-  }
-  assert.ok(!text.includes("Core — errore di visualizzazione"));
+  // Il Core (Market Lab) e "Versato finora" in alto sono stati tolti il
+  // 17/10/2026: non servivano. Il versato resta nella scheda Cassa.
+  assert.ok(!app.children[1].children.some(x=>x.textContent==="Core"),"la scheda Core non deve esserci");
+  assert.ok(!app.children[0].textContent.includes("Versato finora"),"Versato finora non va piu' in alto");
 
   clickNav(app,"Nuova");
   assert.ok(app.textContent.includes("Importa ricevuta Sportium"));
@@ -217,7 +214,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(!app.textContent.includes("I tetti seguono la cassa"),
     "La spiegazione percentuale non deve comparire in modo fisso");
   clickNav(app,"?");
-  assert.ok(app.textContent.includes("Market Lab"));
+  assert.ok(app.textContent.includes("Codici")&&!app.textContent.includes("Market Lab"));
   clickNav(app,"Dati");
   const invia=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora");
   assert.ok(invia,"Pulsante Invia ora non trovato");
