@@ -125,13 +125,10 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   await new Promise(resolve=>setTimeout(resolve,5));
   const app=document.getElementById("app");
   assert.equal(app.children[1].tagName,"NAV");
-  clickNav(app,"Core");
-
-  const text=app.textContent;
-  for(const expected of ["Market Lab v0.2","Combo · PRE","1 chiuse · 1 aperte","CLV chiusura","Brier 0.090","Log Loss","Shrink 50/50","Osservazione"]){
-    assert.ok(text.includes(expected),"Testo UI mancante: "+expected);
-  }
-  assert.ok(!text.includes("Core — errore di visualizzazione"));
+  // Il Core (Market Lab) e "Versato finora" in alto sono stati tolti il
+  // 17/10/2026: non servivano. Il versato resta nella scheda Cassa.
+  assert.ok(!app.children[1].children.some(x=>x.textContent==="Core"),"la scheda Core non deve esserci");
+  assert.ok(!app.children[0].textContent.includes("Versato finora"),"Versato finora non va piu' in alto");
 
   clickNav(app,"Nuova");
   assert.ok(app.textContent.includes("Importa ricevuta Sportium"));
@@ -186,38 +183,28 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(app.textContent.includes("2 vinte · ROI +58%"),
     "Il riepilogo giornaliero deve contare entrambi i ticket dello stesso mercato");
 
-  // Tetto come percentuale della cassa. Cassa attesa dai dati di prova:
-  // 10 versati + 3.50 di rettifica + 1.20 + 0.55 + 15.08 di profitti
-  // chiusi = 30.33 (la pick
-  // aperta e quella osservata non contano). Al 50% fa 15.165, arrotondato ai
-  // 50 centesimi = 15.00; al 25% fa 7.5825 -> 7.50.
-  const bottonePct=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="% della cassa");
-  assert.ok(bottonePct,"Selettore '% della cassa' non trovato nelle impostazioni");
-  bottonePct.listeners.click();
-  const testoPct=app.textContent;
-  // Ancorato all'etichetta: un semplice includes("€6,00") passava anche con
-  // la percentuale sbagliata, perche' quella cifra compare altrove.
-  assert.ok(testoPct.includes("Sabato= €15,00")&&testoPct.includes("Domenica= €15,00"),
-    "Tetto atteso €15,00 (50% di €30,33) non mostrato accanto al giorno");
-  assert.ok(testoPct.includes("Lun–ven= €7,50"),
-    "Tetto feriali atteso €7,50 (25% di €30,33)");
-  assert.ok(testoPct.includes("Tetto ai versamenti del mese"),
+  // I limiti di gioco servivano alla puntata consigliata, tolta dal modulo
+  // Nuova: dal 17/10/2026 in Cassa resta solo il tetto ai versamenti.
+  const testoCassa=app.textContent;
+  assert.ok(testoCassa.includes("Tetto ai versamenti del mese"),
     "Il budget mensile deve dichiarare che riguarda i versamenti, non le giocate");
-  assert.ok(testoPct.includes("I tetti seguono la cassa"),
-    "Manca la spiegazione del modo percentuale");
+  assert.ok(!testoCassa.includes("Limiti di gioco")&&!findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="% della cassa"),
+    "i limiti di gioco non hanno piu' effetto e non vanno mostrati");
 
-  // Tornando a cifra fissa il comportamento precedente deve restare identico:
-  // i tetti seminati valgono 10/10/5, quindi la proiezione mensile e'
-  // (10+10+5) x 52 / 12 = 108.33.
-  const bottoneFisso=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Cifra fissa");
-  assert.ok(bottoneFisso,"Selettore 'Cifra fissa' non trovato");
-  bottoneFisso.listeners.click();
-  assert.ok(app.textContent.includes("€108,33"),
-    "In modo fisso la proiezione mensile deve restare quella di prima");
-  assert.ok(!app.textContent.includes("I tetti seguono la cassa"),
-    "La spiegazione percentuale non deve comparire in modo fisso");
+  // Registro compatto: esito, Modifica ed Elimina sulla stessa riga, e
+  // l'origine non ripetuta accanto alla sigla.
+  clickNav(app,"Registro");
+  const rigaAperta=findElement(app,x=>x.tagName==="LI"&&x.textContent.includes("Barcellona vs Rayo"));
+  const rigaBottoni=findElement(rigaAperta,x=>x.className==="riga-azioni");
+  assert.ok(rigaBottoni,"riga delle azioni compatta mancante");
+  const testi=rigaBottoni.children.filter(x=>x.tagName==="BUTTON").map(x=>x.textContent).join(",");
+  assert.equal(testi,"Vinta,Persa,Rimb.,Modifica,Elimina");
+  assert.ok(!findElement(rigaAperta,x=>x.className==="meta tab"&&x.textContent.includes("Libera")),"origine ripetuta nella riga");
+  const filtri=findElement(app,x=>x.className==="filtri");
+  assert.ok(filtri,"filtri del registro mancanti");
+
   clickNav(app,"?");
-  assert.ok(app.textContent.includes("Market Lab"));
+  assert.ok(app.textContent.includes("Codici")&&!app.textContent.includes("Market Lab"));
   clickNav(app,"Dati");
   const invia=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora");
   assert.ok(invia,"Pulsante Invia ora non trovato");

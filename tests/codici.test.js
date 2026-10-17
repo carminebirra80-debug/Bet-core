@@ -226,9 +226,6 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(rend.includes("Quota 6 – 10+€20,55"),"fascia di quota del codice vinto");
   assert.ok(rend.includes("Veggente+€5,00"),"la scheda Veggente resta con la sua sola giocata");
 
-  // Core: i codici non entrano nel Market Lab.
-  clickNav(app,"Core");
-  assert.ok(!app.textContent.includes("Core — errore di visualizzazione"));
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
