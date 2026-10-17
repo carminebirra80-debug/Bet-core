@@ -197,6 +197,16 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(cassaInAlto().includes("€35,00"),"i codici non toccano la principale: "+cassaInAlto().slice(0,40));
   assert.ok(app.textContent.includes("+€20,55"),"profitto del codice vinto nella lista");
 
+  // Cassa: il totale delle due casse. Principale 35, codici 39,55.
+  clickNav(app,"Cassa");
+  const tot=findElement(app,x=>String(x.className).indexOf("totale-casse")>=0);
+  assert.ok(tot,"riquadro del totale mancante");
+  const tt=tot.textContent;
+  assert.ok(tt.includes("In cassa€35,00€39,55€74,55"),"totale in cassa: "+tt);
+  assert.ok(tt.includes("Versato€50,00€0,00€50,00"),"totale versato: "+tt);
+  // Risultato: principale +5, codici +19,55 (lo spostamento non conta).
+  assert.ok(tt.includes("Risultato reale+€5,00+€19,55+€24,55"),"risultato totale: "+tt);
+
   // Registro: i codici non lo intasano, compaiono solo col loro filtro.
   clickNav(app,"Registro");
   assert.ok(app.textContent.includes("Inter - Roma"));

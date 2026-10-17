@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.26 · Market Lab</title>
+<title>Registro BET Core v4.27 · Market Lab</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -156,6 +156,9 @@ li.vers{display:flex;justify-content:space-between;align-items:baseline;gap:12px
 .ricevuta-import p{font-size:11px;line-height:1.5;color:var(--tenue2);margin:6px 0 0}
 .ricevuta-azione{width:auto;flex:0 0 auto;padding:10px 12px;border:1px solid var(--oro);
   border-radius:4px;color:var(--oro);font-size:12px;font-weight:600}
+.totale-riga{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:6px;padding:9px 16px;border-top:1px solid var(--bordo2);font-size:13px;align-items:center}
+.totale-riga span:not(:first-child){text-align:right}
+.totale-testa{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tenue2)}
 .codici-riga{display:grid;grid-template-columns:1.3fr 1fr .8fr auto;gap:8px;margin-top:16px}
 .codici-riga input{min-width:0}
 .codici-piu{width:auto;padding:0 18px;font-size:20px}
@@ -206,10 +209,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261017a"></script>
-<script src="./market-metrics.js?v=20261017a"></script>
-<script src="./sync-merge.js?v=20261017a"></script>
-<script src="./receipt-parser.js?v=20261017a"></script>
+<script src="./market-taxonomy.js?v=20261017b"></script>
+<script src="./market-metrics.js?v=20261017b"></script>
+<script src="./sync-merge.js?v=20261017b"></script>
+<script src="./receipt-parser.js?v=20261017b"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -2407,6 +2410,35 @@ textarea{width:100%;min-height:78px;resize:vertical}
               euro(riassumi(c.chiuse).giocato)+" puntati"})
         : null
     ]));
+
+    // Totale delle due casse (17/10/2026): principale e codici restano
+    // separate, ma qui si vedono insieme tutti i soldi e il risultato
+    // complessivo, per confrontarli con i saldi veri dei due siti.
+    var cc = conCassa("CODICI",conti);
+    var codiciAttivi = conCassa("CODICI",movimentiCassa).length || cc.chiuse.length || cc.aperte.length;
+    if(codiciAttivi){
+      var righeTot = [
+        ["In cassa", c.bankroll, cc.bankroll, euro],
+        ["In gioco", c.impegnato, cc.impegnato, euro],
+        ["Versato", c.versato, cc.versato, euro],
+        ["Prelevato", c.prelevato, cc.prelevato, euro],
+        ["Risultato reale", c.reale, cc.reale, segnato]
+      ];
+      pag.appendChild(el("div",{"class":"scheda totale-casse"},[
+        el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Totale delle due casse"})]),
+        el("div",{"class":"totale-riga totale-testa"},[el("span"),el("span",{"text":"Principale"}),el("span",{"text":"Codici"}),el("span",{"text":"Totale"})]),
+        el("div",null,righeTot.map(function(r){
+          var tot=r[1]+r[2], ultimo=r[0]==="Risultato reale";
+          return el("div",{"class":"totale-riga"},[
+            el("span",{"text":r[0]}),
+            el("span",{"class":"tab","text":r[3](r[1])}),
+            el("span",{"class":"tab","text":r[3](r[2])}),
+            el("span",{"class":"tab","style":{fontWeight:"600",color:ultimo?(tot>=0?"#4FB286":"#D4635F"):""},"text":r[3](tot)})
+          ]);
+        })),
+        el("p",{"class":"campione","text":"Principale = Sportium, Codici = Sportbet. Confronta \"In cassa\" con i saldi dei due siti: se non tornano, manca un movimento."})
+      ]));
+    }
 
     // Budget del mese
     var barraM = el("div",{"class":"barra"});
