@@ -35,6 +35,8 @@ header{padding:32px 20px 24px;border-bottom:1px solid var(--bordo)}
 .cassa{font-size:44px;font-weight:700;line-height:1.1}
 .riga-cassa{display:flex;align-items:baseline;gap:12px;margin-top:4px}
 .delta{font-size:14px;font-weight:600}
+.delta-box{display:flex;flex-direction:column;line-height:1.25}
+.delta-etich{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tenue2)}
 .sotto{font-size:12px;color:var(--tenue);margin:8px 0 0}
 
 nav{display:flex;border-bottom:1px solid var(--bordo);position:sticky;top:0;background:#111820;z-index:5}
@@ -1579,8 +1581,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("p",{"class":"etich","text":codiciInTesta ? "Cassa · Sportium (Veggente)" : "Cassa"}),
       el("div",{"class":"riga-cassa"},[
         el("span",{"class":"serif tab cassa","text":euro(c.bankroll)}),
-        el("span",{"class":"tab delta","text":segnato(c.reale),
-          "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}})
+        // Accanto alla cifra, cosa misura: cassa + prelevato - versato.
+        el("span",{"class":"delta-box"},[
+          el("span",{"class":"tab delta","text":segnato(c.reale),
+            "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}}),
+          el("span",{"class":"delta-etich","text":"risultato reale"})
+        ])
       ]),
       codiciInTesta ? el("div",{"class":"netto"},[
         el("span",{"class":"etich","text":"Sportbet · codici"}),
