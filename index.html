@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.36</title>
+<title>Registro BET Core v4.37</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -1706,11 +1706,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
   // ---- Live (17/10/2026, idea di Carmine) ----
   // Le giocate aperte con minuto, punteggio e stato di ogni gamba. I dati
-  // arrivano dalla funzione Supabase "live", che legge la fonte API-Football
-  // con la chiave tenuta nel Vault: qui non c'e' nessuna chiave. La funzione
-  // tiene i risultati in cache (al massimo una richiesta alla fonte ogni 4
-  // minuti), quindi l'app puo' chiedere spesso senza consumare richieste.
-  var LIVE = { dati:null, errore:null, caricando:false, ultimo:0 };
+  // arrivano dalla funzione Supabase "live", che abbina le gambe al
+  // calendario di API-Football. Il calendario lo scarica il telefono (vedi
+  // caricaLive) solo quando la funzione lo chiede: al massimo ogni 4 minuti
+  // con partite in corso, con un tetto di 90 richieste al giorno.
+  var LIVE = { dati:null, errore:null, caricando:false, ultimo:0, chiave:null, fermoFino:0, avvisoFonte:null };
   var LIVE_STATI = {
     passa:["passa","var(--verde)"], non_passa:["non passa","var(--rosso)"],
     vinta:["vinta","var(--verde)"], persa:["persa","var(--rosso)"],
@@ -1718,16 +1718,70 @@ textarea{width:100%;min-height:78px;resize:vertical}
     non_seguita:["non seguito","var(--tenue)"], non_abbinata:["partita non trovata","var(--avviso,#D9A15A)"],
     rinviata:["rinviata","var(--avviso,#D9A15A)"]
   };
+  // Dal 17/10/2026 (v4.37) il calendario lo scarica questo telefono: il piano
+  // gratuito di API-Football non accetta richieste dai server cloud condivisi.
+  // La funzione dice quali giorni servono (da_scaricare); la chiave arriva da
+  // lei solo dopo il login, resta in memoria (LIVE.chiave) e non viene mai
+  // salvata sul telefono ne' scritta in questa pagina.
+  var API_FOOTBALL="https://v3.football.api-sports.io";
+  function compattaPartita(f){
+    var fx=f.fixture||{}, st=fx.status||{}, lg=f.league||{}, t=f.teams||{}, gl=f.goals||{}, ft=(f.score||{}).fulltime||{};
+    return { id:fx.id, ora:fx.date, stato:st.short, minuto:st.elapsed, lega:lg.name, paese:lg.country,
+      casa:(t.home||{}).name, ospite:(t.away||{}).name, gc:gl.home, go:gl.away, ft_c:ft.home, ft_o:ft.away };
+  }
+  function erroriApi(j){
+    var e=j && j.errors; if(!e) return "";
+    var n=Array.isArray(e) ? e.length : Object.keys(e).length;
+    if(!n) return "";
+    var testo=Array.isArray(e) ? e.join(" ") : Object.keys(e).map(function(k){ return e[k]; }).join(" ");
+    return testo || JSON.stringify(e);
+  }
+  async function chiamaLive(token, corpo){
+    var r=await fetch(SUPABASE_URL+"/functions/v1/live",{method:"POST",headers:{
+      "Authorization":"Bearer "+token, "apikey":SUPABASE_KEY, "Content-Type":"application/json"},
+      body:JSON.stringify(corpo||{})});
+    var j=await r.json();
+    if(!r.ok || j.errore) throw new Error(j.errore||("errore "+r.status));
+    return j;
+  }
+  async function scaricaGiorni(token, giorni){
+    if(!LIVE.chiave){
+      var r=await fetch(SUPABASE_URL+"/functions/v1/live?azione=chiave",{headers:{
+        "Authorization":"Bearer "+token, "apikey":SUPABASE_KEY}});
+      var j=await r.json();
+      if(!r.ok || !j.chiave) throw new Error(j.errore||"chiave non disponibile");
+      LIVE.chiave=j.chiave;
+    }
+    var out={};
+    for(var i=0;i<giorni.length && i<4;i++){
+      var d=giorni[i];
+      var ra=await fetch(API_FOOTBALL+"/fixtures?date="+d+"&timezone=Europe/Rome",{headers:{"x-apisports-key":LIVE.chiave}});
+      var ja=await ra.json();
+      var err=erroriApi(ja);
+      if(err) throw new Error("API-Football: "+err);
+      out[d]=(ja.response||[]).map(compattaPartita);
+    }
+    return out;
+  }
   async function caricaLive(){
     if(LIVE.caricando) return;
     if(!DB || !CLOUD.user){ LIVE.errore="Per il Live serve l'accesso al cloud: entra dalla sezione Dati."; if(S.vista==="live") disegna(); return; }
     LIVE.caricando=true; if(S.vista==="live") disegna();
     try{
       var sess=(await DB.auth.getSession()).data.session;
-      var r=await fetch(SUPABASE_URL+"/functions/v1/live",{headers:{
-        "Authorization":"Bearer "+(sess?sess.access_token:""), "apikey":SUPABASE_KEY}});
-      var j=await r.json();
-      if(!r.ok || j.errore) throw new Error(j.errore||("errore "+r.status));
+      var token=sess?sess.access_token:"";
+      var j=await chiamaLive(token,{});
+      LIVE.avvisoFonte=null;
+      // Dopo un errore della fonte si riprova fra 10 minuti, non a ogni giro.
+      if(j.da_scaricare && j.da_scaricare.length && Date.now()>(LIVE.fermoFino||0)){
+        try{
+          var giorni=await scaricaGiorni(token, j.da_scaricare);
+          j=await chiamaLive(token,{giorni:giorni});
+        }catch(e){
+          LIVE.fermoFino=Date.now()+600000;
+          LIVE.avvisoFonte="Punteggi non aggiornati: "+(e.message||String(e));
+        }
+      }
       LIVE.dati=j; LIVE.errore=null; LIVE.ultimo=Date.now();
     }catch(e){ LIVE.errore="Live non aggiornato: "+(e.message||String(e)); }
     LIVE.caricando=false;
@@ -1794,6 +1848,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("button",{"class":"live-agg","text":"Aggiorna","disabled":LIVE.caricando?"disabled":null,"onclick":function(){caricaLive();}})
     ]));
     if(LIVE.errore) pag.appendChild(el("p",{"class":"errore","text":LIVE.errore}));
+    if(LIVE.avvisoFonte) pag.appendChild(el("p",{"class":"live-avviso","text":LIVE.avvisoFonte}));
     if(d && d.avvisi) d.avvisi.forEach(function(a){ pag.appendChild(el("p",{"class":"live-avviso","text":a})); });
     if(!d){
       if(!LIVE.caricando && !LIVE.errore) setTimeout(function(){ liveSeVecchio(0); },0);
