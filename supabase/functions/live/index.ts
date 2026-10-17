@@ -332,6 +332,20 @@ Deno.serve(async (req) => {
       } else if (st.includes("rinviata") && st.every((x: string) => x === "vinta" || x === "rinviata")) {
         motivo = "Una gamba e' rinviata: la quota cambia, chiudila a mano con la ricevuta.";
       }
+      // Avviso esplicito (17/10/2026): partite finite, nessuna persa, ma una o
+      // piu' gambe il Live non le sa giudicare. La schedina aspetta Carmine.
+      if (!proposta && !motivo && gambe.length) {
+        const INCERTE: Record<string, string> = { non_seguita: "non seguita", da_verificare: "linea mancante", non_abbinata: "partita non trovata" };
+        const incerte = gambe.filter((g: any) => INCERTE[g.stato]);
+        const chiuse = gambe.every((g: any) => g.stato === "vinta" ||
+          (INCERTE[g.stato] && (g.stato === "non_abbinata" || FINITE.has(g.stato_partita))));
+        if (incerte.length && chiuse) {
+          const elenco = incerte.map((g: any) => `${g.partita} (${INCERTE[g.stato]}: ${g.mercato})`).join("; ");
+          const n = incerte.length;
+          motivo = `Il Live non pu\u00f2 decidere questa schedina: ${n === 1 ? "1 gamba" : n + " gambe"} da controllare, ${elenco}.` +
+            (gambe.length > n ? " Le altre sono vinte: controlla e chiudila a mano." : " Controlla e chiudila a mano.");
+        }
+      }
       return {
         id: s.p.id, legacy_id: s.p.legacy_id, proposta, motivo, data: s.p.data, titolo: s.p.codice_schedina ? "Codice " + s.p.codice_schedina : s.p.evento,
         bookmaker: s.p.bookmaker, quota: s.p.quota, puntata: s.p.stake, origine: s.p.origine, sistema,
