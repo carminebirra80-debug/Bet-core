@@ -249,6 +249,25 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   findElement(app,x=>x.tagName==="BUTTON"&&String(x.className).indexOf("chip")===0&&x.textContent==="Codici").listeners.click();
   assert.ok(app.textContent.includes("Codice 186516")&&!app.textContent.includes("Inter - Roma"));
 
+  // Nota (v4.39): il modulo di modifica ha il campo, la nota si salva, si
+  // vede nel Registro e nella lista Codici, e va al cloud.
+  const vinto=findElement(app,x=>x.tagName==="LI"&&String(x.className).indexOf("voce")===0&&x.textContent.includes("Codice 521267"));
+  findElement(vinto,x=>x.tagName==="BUTTON"&&x.textContent==="Modifica").listeners.click();
+  const nota=findElement(app,x=>x.tagName==="TEXTAREA"&&x.id==="campo-nota");
+  assert.ok(nota,"campo Nota mancante nel modulo");
+  assert.equal(nota.value,"","nota vuota all'inizio");
+  nota.value="bonus 4,20 incluso nella quota"; nota.listeners.input.call(nota);
+  findElement(app,x=>x.tagName==="BUTTON"&&x.id==="bottone-registra").listeners.click();
+  await new Promise(resolve=>setTimeout(resolve,5));
+  const conNota=JSON.parse(storage["registro-tipster-v1"]).giocate.find(g=>g.codiceSchedina==="521267");
+  assert.equal(conNota.nota,"bonus 4,20 incluso nella quota","la nota si salva");
+  assert.equal(conNota.stake,3,"la modifica della nota non tocca la puntata");
+  clickNav(app,"Registro");
+  findElement(app,x=>x.tagName==="BUTTON"&&String(x.className).indexOf("chip")===0&&x.textContent==="Codici").listeners.click();
+  assert.ok(app.textContent.includes("Nota: bonus 4,20 incluso nella quota"),"la nota si vede nel Registro");
+  clickNav(app,"Codici");
+  assert.ok(app.textContent.includes("€3,00 · bonus 4,20 incluso nella quota"),"la nota si vede nella lista Codici");
+
   // Rendimento: scheda Codici Veggente a parte, la scheda Veggente non li vede.
   clickNav(app,"Rendimento");
   const rend=app.textContent;
@@ -266,6 +285,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   const rigaCodice=up.rows.find(r=>r.codice_schedina==="521267");
   assert.ok(rigaCodice,"il codice va al cloud");
   assert.equal(rigaCodice.origine,"CODICI");
+  assert.equal(rigaCodice.nota,"bonus 4,20 incluso nella quota","la nota va al cloud");
   const upV=calls.filter(x=>x.azione==="upsert"&&x.table==="versamenti").pop();
   assert.ok(upV.rows.some(r=>r.cassa==="CODICI"&&r.importo===20),"il movimento della cassa codici va al cloud con la sua cassa");
   assert.ok(upV.rows.some(r=>r.cassa==="PRINCIPALE"&&r.importo===50),"i movimenti vecchi restano della principale");
