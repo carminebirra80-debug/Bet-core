@@ -279,6 +279,9 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
       {id:10,data:"2026-08-01",importo:10},
       {id:11,data:"2026-09-01",importo:10}
     ]},
+    // andamento lavora sui movimenti della cassa attiva (17/10/2026).
+    movimentiCassa:function(){ return provaContesto.S.versamenti; },
+    eSpostamento:function(){ return false; },
     risultato:null
   };
   vm.runInNewContext(sorgenteAndamento[1]+`; risultato=andamento([

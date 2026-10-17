@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.25 · Market Lab</title>
+<title>Registro BET Core v4.26 · Market Lab</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -156,6 +156,16 @@ li.vers{display:flex;justify-content:space-between;align-items:baseline;gap:12px
 .ricevuta-import p{font-size:11px;line-height:1.5;color:var(--tenue2);margin:6px 0 0}
 .ricevuta-azione{width:auto;flex:0 0 auto;padding:10px 12px;border:1px solid var(--oro);
   border-radius:4px;color:var(--oro);font-size:12px;font-weight:600}
+.codici-riga{display:grid;grid-template-columns:1.3fr 1fr .8fr auto;gap:8px;margin-top:16px}
+.codici-riga input{min-width:0}
+.codici-piu{width:auto;padding:0 18px;font-size:20px}
+.codici-voce{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bordo2)}
+.codici-codice{display:block;font-size:15px;color:var(--testo)}
+.codici-dett{display:block;font-size:12px;color:var(--tenue2);margin-top:2px}
+.codici-destra{display:flex;align-items:center;gap:6px}
+.codici-azioni{display:flex;align-items:center;gap:6px}
+.codici-azioni button{width:auto;padding:8px 10px;font-size:13px;border:1px solid var(--bordo);border-radius:4px;background:none}
+.codici-mini{width:auto;padding:6px 8px;font-size:12px;color:var(--tenue2);background:none;border:none}
 .proposta-voce{display:block;width:100%;text-align:left;margin-top:10px;padding:10px 12px;border:1px solid var(--bordo);border-radius:4px;background:none;color:var(--testo);font:inherit}
 .proposta-voce strong{display:block;font-size:12px;color:var(--oro);margin-bottom:4px}
 .proposta-voce span{display:block;font-size:11px;line-height:1.5;color:var(--tenue2)}
@@ -196,10 +206,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261014c"></script>
-<script src="./market-metrics.js?v=20261014c"></script>
-<script src="./sync-merge.js?v=20261014c"></script>
-<script src="./receipt-parser.js?v=20261014c"></script>
+<script src="./market-taxonomy.js?v=20261017a"></script>
+<script src="./market-metrics.js?v=20261017a"></script>
+<script src="./sync-merge.js?v=20261017a"></script>
+<script src="./receipt-parser.js?v=20261017a"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -236,6 +246,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
   ];
   // Dal 15/09/2026 le giocate reali vengono dal Veggente (Sportbet).
   var INIZIO_VEGGENTE = "2026-09-15";
+  // Codici schedina del Veggente (17/10/2026): giocati su Sportbet con una
+  // cassa tutta loro, separata da quella principale (Sportium). Non stanno in
+  // ORIGINI perche' non si registrano dal modulo Nuova ma dalla scheda Codici.
+  var ORIGINE_CODICI = { id:"CODICI", nome:"Codici Veggente", sigla:"CV", tinta:"#5BA36F" };
+  var CHIAVE_PUNTATA_CODICI = "registro-ultima-puntata-codici";
+  // La cassa su cui lavorano conti, riepiloghi, tetti e andamento. Di norma
+  // e' la principale; la scheda Codici la cambia solo mentre calcola la sua.
+  var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
   var CHIAVE = "registro-tipster-v1";
@@ -299,7 +317,25 @@ textarea{width:100%;min-height:78px;resize:vertical}
   }
 
   function origineValida(v){
-    return ORIGINI.some(function(o){ return o.id===v; }) ? v : "";
+    return (v==="CODICI" || ORIGINI.some(function(o){ return o.id===v; })) ? v : "";
+  }
+
+  // Spostamento fra le due casse: due rettifiche con questa nota. Non e' ne'
+  // una vincita ne' una perdita, quindi resta fuori dal risultato reale.
+  var NOTA_SPOSTAMENTO = "Spostamento fra casse";
+  function eSpostamento(v){ return tipoMovimento(v)==="rettifica" && String(v&&v.nota||"").indexOf(NOTA_SPOSTAMENTO)===0; }
+  function totaleSpostato(){
+    var t=0; movimentiCassa().forEach(function(v){ if(eSpostamento(v)) t+=Number(v.importo||0); }); return t;
+  }
+
+  function cassaDiGiocata(g){ return origineDi(g)==="CODICI" ? "CODICI" : "PRINCIPALE"; }
+  function cassaDiMovimento(v){ return v && v.cassa==="CODICI" ? "CODICI" : "PRINCIPALE"; }
+  function giocateCassa(){ return S.giocate.filter(function(g){ return cassaDiGiocata(g)===CASSA; }); }
+  function movimentiCassa(){ return S.versamenti.filter(function(v){ return cassaDiMovimento(v)===CASSA; }); }
+  // Esegue un calcolo sulla cassa indicata e torna sempre alla principale.
+  function conCassa(cassa,fn){
+    var prima=CASSA; CASSA=cassa;
+    try{ return fn(); } finally { CASSA=prima; }
   }
 
   // Le righe salvate prima della colonna origine la ricavano con la stessa
@@ -315,6 +351,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   }
 
   function infoOrigine(id){
+    if(id==="CODICI") return ORIGINE_CODICI;
     for(var i=0;i<ORIGINI.length;i++) if(ORIGINI[i].id===id) return ORIGINI[i];
     return ORIGINI[2];
   }
@@ -429,7 +466,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       bookmaker:g.bookmaker||"Sportium", faseIngresso:g.faseIngresso||"PRE", classificazione:classificazioneLegacy(g),
       ticketId:g.ticketId||"", orarioIngresso:valoreDataOraLocale(g.orarioIngresso), tipoSchedina:g.tipoSchedina||"SINGOLA",
       gambe:normalizzaGambe(g.gambe), propostaVeggenteId:g.propostaVeggenteId||null, propostaTipo:g.propostaTipo||"",
-      propostaVariante:!!g.propostaVariante, propostaGambe:0 };
+      propostaVariante:!!g.propostaVariante, propostaGambe:0, codiceSchedina:g.codiceSchedina||"" };
   }
 
   function caricaLibreriaOCR(){
@@ -964,11 +1001,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
       famiglia_mercato:g.famigliaMercato||"NON_CLASSIFICATO", ambito_mercato:g.ambitoMercato||"PARTITA",
       selezione_normalizzata:g.selezioneNormalizzata||null, linea_mercato:g.lineaMercato||null,
       componenti_mercato:Array.isArray(g.componentiMercato)?g.componentiMercato:[], versione_tassonomia:g.versioneTassonomia||"v0.1",
-      proposta_veggente_id:g.propostaVeggenteId||null, proposta_tipo:g.propostaTipo||null, proposta_variante:!!g.propostaVariante };
+      proposta_veggente_id:g.propostaVeggenteId||null, proposta_tipo:g.propostaTipo||null, proposta_variante:!!g.propostaVariante,
+      codice_schedina:g.codiceSchedina||null };
   }
   function versaCloud(v){ return {user_id:CLOUD.user.id,
     legacy_id:String(v.cloudLegacyId||v.id), data:v.data, importo:Number(v.importo),
-    nota:v.nota||null, tipo_movimento:tipoMovimento(v)}; }
+    nota:v.nota||null, tipo_movimento:tipoMovimento(v), cassa:cassaDiMovimento(v)}; }
   function pianificaCloud(){
     if(!CLOUD.syncEnabled || !CLOUD.user) return;
     CLOUD.pending=true;
@@ -1011,7 +1049,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       if(letturaV.error) throw letturaV.error;
       var remotiV=(letturaV.data||[]).map(function(r){return {
         id:r.legacy_id||r.id,cloudLegacyId:r.legacy_id||null,data:r.data,
-        importo:Number(r.importo),nota:r.nota||"",tipoMovimento:r.tipo_movimento||"versamento",cloudSynced:true};
+        importo:Number(r.importo),nota:r.nota||"",tipoMovimento:r.tipo_movimento||"versamento",cassa:r.cassa==="CODICI"?"CODICI":"PRINCIPALE",cloudSynced:true};
       });
       var pianoV=window.BetCoreSyncMerge.pianifica(S.versamenti,remotiV,function(v){return String(v.cloudLegacyId||v.id);});
       var invioV=pianoV.invio,unitiV=pianoV.uniti;
@@ -1078,7 +1116,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       famigliaMercato:g.famiglia_mercato||"NON_CLASSIFICATO",ambitoMercato:g.ambito_mercato||"PARTITA",
       selezioneNormalizzata:g.selezione_normalizzata||"",lineaMercato:g.linea_mercato||null,
       componentiMercato:Array.isArray(g.componenti_mercato)?g.componenti_mercato:[],versioneTassonomia:g.versione_tassonomia||"v0.1",
-      propostaVeggenteId:g.proposta_veggente_id==null?null:Number(g.proposta_veggente_id),propostaTipo:g.proposta_tipo||"",propostaVariante:!!g.proposta_variante};
+      propostaVeggenteId:g.proposta_veggente_id==null?null:Number(g.proposta_veggente_id),propostaTipo:g.proposta_tipo||"",propostaVariante:!!g.proposta_variante,codiceSchedina:g.codice_schedina||""};
     pick.origine=origineDi(pick);
     return aggiornaTassonomia(pick);
   }
@@ -1125,7 +1163,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       S.versamenti=(b.data||[]).map(function(v){return {
         id:v.legacy_id||v.id,cloudLegacyId:v.legacy_id||null,data:v.data,
         importo:Number(v.importo),nota:v.nota||"",
-        tipoMovimento:v.tipo_movimento||"versamento",cloudSynced:true
+        tipoMovimento:v.tipo_movimento||"versamento",cassa:v.cassa==="CODICI"?"CODICI":"PRINCIPALE",cloudSynced:true
       };});
       if(c.data){
         S.budgetMese=Number(c.data.budget_mensile);
@@ -1227,39 +1265,39 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return tipoMovimento(v) === "prelievo" ? -Math.abs(n) : n;
   }
   function totaleMovimenti(){
-    var t = 0;
-    for(var i=0;i<S.versamenti.length;i++) t += importoCassa(S.versamenti[i]);
+    var t = 0, mov = movimentiCassa();
+    for(var i=0;i<mov.length;i++) t += importoCassa(mov[i]);
     return t;
   }
   function totalePrelevato(){
-    var t = 0;
-    for(var i=0;i<S.versamenti.length;i++){
-      if(tipoMovimento(S.versamenti[i]) === "prelievo") t += Math.abs(Number(S.versamenti[i].importo||0));
+    var t = 0, mov = movimentiCassa();
+    for(var i=0;i<mov.length;i++){
+      if(tipoMovimento(mov[i]) === "prelievo") t += Math.abs(Number(mov[i].importo||0));
     }
     return t;
   }
   function totaleVersato(){
-    var t = 0;
-    for(var i=0;i<S.versamenti.length;i++){
-      if(tipoMovimento(S.versamenti[i]) === "versamento") t += Number(S.versamenti[i].importo||0);
+    var t = 0, mov = movimentiCassa();
+    for(var i=0;i<mov.length;i++){
+      if(tipoMovimento(mov[i]) === "versamento") t += Number(mov[i].importo||0);
     }
     return t;
   }
   function totaleRettifiche(){
-    var t = 0;
-    for(var i=0;i<S.versamenti.length;i++){
-      if(tipoMovimento(S.versamenti[i]) === "rettifica") t += Number(S.versamenti[i].importo||0);
+    var t = 0, mov = movimentiCassa();
+    for(var i=0;i<mov.length;i++){
+      if(tipoMovimento(mov[i]) === "rettifica") t += Number(mov[i].importo||0);
     }
     return t;
   }
 
   // Solo i depositi reali consumano il budget mensile.
   function versatoQuestoMese(){
-    var mese = oggi().slice(0,7), t = 0;
-    for(var i=0;i<S.versamenti.length;i++){
-      if(String(S.versamenti[i].data).slice(0,7) === mese &&
-          tipoMovimento(S.versamenti[i]) === "versamento"){
-        t += Number(S.versamenti[i].importo||0);
+    var mese = oggi().slice(0,7), t = 0, mov = movimentiCassa();
+    for(var i=0;i<mov.length;i++){
+      if(String(mov[i].data).slice(0,7) === mese &&
+          tipoMovimento(mov[i]) === "versamento"){
+        t += Number(mov[i].importo||0);
       }
     }
     return t;
@@ -1267,8 +1305,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
   function conti(){
     var chiuse=[], aperte=[], i, g;
-    for(i=0;i<S.giocate.length;i++){
-      g = S.giocate[i];
+    var lista=giocateCassa();
+    for(i=0;i<lista.length;i++){
+      g = lista[i];
       if(g.osservata || (g.statoCore && g.statoCore!=="ufficiale")) continue; // solo le ufficiali incidono sui soldi veri
       if(g.esito==="aperta") aperte.push(g);
       else chiuse.push(g);
@@ -1277,7 +1316,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
     for(i=0;i<chiuse.length;i++) profitto += chiuse[i].profitto;
     for(i=0;i<aperte.length;i++) impegnato += aperte[i].stake;
     var versato = totaleVersato();
-    var rettifiche = totaleRettifiche();
+    var spostati = totaleSpostato();
+    var rettifiche = totaleRettifiche() - spostati;
     var prelevato = totalePrelevato();
     var bankroll = totaleMovimenti() + profitto;
     // Risultato reale = quanto hai adesso meno quanto hai versato. A
@@ -1286,14 +1326,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     // saldo Sportbet faceva mostrare +46,6% sul versato a chi era a -5,6%.
     // I prelievi sono soldi gia' incassati: si sommano a quelli ancora in cassa.
     return { chiuse:chiuse, aperte:aperte, profitto:profitto, versato:versato,
-      rettifiche:rettifiche, prelevato:prelevato, bankroll:bankroll, impegnato:impegnato,
-      reale:bankroll-versato+prelevato,
+      rettifiche:rettifiche, spostati:spostati, prelevato:prelevato, bankroll:bankroll, impegnato:impegnato,
+      reale:bankroll-versato+prelevato-spostati,
       disponibile:bankroll-impegnato };
   }
 
   // Tutte le giocate chiuse, comprese quelle solo osservate
   function chiuseTutte(){
-    return S.giocate.filter(function(g){ return g.esito !== "aperta"; });
+    return giocateCassa().filter(function(g){ return g.esito !== "aperta"; });
   }
 
   // Una pick analitica puo essere distribuita su piu ticket reali.
@@ -1374,10 +1414,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var d=String(data||"0000-00-00");
       giorni[d]=(giorni[d]||0)+(Number(delta)||0);
     }
-    S.versamenti.forEach(function(v){
+    movimentiCassa().forEach(function(v){
       // Un prelievo toglie soldi dalla cassa ma non e' una perdita: se
       // entrasse qui, ogni prelievo comparirebbe come un calo dal massimo.
       if(v && v.tipoMovimento==="prelievo") return;
+      // Lo stesso vale per lo spostamento verso la cassa codici.
+      if(eSpostamento(v)) return;
       aggiungi(v.data,v.importo);
     });
     chiuse.forEach(function(g){
@@ -1427,10 +1469,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // profitti delle giocate chiuse. Serve al tetto in percentuale, che viene
   // ricalcolato piu' volte per ogni disegno.
   function bankrollCorrente(){
-    var tot = 0, i;
-    for(i=0;i<S.versamenti.length;i++) tot += importoCassa(S.versamenti[i]);
-    for(i=0;i<S.giocate.length;i++){
-      var g = S.giocate[i];
+    var tot = 0, i, mov = movimentiCassa(), lista = giocateCassa();
+    for(i=0;i<mov.length;i++) tot += importoCassa(mov[i]);
+    for(i=0;i<lista.length;i++){
+      var g = lista[i];
       if(g.osservata || (g.statoCore && g.statoCore!=="ufficiale")) continue;
       if(g.esito !== "aperta") tot += Number(g.profitto)||0;
     }
@@ -1451,22 +1493,22 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // proprio, i feriali condividono un budget unico da lunedi a venerdi
   function periodoDi(data){
     var g = giornoSettimana(data);
-    var i, tot = 0;
+    var i, tot = 0, lista = giocateCassa();
     function conta(gi){ return !gi.osservata && (!gi.statoCore || gi.statoCore==="ufficiale"); }
     if(g === 6){
-      for(i=0;i<S.giocate.length;i++)
-        if(S.giocate[i].data === data && conta(S.giocate[i])) tot += S.giocate[i].stake;
+      for(i=0;i<lista.length;i++)
+        if(lista[i].data === data && conta(lista[i])) tot += lista[i].stake;
       return { etichetta:"Sabato", tetto:tettoDi("sabato"), giocato:tot, chiave:"sabato" };
     }
     if(g === 0){
-      for(i=0;i<S.giocate.length;i++)
-        if(S.giocate[i].data === data && conta(S.giocate[i])) tot += S.giocate[i].stake;
+      for(i=0;i<lista.length;i++)
+        if(lista[i].data === data && conta(lista[i])) tot += lista[i].stake;
       return { etichetta:"Domenica", tetto:tettoDi("domenica"), giocato:tot, chiave:"domenica" };
     }
     var lun = lunediDi(data), ven = piuGiorni(lun, 4);
-    for(i=0;i<S.giocate.length;i++){
-      var d = S.giocate[i].data;
-      if(d >= lun && d <= ven && conta(S.giocate[i])) tot += S.giocate[i].stake;
+    for(i=0;i<lista.length;i++){
+      var d = lista[i].data;
+      if(d >= lun && d <= ven && conta(lista[i])) tot += lista[i].stake;
     }
     return { etichetta:"Lun\u2013ven", tetto:tettoDi("feriali"), giocato:tot, chiave:"feriali" };
   }
@@ -1551,7 +1593,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ]));
 
     var nav = el("nav");
-    [["registro","Registro"],["nuova","Nuova"],["core","Core"],["tipster","Rendimento"],
+    [["registro","Registro"],["nuova","Nuova"],["codici","Codici"],["core","Core"],["tipster","Rendimento"],
      ["cassa","Cassa"],["dati","Dati"],["guida","?"]].forEach(function(v){
       nav.appendChild(el("button",{
         "class": (S.vista===v[0] ? "on" : "")+(v[0]==="guida" ? " nav-aiuto" : ""),
@@ -1565,6 +1607,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     else if(S.vista==="registro") app.appendChild(vistaRegistro());
     else if(S.vista==="core") app.appendChild(vistaCore(c));
     else if(S.vista==="cassa") app.appendChild(vistaCassa(c));
+    else if(S.vista==="codici") app.appendChild(vistaCodici());
     else if(S.vista==="dati") app.appendChild(vistaDati());
     else if(S.vista==="guida") app.appendChild(vistaGuida(c));
     else app.appendChild(vistaTipster(c));
@@ -1585,7 +1628,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
       return el("div",null,[el("label",{"class":"etich","style":{display:"block",marginBottom:"8px"},"text":etichetta}),input]);
     }
 
-    var inOrigine=selectGuidato([["","Scegli l'origine…"]].concat(ORIGINI.map(function(o){return [o.id,o.nome];})),f.origine,function(v){
+    var opzioniOrigine=ORIGINI.map(function(o){return [o.id,o.nome];});
+    if(f.origine==="CODICI") opzioniOrigine.push(["CODICI",ORIGINE_CODICI.nome]);
+    var inOrigine=selectGuidato([["","Scegli l'origine…"]].concat(opzioniOrigine),f.origine,function(v){
       f.origine=v; disegna();
     });
     inOrigine.id="campo-origine";
@@ -1701,11 +1746,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(qClose!==null && (!qClose || qClose<=1)){bloccaConErrore("La quota di chiusura deve essere maggiore di 1.");return;}
     var prob=f.probabilitaStimata?parseFloat(f.probabilitaStimata):null;
     if(prob!==null && (!prob || prob<=0 || prob>=100)){bloccaConErrore("La probabilità stimata deve essere compresa tra 0 e 100.");return;}
-    if(f.tipoSchedina==="SINGOLA" && (!(f.evento||"").trim() || !(f.mercato||"").trim())){bloccaConErrore("Completa partita e mercato.");return;}
+    if(origine!=="CODICI" && f.tipoSchedina==="SINGOLA" && (!(f.evento||"").trim() || !(f.mercato||"").trim())){bloccaConErrore("Completa partita e mercato.");return;}
     // Le multiple inserite a mano prima che esistesse il campo gambe non ne
     // hanno nessuna registrata: in modifica restano senza, invece di
     // pretenderne due e rendere la giocata incorreggibile.
-    if(inEdit && f.tipoSchedina==="MULTIPLA" && gambeCompilate.length===0){
+    if((inEdit || origine==="CODICI") && f.tipoSchedina==="MULTIPLA" && gambeCompilate.length===0){
       gambe=[];
     }else if(f.tipoSchedina==="MULTIPLA" && (gambe.length<2 || gambe.some(function(x){return !x.evento.trim() || !x.mercato.trim();}))){
       bloccaConErrore("Completa almeno due gambe della multipla.");return;
@@ -1737,7 +1782,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       statoCore:f.osservata?(f.statoCore||"scartata"):"ufficiale",stake:s,osservata:!!f.osservata,
       bookmaker:f.bookmaker||"Sportbet",faseIngresso:f.faseIngresso||"PRE",classificazione:classificazione,
       ticketId:ticket,orarioIngresso:isoDaDataOraLocale(f.orarioIngresso),tipoSchedina:f.tipoSchedina,gambe:f.tipoSchedina==="MULTIPLA"?gambe:[],
-      propostaVeggenteId:idProposta,propostaTipo:idProposta?f.propostaTipo:"",propostaVariante:variante};
+      propostaVeggenteId:idProposta,propostaTipo:idProposta?f.propostaTipo:"",propostaVariante:variante,
+      codiceSchedina:origine==="CODICI"?(f.codiceSchedina||""):""};
     try{ localStorage.setItem(CHIAVE_BOOK,dati.bookmaker); }catch(e){}
     if(inEdit){
       S.giocate.forEach(function(g){if(String(g.id)===String(S.editingId)){Object.keys(dati).forEach(function(k){g[k]=dati[k];});g.cloudDirty=true;if(g.esito==="vinta")g.profitto=g.stake*g.quota-g.stake;else if(g.esito==="persa")g.profitto=-g.stake;}});
@@ -1755,6 +1801,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Origine"}),
         el("p",{"class":"guida-p","text":"Ogni giocata dice da dove arriva. Veggente: dalle analisi del Veggente. BET Core: dal protocollo, e solo allora compaiono probabilità e quota di chiusura. Libera: quando la spingi tu. Il Rendimento le tiene separate. Dopo lo screenshot l'app cerca la proposta del Veggente con le stesse partite e chiede conferma: collegata, la proposta risulta giocata nel registro del Veggente."})
+      ]),
+      el("div",{"class":"guida-sez"},[
+        el("h2",{"class":"guida-tit","text":"Codici"}),
+        el("p",{"class":"guida-p","text":"I codici schedina del Veggente, giocati su Sportbet, si registrano dalla scheda Codici: codice, quota, puntata e +. Hanno una cassa propria: per iniziare usa \"Sposta dalla principale\". Vinta o Persa si toccano direttamente nella lista; nel Registro compaiono solo col filtro Codici."})
       ]),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Ricevuta Sportbet o Sportium"}),
@@ -1779,7 +1829,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   function apertePromemoria(soglia){
     var lim = piuGiorni(oggi(), -(soglia||2));
     return S.giocate.filter(function(g){
-      return g.esito==="aperta" && !g.osservata && g.data <= lim;
+      return g.esito==="aperta" && !g.osservata && g.data <= lim && origineDi(g)!=="CODICI";
     });
   }
 
@@ -1821,6 +1871,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var filtri = el("div",{"class":"filtri"});
     var opzioni = [["tutti","Tutte"]];
     ORIGINI.forEach(function(o){ opzioni.push([o.id,o.nome]); });
+    opzioni.push(["CODICI","Codici"]);
     if(scadute.length) opzioni.push(["scadute","Da chiudere"]);
     opzioni.forEach(function(o){
       filtri.appendChild(el("button",{
@@ -1832,7 +1883,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var idScadute = {};
     scadute.forEach(function(g){ idScadute[g.id] = true; });
-    var visibili = S.filtro==="tutti" ? S.giocate.slice()
+    // 15-20 codici al giorno intaserebbero il registro: compaiono solo col
+    // loro filtro, e si gestiscono dalla scheda Codici.
+    var visibili = S.filtro==="tutti" ? S.giocate.filter(function(g){ return origineDi(g)!=="CODICI"; })
       : S.filtro==="scadute" ? S.giocate.filter(function(g){ return idScadute[g.id]; })
       : S.giocate.filter(function(g){ return origineDi(g)===S.filtro; });
 
@@ -1951,7 +2004,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(!DB || !CLOUD.user) return null;
     await utenteCloudVerificato();
     var rr=await DB.from("picks")
-      .select("id,legacy_id,data,tipster,origine,evento,mercato,nota,quota,quota_check,quota_chiusura,probabilita_stimata,probabilita_timestamp,confidence,debrief,stake,esito,profitto,tipo,stato_core,motivo_scarto,bookmaker,fase_ingresso,classificazione,ticket_id,orario_ingresso,tipo_schedina,gambe,famiglia_mercato,ambito_mercato,selezione_normalizzata,linea_mercato,componenti_mercato,versione_tassonomia,proposta_veggente_id,proposta_tipo,proposta_variante")
+      .select("id,legacy_id,data,tipster,origine,evento,mercato,nota,quota,quota_check,quota_chiusura,probabilita_stimata,probabilita_timestamp,confidence,debrief,stake,esito,profitto,tipo,stato_core,motivo_scarto,bookmaker,fase_ingresso,classificazione,ticket_id,orario_ingresso,tipo_schedina,gambe,famiglia_mercato,ambito_mercato,selezione_normalizzata,linea_mercato,componenti_mercato,versione_tassonomia,proposta_veggente_id,proposta_tipo,proposta_variante,codice_schedina")
       .eq("user_id",CLOUD.user.id)
       .eq("legacy_id",legacyCloud(g))
       .maybeSingle();
@@ -1972,7 +2025,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     g.famigliaMercato=r.famiglia_mercato||"NON_CLASSIFICATO";g.ambitoMercato=r.ambito_mercato||"PARTITA";
     g.selezioneNormalizzata=r.selezione_normalizzata||"";g.lineaMercato=r.linea_mercato||null;
     g.componentiMercato=Array.isArray(r.componenti_mercato)?r.componenti_mercato:[];g.versioneTassonomia=r.versione_tassonomia||"v0.1";
-    g.propostaVeggenteId=r.proposta_veggente_id==null?null:Number(r.proposta_veggente_id);g.propostaTipo=r.proposta_tipo||"";g.propostaVariante=!!r.proposta_variante;
+    g.propostaVeggenteId=r.proposta_veggente_id==null?null:Number(r.proposta_veggente_id);g.propostaTipo=r.proposta_tipo||"";g.propostaVariante=!!r.proposta_variante;g.codiceSchedina=r.codice_schedina||g.codiceSchedina||"";
     aggiornaTassonomia(g);
   }
 
@@ -2091,7 +2144,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         if(S.coreStagione && stagioneData(g.data)!==S.coreStagione) return false;
         return true;
       }
-      var righePeriodo=S.giocate.filter(nelFiltroCore);
+      var righePeriodo=S.giocate.filter(function(g){ return origineDi(g)!=="CODICI" && nelFiltroCore(g); });
       var righeChiuse=tutteChiuse.filter(nelFiltroCore);
       var chiuse=gruppiCore(righeChiuse);
       var reali=chiuse.filter(function(g){return g.reale;});
@@ -2233,7 +2286,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Il raggruppamento per ipotesi analitica resta confinato alla scheda Core.
   function riepilogoMensile(){
     var mesi={}, i;
-    var reali=chiuseTutte().filter(rigaRealeCore);
+    var reali=chiuseTutte().filter(rigaRealeCore), mov=movimentiCassa();
     reali.forEach(function(g){
       var m=String(g.data||"").slice(0,7);
       if(!m) return;
@@ -2241,12 +2294,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
       mesi[m].n++; mesi[m].giocato+=Number(g.stake||0); mesi[m].profitto+=Number(g.profitto||0);
     });
     var versPerMese={}, rettPerMese={}, prelPerMese={};
-    for(i=0;i<S.versamenti.length;i++){
-      var vm=String(S.versamenti[i].data||"").slice(0,7);
+    for(i=0;i<mov.length;i++){
+      var vm=String(mov[i].data||"").slice(0,7);
       if(!vm) continue;
-      var tipoM=tipoMovimento(S.versamenti[i]);
+      var tipoM=tipoMovimento(mov[i]);
       var destinazione=tipoM==="rettifica" ? rettPerMese : tipoM==="prelievo" ? prelPerMese : versPerMese;
-      destinazione[vm]=(destinazione[vm]||0)+(tipoM==="prelievo"?Math.abs(Number(S.versamenti[i].importo||0)):Number(S.versamenti[i].importo||0));
+      destinazione[vm]=(destinazione[vm]||0)+(tipoM==="prelievo"?Math.abs(Number(mov[i].importo||0)):Number(mov[i].importo||0));
     }
     var chiavi=Object.keys(mesi).concat(Object.keys(versPerMese),Object.keys(rettPerMese),Object.keys(prelPerMese));
     var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
@@ -2263,7 +2316,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // totale, cosi' il debrief giornaliero non deve ricontarle a mano.
   function riepilogoGiornaliero(){
     var giorni={}, i;
-    var reali=chiuseTutte().filter(rigaRealeCore);
+    var reali=chiuseTutte().filter(rigaRealeCore), mov=movimentiCassa();
     reali.forEach(function(g){
       var d=String(g.data||"");
       if(!d) return;
@@ -2275,12 +2328,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
       else if(esito==="rimborsata") giorni[d].rimborsate++;
     });
     var versPerGiorno={}, rettPerGiorno={}, prelPerGiorno={};
-    for(i=0;i<S.versamenti.length;i++){
-      var vd=String(S.versamenti[i].data||"");
+    for(i=0;i<mov.length;i++){
+      var vd=String(mov[i].data||"");
       if(!vd) continue;
-      var tipoG=tipoMovimento(S.versamenti[i]);
+      var tipoG=tipoMovimento(mov[i]);
       var destinazione=tipoG==="rettifica" ? rettPerGiorno : tipoG==="prelievo" ? prelPerGiorno : versPerGiorno;
-      destinazione[vd]=(destinazione[vd]||0)+(tipoG==="prelievo"?Math.abs(Number(S.versamenti[i].importo||0)):Number(S.versamenti[i].importo||0));
+      destinazione[vd]=(destinazione[vd]||0)+(tipoG==="prelievo"?Math.abs(Number(mov[i].importo||0)):Number(mov[i].importo||0));
     }
     var chiavi=Object.keys(giorni).concat(Object.keys(versPerGiorno),Object.keys(rettPerGiorno),Object.keys(prelPerGiorno));
     var uniche=chiavi.filter(function(v,idx){return chiavi.indexOf(v)===idx;});
@@ -2337,6 +2390,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           ? "Hai versato "+euro(c.versato)+
             (c.prelevato ? ", prelevato "+euro(c.prelevato) : "")+
             (c.rettifiche ? " e registrato rettifiche "+segnato(c.rettifiche) : "")+
+            (c.spostati ? ", spostato "+euro(Math.abs(c.spostati))+" alla cassa codici" : "")+
             "; in cassa hai "+euro(c.bankroll)+"."
           : "Registra il primo versamento per iniziare."}),
       c.versato > 0
@@ -2454,9 +2508,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ]));
 
     // Storico versamenti
-    if(S.versamenti.length){
+    var movPrincipali = movimentiCassa();
+    if(movPrincipali.length){
       var lista = el("ul",{"style":{marginTop:"8px"}});
-      S.versamenti.slice().sort(function(a,b){
+      movPrincipali.slice().sort(function(a,b){
         return a.data < b.data ? 1 : -1;
       }).forEach(function(v){
         lista.appendChild(el("li",{"class":"vers"},[
@@ -2701,6 +2756,142 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // stanno su schede separate, perche' la domanda e' quale fonte rende.
   // Il periodo di default parte dal 15/09/2026: prima il registro conteneva
   // anche i tipster eliminati, e i numeri non sono confrontabili.
+  // Scheda Codici (17/10/2026): una riga per registrare, Vinta/Persa nella
+  // lista, e la cassa dei codici in testa. Con 15-20 codici al giorno il
+  // modulo Nuova sarebbe troppo lento; qui contano solo quota, puntata ed esito.
+  function ultimaPuntataCodici(){
+    try{ var v=parseFloat(localStorage.getItem(CHIAVE_PUNTATA_CODICI)); return v>0?v:1; }catch(e){ return 1; }
+  }
+
+  function aggiungiCodice(codice,quota,puntata){
+    var q=parseFloat(String(quota).replace(",",".")), st=parseFloat(String(puntata).replace(",","."));
+    if(!(q>1)){ bloccaConErrore("Inserisci la quota del codice."); return false; }
+    if(!(st>0)){ bloccaConErrore("Inserisci la puntata."); return false; }
+    var cod=String(codice||"").replace(/\s/g,"").toUpperCase();
+    var ora=new Date().toISOString();
+    S.giocate.unshift(aggiornaTassonomia({
+      id:Date.now(), data:oggi(), tipster:"io", origine:"CODICI", codiceSchedina:cod,
+      evento:cod?"Codice "+cod:"Codice Veggente", mercato:"MULTIPLA", nota:"", quota:Math.round(q*100)/100,
+      quotaCheck:null, quotaChiusura:null, probabilitaStimata:null, probabilitaTimestamp:"",
+      confidence:null, debrief:"", statoCore:"ufficiale", stake:Math.round(st*100)/100, osservata:false,
+      bookmaker:"Sportbet", faseIngresso:"PRE", classificazione:"PERSONALE", ticketId:"",
+      // Ora con i secondi: due codici uguali giocati di fila restano due giocate.
+      orarioIngresso:ora, tipoSchedina:"MULTIPLA", gambe:[],
+      propostaVeggenteId:null, propostaTipo:"", propostaVariante:false,
+      esito:"aperta", profitto:0, cloudDirty:true
+    }));
+    try{ localStorage.setItem(CHIAVE_PUNTATA_CODICI,String(st)); }catch(e){}
+    S.errore=null; salva(); return true;
+  }
+
+  function vistaCodici(){
+    var pag=el("div",{"class":"pag"});
+    var cc=conCassa("CODICI",conti);
+
+    pag.appendChild(el("div",{"class":"verdetto"},[
+      el("p",{"class":"etich","text":"Cassa codici · Sportbet"}),
+      el("p",{"class":"serif tab verdetto-cifra","text":euro(cc.bankroll)}),
+      el("p",{"class":"verdetto-nota","text":
+        (cc.versato||cc.prelevato||cc.spostati
+          ? "Versati "+euro(cc.versato)+(cc.prelevato?" · prelevati "+euro(cc.prelevato):"")+
+            (cc.spostati?" · arrivati dalla principale "+euro(cc.spostati):"")+" · risultato "+segnato(cc.reale)
+          : "Sposta o versa i primi soldi per i codici qui sotto.")+
+        (cc.impegnato>0?" · "+euro(cc.impegnato)+" in gioco":"")})
+    ]));
+
+    // Riga di inserimento: codice, quota, puntata, +.
+    var inCodice=el("input",{"type":"text","inputmode":"numeric","placeholder":"Codice","autocomplete":"off","class":"tab"});
+    var inQuota=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"Quota","class":"tab"});
+    var inPuntata=el("input",{"type":"number","inputmode":"decimal","step":"0.5","class":"tab","value":String(ultimaPuntataCodici())});
+    function aggiungi(){
+      if(aggiungiCodice(inCodice.value,inQuota.value,inPuntata.value)) disegna();
+    }
+    [inCodice,inQuota,inPuntata].forEach(function(x){
+      x.addEventListener("keydown",function(e){ if(e && e.key==="Enter") aggiungi(); });
+    });
+    pag.appendChild(el("div",{"class":"codici-riga"},[inCodice,inQuota,inPuntata,
+      el("button",{"class":"principale codici-piu","text":"+","onclick":aggiungi})]));
+
+    var tutti=S.giocate.filter(function(g){ return origineDi(g)==="CODICI"; });
+    var dataOggi=oggi();
+    var aperteVecchie=tutti.filter(function(g){ return g.esito==="aperta" && g.data<dataOggi; });
+    var diOggi=tutti.filter(function(g){ return g.data===dataOggi; });
+
+    function riga(g){
+      var colore=g.esito==="vinta"?"#4FB286":g.esito==="persa"?"#D4635F":"#8C9BA8";
+      var destra=g.esito==="aperta"
+        ? el("div",{"class":"codici-azioni"},[
+            el("button",{"text":"Vinta","style":{borderColor:"#2C4A3C",color:"#4FB286"},"onclick":function(){ void chiudi(g.id,"vinta"); }}),
+            el("button",{"text":"Persa","style":{borderColor:"#4A2C2C",color:"#D4635F"},"onclick":function(){ void chiudi(g.id,"persa"); }})
+          ])
+        : el("div",{"class":"codici-azioni"},[
+            el("span",{"class":"tab","style":{color:colore,fontWeight:"600"},"text":g.esito==="rimborsata"?"rimborsata":segnato(g.profitto)}),
+            el("button",{"class":"codici-mini","text":"↺","onclick":function(){ void correggiEsito(g.id); }})
+          ]);
+      return el("li",{"class":"codici-voce"},[
+        el("div",null,[
+          el("span",{"class":"tab codici-codice","text":g.codiceSchedina||"—"}),
+          el("span",{"class":"tab codici-dett","text":(g.data!==dataOggi?breve(g.data)+" · ":"")+"quota "+Number(g.quota).toFixed(2)+" · "+euro(g.stake)})
+        ]),
+        el("div",{"class":"codici-destra"},[destra,
+          el("button",{"class":"codici-mini","text":"✕","onclick":function(){ void eliminaGiocata(g); }})])
+      ]);
+    }
+
+    if(aperteVecchie.length){
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"20px","marginBottom":"8px"},"text":"Ancora da chiudere"}));
+      pag.appendChild(el("ul",null,aperteVecchie.map(riga)));
+    }
+    pag.appendChild(el("p",{"class":"etich","style":{marginTop:"20px","marginBottom":"8px"},"text":"Codici di oggi · "+breve(dataOggi)}));
+    if(diOggi.length){
+      pag.appendChild(el("ul",null,diOggi.map(riga)));
+      var chiusiOggi=diOggi.filter(function(g){ return g.esito!=="aperta"; });
+      var r=riassumi(chiusiOggi);
+      pag.appendChild(el("p",{"class":"avviso","text":diOggi.length+(diOggi.length===1?" codice":" codici")+" · "+
+        euro(diOggi.reduce(function(t,g){return t+Number(g.stake||0);},0))+" puntati"+
+        (chiusiOggi.length?" · "+r.vinte+" vinti su "+chiusiOggi.length+" · "+segnato(r.profitto):"")}));
+    }else{
+      pag.appendChild(el("p",{"class":"avviso","text":"Nessun codice registrato oggi."}));
+    }
+
+    // Movimenti della cassa codici. "Sposta dalla principale" scrive due
+    // rettifiche: i soldi escono da una cassa ed entrano nell'altra, senza
+    // contare come versamenti nuovi.
+    var inImporto=el("input",{"type":"number","inputmode":"decimal","step":"5","class":"tab","placeholder":"20.00"});
+    function movimento(tipo){
+      var v=parseFloat(inImporto.value);
+      if(!v || v<=0) return;
+      var base=Date.now();
+      if(tipo==="sposta"){
+        S.versamenti.push({id:base,data:oggi(),importo:-v,tipoMovimento:"rettifica",cassa:"PRINCIPALE",nota:NOTA_SPOSTAMENTO+": verso la cassa codici",cloudDirty:true});
+        S.versamenti.push({id:base+1,data:oggi(),importo:v,tipoMovimento:"rettifica",cassa:"CODICI",nota:NOTA_SPOSTAMENTO+": dalla cassa principale",cloudDirty:true});
+      }else{
+        S.versamenti.push({id:base,data:oggi(),importo:v,tipoMovimento:tipo,cassa:"CODICI",cloudDirty:true});
+      }
+      salva(); disegna();
+    }
+    pag.appendChild(el("div",{"class":"gruppo","style":{marginTop:"28px"}},[
+      el("label",{"text":"Soldi della cassa codici"}),
+      el("div",{"style":{marginBottom:"10px"}},[inImporto]),
+      el("div",{"class":"tre"},[
+        el("button",{"class":"secondario","text":"Sposta dalla principale","onclick":function(){ movimento("sposta"); }}),
+        el("button",{"class":"secondario","text":"Versamento","onclick":function(){ movimento("versamento"); }}),
+        el("button",{"class":"secondario","text":"Prelievo","onclick":function(){ movimento("prelievo"); }})
+      ])
+    ]));
+    var movCodici=conCassa("CODICI",movimentiCassa);
+    if(movCodici.length){
+      pag.appendChild(el("ul",{"style":{marginTop:"8px"}},movCodici.slice().sort(function(a,b){return a.data<b.data?1:-1;}).map(function(v){
+        return el("li",{"class":"vers"},[
+          el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},"text":breve(v.data)+" · "+(tipoMovimento(v)==="rettifica"?"spostamento":tipoMovimento(v))}),
+          el("span",{"class":"tab","style":{fontSize:"14px"},"text":segnato(importoCassa(v))}),
+          el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E","textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})
+        ]);
+      })));
+    }
+    return pag;
+  }
+
   function vistaTipster(c){
     var pag = el("div",{"class":"pag"});
     var dal = S.rendPeriodo==="tutto" ? "" : INIZIO_VEGGENTE;
@@ -2789,6 +2980,31 @@ textarea{width:100%;min-height:78px;resize:vertical}
           "text": pend+(pend===1?" giocata ancora aperta":" giocate ancora aperte")}) : null
       ]));
     });
+
+    // Codici Veggente: cassa e numeri a parte, divisi per fascia di quota
+    // per capire quali codici convengono.
+    var codiciChiusi = conCassa("CODICI",function(){ return conti().chiuse; }).filter(nelPeriodo);
+    if(codiciChiusi.length){
+      var tc = riassumi(codiciChiusi);
+      var fasce = [["fino a 3",0,3],["3 – 6",3,6],["6 – 10",6,10],["oltre 10",10,Infinity]].map(function(f){
+        var r = riassumi(codiciChiusi.filter(function(g){ return g.quota>f[1] && g.quota<=f[2]; }));
+        return r.n ? el("div",{"class":"recente"},[
+          el("span",{"class":"k","text":"Quota "+f[0]}),
+          el("span",{"class":"tab","style":{fontSize:"12px",color:r.profitto>=0?"#4FB286":"#D4635F"},
+            "text":segnato(r.profitto)+"  ·  "+r.vinte+"/"+r.n+" vinti  ·  ROI "+(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%"})
+        ]) : null;
+      });
+      pag.appendChild(el("div",{"class":"scheda"},[
+        el("div",{"class":"scheda-top"},[
+          el("span",{"class":"serif scheda-nome","text":ORIGINE_CODICI.nome,"style":{color:ORIGINE_CODICI.tinta}}),
+          el("span",{"class":"scheda-tot tab","text":segnato(tc.profitto),"style":{color:tc.profitto>=0?"#4FB286":"#D4635F"}})
+        ]),
+        el("div",{"class":"celle"},[["Codici",String(tc.n)],["Vinti",tc.vinte+"/"+tc.n],
+          ["ROI",(tc.roi>=0?"+":"")+tc.roi.toFixed(0)+"%"],["Quota med.",tc.quotaMedia.toFixed(2)]].map(function(x){
+          return el("div",{"class":"cella"},[el("p",{"class":"k","text":x[0]}),el("p",{"class":"v tab","text":x[1]})]);
+        }))
+      ].concat(fasce,[el("p",{"class":"campione","text":affidabilita(tc.n)})])));
+    }
 
     function righeOrdinate(gruppi){
       return Object.keys(gruppi).map(function(k){ var r=gruppi[k].calcola(); r.nome=gruppi[k].nome; return r; });
