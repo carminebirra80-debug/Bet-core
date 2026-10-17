@@ -135,11 +135,24 @@ function abbina(evento: string, partite: any[]) {
 type Cond = { tipo: "segno"; segno: string } | { tipo: "ou"; over: boolean; linea: number | null }
   | { tipo: "gg"; si: boolean } | { tipo: "multigol"; da: number; a: number };
 
+const NON_GESTITI = new RegExp([
+  "HANDICAP", "HCP", "\\bAH\\b", "\\bEH\\b", "\\(\\s*[-+]\\s*\\d", "DNB", "DRAW NO BET", "RIMBORS",
+  "\\b[12]\\s?T\\b", "[12]\\s?°", "TEMPO", "PARZIALE", "\\bHT\\b", "INTERVALLO",
+  "ESATT", "ANGOL", "CORNER", "CARTELL", "AMMONIZ", "ESPULS", "\\bCARD", "MARCATOR", "GOLEADOR", "ANYTIME",
+  "\\bPARI\\b", "DISPARI", "SQUADRA", "CASA OVER", "OSPITE OVER", "OVER CASA", "OVER OSPITE", "UNDER CASA", "UNDER OSPITE",
+  "\\bTEAM\\b", "VINCE", "SEGNA IN", "\\bCASA\\b", "\\bOSPITE\\b", "\\bHOME\\b", "\\bAWAY\\b",
+  "\\sO\\s", "PT/FT", "\\bPT\\b", "ALMENO", "PALO", "MULTIGOL(?!\\s*\\d\\s*-\\s*\\d)",
+].join("|"));
 function leggiMercato(testo: string, segni?: string | null): { cond: Cond[]; leggibile: boolean } {
   const cond: Cond[] = [];
   let s = (testo || "").toUpperCase();
   const tronca = s.indexOf("COMBINAZIONI");
   if (tronca > 0) s = s.slice(0, tronca);
+  // Prudenza (17/10/2026): un mercato che il Live non sa valutare (tempi,
+  // handicap, DNB, esatto, angoli, cartellini, marcatori, pari/dispari, gol
+  // di una squadra) resta "non seguito" invece di essere letto come un
+  // mercato simile: meglio nessuna proposta di esito che una sbagliata.
+  if (NON_GESTITI.test(s)) return { cond: [], leggibile: false };
   s = s.replace(/U\/0/g, "U/O").replace(/0V(ER)?/g, "OV$1").replace(/,/g, ".");
   let linea: number | null = null;
   const m1 = s.match(/U\/O\s*(\d)\.?(\d)/);
@@ -148,7 +161,7 @@ function leggiMercato(testo: string, segni?: string | null): { cond: Cond[]; leg
   else if (m1) linea = Number(m1[1] + "." + m1[2]);
   const mg = s.match(/MULTIGOL\s*(\d)\s*-\s*(\d)/);
   if (mg) cond.push({ tipo: "multigol", da: Number(mg[1]), a: Number(mg[2]) });
-  s = s.replace(/ESITO FINALE/g, " ").replace(/GOAL\/NO GOAL/g, " ").replace(/1X2/g, " ")
+  s = s.replace(/ESITO FINALE/g, " ").replace(/GOAL\/NO GOAL/g, " ").replace(/GG\/NG/g, " ").replace(/1X2/g, " ")
     .replace(/U\/O\s*\d*\.?\d*/g, " ").replace(/MULTIGOL\s*\d\s*-\s*\d/g, " ").replace(/^\s*J\s+/, " ");
   if (/\bOVER\b|\bOV\b/.test(s)) cond.push({ tipo: "ou", over: true, linea });
   else if (/\bUNDER\b/.test(s)) cond.push({ tipo: "ou", over: false, linea });
@@ -318,6 +331,20 @@ Deno.serve(async (req) => {
         else proposta = "vinta";
       } else if (st.includes("rinviata") && st.every((x: string) => x === "vinta" || x === "rinviata")) {
         motivo = "Una gamba e' rinviata: la quota cambia, chiudila a mano con la ricevuta.";
+      }
+      // Avviso esplicito (17/10/2026): partite finite, nessuna persa, ma una o
+      // piu' gambe il Live non le sa giudicare. La schedina aspetta Carmine.
+      if (!proposta && !motivo && gambe.length) {
+        const INCERTE: Record<string, string> = { non_seguita: "non seguita", da_verificare: "linea mancante", non_abbinata: "partita non trovata" };
+        const incerte = gambe.filter((g: any) => INCERTE[g.stato]);
+        const chiuse = gambe.every((g: any) => g.stato === "vinta" ||
+          (INCERTE[g.stato] && (g.stato === "non_abbinata" || FINITE.has(g.stato_partita))));
+        if (incerte.length && chiuse) {
+          const elenco = incerte.map((g: any) => `${g.partita} (${INCERTE[g.stato]}: ${g.mercato})`).join("; ");
+          const n = incerte.length;
+          motivo = `Il Live non pu\u00f2 decidere questa schedina: ${n === 1 ? "1 gamba" : n + " gambe"} da controllare, ${elenco}.` +
+            (gambe.length > n ? " Le altre sono vinte: controlla e chiudila a mano." : " Controlla e chiudila a mano.");
+        }
       }
       return {
         id: s.p.id, legacy_id: s.p.legacy_id, proposta, motivo, data: s.p.data, titolo: s.p.codice_schedina ? "Codice " + s.p.codice_schedina : s.p.evento,
