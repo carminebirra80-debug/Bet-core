@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
     // 2. Giocate aperte degli ultimi 3 giorni.
     const dal = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
     const picks = await rest(`picks?user_id=eq.${uid}&tipo=eq.reale&esito=eq.Aperta&data=gte.${dal}` +
-      `&select=id,data,evento,mercato,gambe,quota,stake,bookmaker,origine,codice_schedina,tipo_schedina&order=data.asc`);
+      `&select=id,legacy_id,data,evento,mercato,gambe,quota,stake,bookmaker,origine,codice_schedina,tipo_schedina&order=data.asc`);
 
     // 3. Gambe pulite dal registro del Veggente, quando la giocata e' collegata.
     const ids = picks.map((p: any) => p.id);
@@ -308,8 +308,19 @@ Deno.serve(async (req) => {
       else if (st.includes("persa")) stato = "persa";
       else if (st.every((x: string) => x === "vinta")) stato = "vinta";
       else if (st.every((x: string) => x === "da_iniziare")) stato = "da_iniziare";
+      // Proposta di esito da confermare con un tocco nell'app (17/10/2026):
+      // persa appena una gamba e' persa; vinta solo se tutte le gambe sono
+      // vinte e non e' un sistema (lì l'importo dipende dai segni usciti).
+      let proposta: string | null = null, motivo = "";
+      if (st.includes("persa")) proposta = "persa";
+      else if (gambe.length && st.every((x: string) => x === "vinta")) {
+        if (sistema) motivo = "Sistema vinto: l'importo dipende dai segni usciti, chiudilo a mano con la vincita della ricevuta.";
+        else proposta = "vinta";
+      } else if (st.includes("rinviata") && st.every((x: string) => x === "vinta" || x === "rinviata")) {
+        motivo = "Una gamba e' rinviata: la quota cambia, chiudila a mano con la ricevuta.";
+      }
       return {
-        id: s.p.id, data: s.p.data, titolo: s.p.codice_schedina ? "Codice " + s.p.codice_schedina : s.p.evento,
+        id: s.p.id, legacy_id: s.p.legacy_id, proposta, motivo, data: s.p.data, titolo: s.p.codice_schedina ? "Codice " + s.p.codice_schedina : s.p.evento,
         bookmaker: s.p.bookmaker, quota: s.p.quota, puntata: s.p.stake, origine: s.p.origine, sistema,
         stato, gambe,
         vive: st.filter((x: string) => x === "passa" || x === "vinta").length,
