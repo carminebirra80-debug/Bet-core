@@ -1,4 +1,4 @@
-const CACHE='bet-core-v4-35-live';
+const CACHE='bet-core-v4-36-live-conferma';
 const ASSETS=['./','./index.html','./market-taxonomy.js?v=20261017e','./market-metrics.js?v=20261017e','./sync-merge.js?v=20261017e','./receipt-parser.js?v=20261017e','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.35</title>
+<title>Registro BET Core v4.36</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -234,6 +234,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
 .live-stato{display:block;font-size:11px;text-align:right;margin-top:2px;white-space:nowrap}
 .live-vuota{font-size:12px;color:var(--tenue2);padding:12px 16px;border-top:1px solid var(--bordo2);margin:0}
 .live-avviso{font-size:12px;color:var(--avviso,#D9A15A);margin:0 0 12px}
+.live-conf{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--bordo2);background:var(--campo)}
+.live-conf span{font-size:13px;font-weight:600}
+.live-conf-btn{width:auto;padding:8px 14px;border:1px solid;border-radius:4px;font-size:13px;font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -1504,7 +1507,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       nav.appendChild(el("button",{
         "class": (S.vista===v[0] ? "on" : "")+(v[0]==="guida" ? " nav-aiuto" : ""),
         "text":v[1],
-        "onclick": function(){ S.vista=v[0]; disegna(); window.scrollTo(0,0); if(v[0]==="live") liveSeVecchio(60000); }
+        "onclick": function(){ S.vista=v[0]; disegna(); window.scrollTo(0,0); if(v[0]==="live") liveSeVecchio(60000); if(v[0]==="registro" && CLOUD.user) liveSeVecchio(300000); }
       }));
     });
     app.appendChild(nav);
@@ -1731,6 +1734,32 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(S.vista==="live"){ var y=window.scrollY; disegna(); window.scrollTo(0,y); }
   }
   function liveSeVecchio(ms){ if(Date.now()-LIVE.ultimo>ms) caricaLive(); }
+  // Conferma a un tocco (17/10/2026): il Live propone l'esito, Carmine
+  // conferma. Si usa la stessa chiusura del Registro (vincita, cassa, cloud):
+  // nessuna scrittura parte senza il tocco.
+  function giocataDaLive(s){
+    for(var i=0;i<S.giocate.length;i++){
+      var g=S.giocate[i];
+      if((s.legacy_id && legacyCloud(g)===String(s.legacy_id)) || String(g.id)===String(s.legacy_id)) return g;
+    }
+    return null;
+  }
+  function propostaLive(g){
+    if(!LIVE.dati || !LIVE.dati.schedine) return null;
+    var lg=legacyCloud(g);
+    for(var i=0;i<LIVE.dati.schedine.length;i++){
+      var s=LIVE.dati.schedine[i];
+      if(s.proposta && s.legacy_id && String(s.legacy_id)===lg) return s;
+    }
+    return null;
+  }
+  async function confermaLive(s){
+    var g=giocataDaLive(s);
+    if(!g){ LIVE.errore="Questa giocata non c'\u00E8 sul telefono: chiudila dal Registro dopo la sincronizzazione."; disegna(); return; }
+    if(g.esito!=="aperta"){ LIVE.ultimo=0; caricaLive(); return; }
+    await chiudi(g.id, s.proposta);
+    if(!S.errore){ LIVE.dati.schedine=LIVE.dati.schedine.filter(function(x){ return x!==s; }); LIVE.ultimo=0; caricaLive(); }
+  }
   // Mentre la sezione e' aperta e lo schermo acceso: ogni 3 minuti.
   // (protetto: i test caricano la pagina in un ambiente senza timer e senza eventi)
   if(typeof setInterval==="function") setInterval(function(){
@@ -1790,6 +1819,15 @@ textarea{width:100%;min-height:78px;resize:vertical}
         ]),
         el("p",{"class":"live-sch-meta tab","text":meta})
       ]);
+      if(s.proposta){
+        var vin=s.proposta==="vinta", col=vin?"var(--verde)":"var(--rosso)";
+        box.appendChild(el("div",{"class":"live-conf"},[
+          el("span",{"text":"Il Live dice: "+(vin?"vinta":"persa")+(vin&&s.quota&&s.puntata?" \u00B7 "+euro(Number(s.puntata)*Number(s.quota)):""),"style":{color:col}}),
+          el("button",{"class":"live-conf-btn","text":"Conferma","style":{borderColor:col,color:col},"onclick":function(){ void confermaLive(s); }})
+        ]));
+      } else if(s.motivo){
+        box.appendChild(el("p",{"class":"live-vuota","text":s.motivo}));
+      }
       if(!s.gambe.length){
         box.appendChild(el("p",{"class":"live-vuota","text":"Le partite di questa giocata non sono registrate in BET CORE: il Live non le può seguire."}));
       }
@@ -1967,7 +2005,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var bModifica=el("button",{"class":"riga-link","text":"Modifica","onclick":apriModifica});
       var bElimina=el("button",{"class":"riga-link","text":"Elimina","onclick":function(){void eliminaGiocata(g);}});
       if(g.esito==="aperta" && (g.statoCore==="ufficiale" || g.statoCore==="scartata")){
+        var pl=propostaLive(g);
         azioni = el("div",{"class":"riga-azioni"},[
+          pl ? el("button",{"class":"riga-esito live-conf-reg","text":"Live: "+(pl.proposta==="vinta"?"Vinta":"Persa")+" \u2713",
+            "style":{borderColor:pl.proposta==="vinta"?"#4FB286":"#D4635F",color:pl.proposta==="vinta"?"#4FB286":"#D4635F",fontWeight:"600"},
+            "onclick":function(){ void confermaLive(pl); }}) : null,
           el("button",{"class":"riga-esito","text":"Vinta","style":{borderColor:"#2C4A3C",color:"#4FB286"},
             "onclick":function(){ void chiudi(g.id,"vinta"); }}),
           el("button",{"class":"riga-esito","text":"Persa","style":{borderColor:"#4A2C2C",color:"#D4635F"},
