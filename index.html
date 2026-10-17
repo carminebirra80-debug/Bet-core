@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.30</title>
+<title>Registro BET Core v4.35</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -14,6 +14,7 @@
   --sfondo:#111820; --campo:#0C1218; --bordo:#22303C; --bordo2:#1B2733;
   --testo:#E8EDF2; --tenue:#6D7F8E; --tenue2:#8C9BA8; --spento:#4A5A68;
   --oro:#C8873A; --verde:#4FB286; --rosso:#D4635F;
+  --live:#5B9BD5;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -210,6 +211,29 @@ li.vers{display:flex;justify-content:space-between;align-items:baseline;gap:12px
 .lab-fase span:first-child{font-size:10px;color:var(--oro)}
 .lab-fase span:last-child{font-size:9px;color:var(--spento);text-align:right}
 textarea{width:100%;min-height:78px;resize:vertical}
+/* Sezione Live (17/10/2026): stato delle gambe in tempo reale, dal design system BET CORE */
+.live-testa{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.live-testa p{font-size:12px;color:var(--tenue2);margin:0}
+.live-agg{width:auto;padding:8px 12px;border:1px solid var(--bordo);border-radius:4px;font-size:12px;color:var(--tenue2)}
+.live-agg:disabled{color:var(--spento)}
+.live-sch{border:1px solid var(--bordo);border-radius:4px;overflow:hidden;margin-bottom:16px}
+.live-sch-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 16px}
+.live-sch-nome{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-sch-stato{font-size:12px;font-weight:600;white-space:nowrap}
+.live-sch-meta{font-size:12px;color:var(--tenue);padding:0 16px 12px;margin:0}
+.live-riga{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:11px 16px 11px 13px;
+  border-top:1px solid var(--bordo2);border-left:3px solid transparent}
+.live-riga.passa,.live-riga.vinta{border-left-color:var(--verde)}
+.live-riga.non_passa,.live-riga.persa{border-left-color:var(--rosso)}
+.live-ora{font-size:12px;color:var(--tenue)}
+.live-min{font-size:12px;font-weight:600;color:var(--live);display:flex;align-items:center;gap:5px}
+.live-min::before{content:"";width:6px;height:6px;border-radius:99px;background:var(--live);flex:0 0 auto}
+.live-partita{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-serve{font-size:12px;color:var(--tenue2);margin:2px 0 0}
+.live-punt{font-size:16px;font-weight:600;text-align:right;display:block}
+.live-stato{display:block;font-size:11px;text-align:right;margin-top:2px;white-space:nowrap}
+.live-vuota{font-size:12px;color:var(--tenue2);padding:12px 16px;border-top:1px solid var(--bordo2);margin:0}
+.live-avviso{font-size:12px;color:var(--avviso,#D9A15A);margin:0 0 12px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -1475,12 +1499,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ]));
 
     var nav = el("nav");
-    [["registro","Registro"],["nuova","Nuova"],["codici","Codici"],["tipster","Rendimento"],
+    [["registro","Registro"],["live","Live"],["nuova","Nuova"],["codici","Codici"],["tipster","Rendimento"],
      ["cassa","Cassa"],["dati","Dati"],["guida","?"]].forEach(function(v){
       nav.appendChild(el("button",{
         "class": (S.vista===v[0] ? "on" : "")+(v[0]==="guida" ? " nav-aiuto" : ""),
         "text":v[1],
-        "onclick": function(){ S.vista=v[0]; disegna(); window.scrollTo(0,0); }
+        "onclick": function(){ S.vista=v[0]; disegna(); window.scrollTo(0,0); if(v[0]==="live") liveSeVecchio(60000); }
       }));
     });
     app.appendChild(nav);
@@ -1491,6 +1515,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     else if(S.vista==="codici") app.appendChild(vistaCodici());
     else if(S.vista==="dati") app.appendChild(vistaDati());
     else if(S.vista==="guida") app.appendChild(vistaGuida(c));
+    else if(S.vista==="live") app.appendChild(vistaLive());
     else app.appendChild(vistaTipster(c));
   }
 
@@ -1674,6 +1699,136 @@ textarea{width:100%;min-height:78px;resize:vertical}
     }
     S.errore=null;salva();
     S.form=formVuoto(f.data,"io");OCR.stato="idle";OCR.risultato=null;PROP.suggerita=null;PROP.aperto=false;S.vista="registro";disegna();window.scrollTo(0,0);
+  }
+
+  // ---- Live (17/10/2026, idea di Carmine) ----
+  // Le giocate aperte con minuto, punteggio e stato di ogni gamba. I dati
+  // arrivano dalla funzione Supabase "live", che legge la fonte API-Football
+  // con la chiave tenuta nel Vault: qui non c'e' nessuna chiave. La funzione
+  // tiene i risultati in cache (al massimo una richiesta alla fonte ogni 4
+  // minuti), quindi l'app puo' chiedere spesso senza consumare richieste.
+  var LIVE = { dati:null, errore:null, caricando:false, ultimo:0 };
+  var LIVE_STATI = {
+    passa:["passa","var(--verde)"], non_passa:["non passa","var(--rosso)"],
+    vinta:["vinta","var(--verde)"], persa:["persa","var(--rosso)"],
+    da_iniziare:["da iniziare","var(--tenue)"], da_verificare:["linea mancante","var(--avviso,#D9A15A)"],
+    non_seguita:["non seguito","var(--tenue)"], non_abbinata:["partita non trovata","var(--avviso,#D9A15A)"],
+    rinviata:["rinviata","var(--avviso,#D9A15A)"]
+  };
+  async function caricaLive(){
+    if(LIVE.caricando) return;
+    if(!DB || !CLOUD.user){ LIVE.errore="Per il Live serve l'accesso al cloud: entra dalla sezione Dati."; if(S.vista==="live") disegna(); return; }
+    LIVE.caricando=true; if(S.vista==="live") disegna();
+    try{
+      var sess=(await DB.auth.getSession()).data.session;
+      var r=await fetch(SUPABASE_URL+"/functions/v1/live",{headers:{
+        "Authorization":"Bearer "+(sess?sess.access_token:""), "apikey":SUPABASE_KEY}});
+      var j=await r.json();
+      if(!r.ok || j.errore) throw new Error(j.errore||("errore "+r.status));
+      LIVE.dati=j; LIVE.errore=null; LIVE.ultimo=Date.now();
+    }catch(e){ LIVE.errore="Live non aggiornato: "+(e.message||String(e)); }
+    LIVE.caricando=false;
+    if(S.vista==="live"){ var y=window.scrollY; disegna(); window.scrollTo(0,y); }
+  }
+  function liveSeVecchio(ms){ if(Date.now()-LIVE.ultimo>ms) caricaLive(); }
+  // Mentre la sezione e' aperta e lo schermo acceso: ogni 3 minuti.
+  // (protetto: i test caricano la pagina in un ambiente senza timer e senza eventi)
+  if(typeof setInterval==="function") setInterval(function(){
+    if(S.vista==="live" && document.visibilityState==="visible") liveSeVecchio(170000);
+  },30000);
+  if(typeof document!=="undefined" && document.addEventListener) document.addEventListener("visibilitychange",function(){
+    if(S.vista==="live" && document.visibilityState==="visible") liveSeVecchio(60000);
+  });
+  function oraLive(iso){ return iso ? iso.slice(11,16) : "--:--"; }
+  function tempoGamba(g){
+    var st=g.stato_partita||"";
+    if(st==="HT") return el("span",{"class":"live-min tab","text":"Int."});
+    if(["1H","2H","ET","BT","P","LIVE","INT"].indexOf(st)>=0)
+      return el("span",{"class":"live-min tab","text":(g.minuto!=null?g.minuto:"")+"'"});
+    if(["FT","AET","PEN"].indexOf(st)>=0) return el("span",{"class":"live-ora","text":"Finale"});
+    return el("span",{"class":"live-ora tab","text":oraLive(g.ora)});
+  }
+  function statoSchedina(s){
+    var tot=s.gambe.length;
+    if(s.stato==="senza_partite") return ["partite non registrate","var(--tenue)"];
+    if(s.stato==="persa") return ["persa","var(--rosso)"];
+    if(s.stato==="vinta") return ["vinta","var(--verde)"];
+    if(s.stato==="da_iniziare") return ["da iniziare","var(--tenue2)"];
+    return [s.vive+" su "+tot+" a posto","var(--live)"];
+  }
+  function vistaLive(){
+    var pag=el("div",{"class":"pag"});
+    var d=LIVE.dati;
+    pag.appendChild(el("div",{"class":"live-testa"},[
+      el("p",{"text": LIVE.caricando ? "Aggiorno…"
+        : (d ? "Aggiornato alle "+new Date(d.aggiornato).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})+" · si aggiorna da solo ogni 3 minuti" : "Risultati in tempo reale delle giocate aperte")}),
+      el("button",{"class":"live-agg","text":"Aggiorna","disabled":LIVE.caricando?"disabled":null,"onclick":function(){caricaLive();}})
+    ]));
+    if(LIVE.errore) pag.appendChild(el("p",{"class":"errore","text":LIVE.errore}));
+    if(d && d.avvisi) d.avvisi.forEach(function(a){ pag.appendChild(el("p",{"class":"live-avviso","text":a})); });
+    if(!d){
+      if(!LIVE.caricando && !LIVE.errore) setTimeout(function(){ liveSeVecchio(0); },0);
+      return pag;
+    }
+    if(!d.schedine.length){
+      pag.appendChild(el("div",{"class":"vuoto"},[el("h2",{"text":"Nessuna giocata aperta"}),
+        el("p",{"text":"Quando registri una schedina, le sue partite compaiono qui."})]));
+      return pag;
+    }
+    var ordine={in_corso:0,da_iniziare:1,persa:2,vinta:2};
+    var senza=d.schedine.filter(function(s){ return s.stato==="senza_partite"; });
+    d.schedine.filter(function(s){ return s.stato!=="senza_partite"; })
+      .sort(function(a,b){ return (ordine[a.stato]||0)-(ordine[b.stato]||0); }).forEach(function(s){
+      var ss=statoSchedina(s);
+      var titolo=s.sistema ? "Sistema · "+s.gambe.length+" partite" : (s.titolo||"Schedina");
+      var meta=[s.bookmaker, s.quota ? "@ "+Number(s.quota).toFixed(2) : null, s.puntata ? euro(Number(s.puntata)) : null]
+        .filter(Boolean).join(" · ");
+      var box=el("div",{"class":"live-sch"},[
+        el("div",{"class":"live-sch-top"},[
+          el("span",{"class":"live-sch-nome","text":titolo}),
+          el("span",{"class":"live-sch-stato","text":ss[0],"style":{color:ss[1]}})
+        ]),
+        el("p",{"class":"live-sch-meta tab","text":meta})
+      ]);
+      if(!s.gambe.length){
+        box.appendChild(el("p",{"class":"live-vuota","text":"Le partite di questa giocata non sono registrate in BET CORE: il Live non le può seguire."}));
+      }
+      s.gambe.forEach(function(g){
+        var lab=LIVE_STATI[g.stato]||[g.stato,"var(--tenue)"];
+        box.appendChild(el("div",{"class":"live-riga "+g.stato},[
+          tempoGamba(g),
+          el("div",{"style":{minWidth:"0"}},[
+            el("div",{"class":"live-partita","text":g.partita}),
+            el("p",{"class":"live-serve","text":g.mercato+(g.ruolo==="DOPPIA"?" (doppia)":"")})
+          ]),
+          el("div",null,[
+            el("span",{"class":"live-punt tab","text":g.punteggio||"–","style":g.punteggio?null:{color:"var(--tenue)"}}),
+            el("span",{"class":"live-stato","text":lab[0],"style":{color:lab[1]}})
+          ])
+        ]));
+      });
+      pag.appendChild(box);
+    });
+    if(senza.length){
+      // Codici e giocate senza partite registrate: un solo riquadro compatto.
+      var bx=el("div",{"class":"live-sch"},[
+        el("div",{"class":"live-sch-top"},[
+          el("span",{"class":"live-sch-nome","text":senza.length+(senza.length===1?" giocata":" giocate")+" senza partite"}),
+          el("span",{"class":"live-sch-stato","text":"non seguite","style":{color:"var(--tenue)"}})
+        ]),
+        el("p",{"class":"live-sch-meta","text":"Le partite non sono registrate in BET CORE (es. codici Sportbet): il Live non le pu\u00F2 seguire."})
+      ]);
+      senza.forEach(function(s){
+        bx.appendChild(el("div",{"class":"recente"},[
+          el("span",{"class":"live-partita","text":s.titolo||"Giocata"}),
+          el("span",{"class":"tab","style":{fontSize:"12px",color:"var(--tenue2)"},
+            "text":[s.bookmaker, s.quota ? "@ "+Number(s.quota).toFixed(2) : null, s.puntata ? euro(Number(s.puntata)) : null].filter(Boolean).join(" \u00B7 ")})
+        ]));
+      });
+      pag.appendChild(bx);
+    }
+    pag.appendChild(el("p",{"class":"avviso","text":"Dati: API-Football. Lo stato \"passa\" guarda il punteggio di adesso, non e' un esito: l'esito definitivo resta quello della ricevuta."}));
+    return pag;
   }
 
   function vistaGuida(){
