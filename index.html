@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.38</title>
+<title>Registro BET Core v4.39</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -1587,6 +1587,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var inBook=selectGuidato(libri.map(function(b){return [b,b];}),f.bookmaker,function(v){f.bookmaker=v;});
     var inData=el("input",{"type":"date","value":f.data});
     inData.addEventListener("change",function(){f.data=this.value;});
+    // Nota libera (17/10/2026): il campo esisteva nei dati e nel cloud ma il
+    // modulo non lo mostrava. Serve per bonus, rimborsi, giocate particolari.
+    var inNota=el("textarea",{"placeholder":"Es. bonus 4,20 \u20AC incluso nella quota","rows":"2"});
+    inNota.value=f.nota||"";
+    inNota.id="campo-nota";
+    inNota.addEventListener("input",function(){f.nota=this.value;});
 
     var elementi=[vessillo,
       pannelloRicevuta(),
@@ -1596,6 +1602,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("div",{"class":"gruppo due"},[campo(f.tipoSchedina==="MULTIPLA"?"Quota totale":"Quota",inQuota),campo("Puntata",inStake)]),
       el("div",{"class":"gruppo"},[rigaCassa]),
       el("div",{"class":"gruppo due"},[campo("Bookmaker",inBook),campo("Data",inData)]),
+      el("div",{"class":"gruppo"},[campo("Nota",inNota)]),
       f.ticketId ? el("p",{"class":"avviso","text":"Ricevuta "+f.ticketId}) : null
     ];
 
@@ -2125,6 +2132,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
                 return (i+1)+". "+x.evento+" — "+x.mercato+(x.quota?" @"+Number(x.quota).toFixed(2):"")+
                   (x.esito==="vinta"?" ✓":x.esito==="persa"?" ✗":x.esito==="rimborsata"?" ↺":"");
               }).join(" · ")}) : null,
+          g.nota && g.evento ? el("p",{"class":"core-dett","text":"Nota: "+g.nota}) : null,
           g.debrief ? el("p",{"class":"core-dett","text":"Debrief: "+g.debrief}) : null,
           azioni
         ])
@@ -2783,7 +2791,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       return el("li",{"class":"codici-voce"},[
         el("div",null,[
           el("span",{"class":"tab codici-codice","text":g.codiceSchedina||"—"}),
-          el("span",{"class":"tab codici-dett","text":(g.data!==dataOggi?breve(g.data)+" · ":"")+"quota "+Number(g.quota).toFixed(2)+" · "+euro(g.stake)})
+          el("span",{"class":"tab codici-dett","text":(g.data!==dataOggi?breve(g.data)+" · ":"")+"quota "+Number(g.quota).toFixed(2)+" · "+euro(g.stake)+(g.nota?" · "+g.nota:"")})
         ]),
         el("div",{"class":"codici-destra"},[destra,
           el("button",{"class":"codici-mini","text":"✕","onclick":function(){ void eliminaGiocata(g); }})])
