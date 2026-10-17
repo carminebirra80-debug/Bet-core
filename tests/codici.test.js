@@ -195,6 +195,9 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(verd.includes("€39,55"),"cassa codici dopo le chiusure: "+verd);
   assert.ok(verd.includes("risultato +€19,55"),"risultato dei codici: "+verd);
   assert.ok(cassaInAlto().includes("€35,00"),"i codici non toccano la principale: "+cassaInAlto().slice(0,40));
+  // In alto anche il saldo Sportbet dei codici, con i soldi in gioco.
+  assert.ok(cassaInAlto().includes("Cassa · Sportium (Veggente)"),"etichetta della cassa principale: "+cassaInAlto().slice(0,60));
+  assert.ok(cassaInAlto().includes("Sportbet · codici€39,55 · €2,00 in gioco"),"saldo codici in alto: "+cassaInAlto());
   assert.ok(app.textContent.includes("+€20,55"),"profitto del codice vinto nella lista");
 
   // Cassa: il totale delle due casse. Principale 35, codici 39,55.

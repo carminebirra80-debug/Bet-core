@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.27 · Market Lab</title>
+<title>Registro BET Core v4.28 · Market Lab</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -209,10 +209,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261017b"></script>
-<script src="./market-metrics.js?v=20261017b"></script>
-<script src="./sync-merge.js?v=20261017b"></script>
-<script src="./receipt-parser.js?v=20261017b"></script>
+<script src="./market-taxonomy.js?v=20261017c"></script>
+<script src="./market-metrics.js?v=20261017c"></script>
+<script src="./sync-merge.js?v=20261017c"></script>
+<script src="./receipt-parser.js?v=20261017c"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -1571,13 +1571,22 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var app = document.getElementById("app");
     while(app.firstChild) app.removeChild(app.firstChild);
 
+    // In alto anche il saldo Sportbet dei codici (17/10/2026), su una riga
+    // sua: la cifra grande resta la cassa principale (Sportium).
+    var ccTesta = conCassa("CODICI",conti);
+    var codiciInTesta = conCassa("CODICI",movimentiCassa).length || ccTesta.chiuse.length || ccTesta.aperte.length;
     app.appendChild(el("header",null,[
-      el("p",{"class":"etich","text":"Cassa"}),
+      el("p",{"class":"etich","text":codiciInTesta ? "Cassa · Sportium (Veggente)" : "Cassa"}),
       el("div",{"class":"riga-cassa"},[
         el("span",{"class":"serif tab cassa","text":euro(c.bankroll)}),
         el("span",{"class":"tab delta","text":segnato(c.reale),
           "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}})
       ]),
+      codiciInTesta ? el("div",{"class":"netto"},[
+        el("span",{"class":"etich","text":"Sportbet · codici"}),
+        el("span",{"class":"tab","style":{fontSize:"13px","color":"#DCE4EA"},
+          "text":euro(ccTesta.bankroll)+(ccTesta.impegnato>0?" · "+euro(ccTesta.impegnato)+" in gioco":"")})
+      ]) : null,
       // Il numero che conta davvero: quanto hai messo contro quanto hai
       el("div",{"class":"netto"},[
         el("span",{"class":"etich","text":"Versato finora"}),
