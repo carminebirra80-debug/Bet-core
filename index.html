@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.37</title>
+<title>Registro BET Core v4.38</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -2294,6 +2294,44 @@ textarea{width:100%;min-height:78px;resize:vertical}
   }
 
   // "versati 10,00 · prelevati 150,00 · rettifica -50,42" per i riepiloghi
+  // Riepiloghi delle due casse insieme (17/10/2026, chiesto da Carmine):
+  // il risultato del giorno o del mese somma Sportium e Sportbet, cioe' la
+  // cassa principale e quella dei codici. Sotto il totale, il risultato
+  // diviso per bookmaker vero (non per cassa: fino al 16/10 anche la
+  // principale giocava su Sportbet). Gli spostamenti fra le casse sono due
+  // rettifiche opposte nella stessa data: nel totale si annullano.
+  function dueCasse(riepilogo, chiave, lunghezza){
+    var p=conCassa("PRINCIPALE",riepilogo), k=conCassa("CODICI",riepilogo), per={};
+    var CAMPI=["n","vinte","perse","rimborsate","giocato","profitto","versato","rettifica","prelevato"];
+    [p,k].forEach(function(lista){
+      lista.forEach(function(x){
+        var t=per[x[chiave]];
+        if(!t){ t=per[x[chiave]]={book:{}}; t[chiave]=x[chiave]; CAMPI.forEach(function(c){ t[c]=0; }); }
+        CAMPI.forEach(function(c){ t[c]+=Number(x[c]||0); });
+      });
+    });
+    ["PRINCIPALE","CODICI"].forEach(function(cassa){
+      conCassa(cassa,chiuseTutte).filter(rigaRealeCore).forEach(function(g){
+        var t=per[String(g.data||"").slice(0,lunghezza)]; if(!t) return;
+        var b=String(g.bookmaker||"").trim()||"Altro";
+        t.book[b]=(t.book[b]||0)+Number(g.profitto||0);
+      });
+    });
+    var ORDINE=["Sportium","Sportbet"];
+    return Object.keys(per).sort().reverse().map(function(d){
+      var t=per[d];
+      t.roi=t.giocato?(t.profitto/t.giocato)*100:0;
+      if(Math.abs(t.rettifica)<0.005) t.rettifica=0;
+      t.perBook=Object.keys(t.book).sort(function(a,b){
+        var ia=ORDINE.indexOf(a), ib=ORDINE.indexOf(b);
+        return (ia<0?9:ia)-(ib<0?9:ib) || a.localeCompare(b);
+      }).map(function(b){ return b+" "+segnato(t.book[b]); }).join(" \u00B7 ");
+      return t;
+    });
+  }
+  function riepilogoGiornalieroDueCasse(){ return dueCasse(riepilogoGiornaliero,"giorno",10); }
+  function riepilogoMensileDueCasse(){ return dueCasse(riepilogoMensile,"mese",7); }
+
   function testoMovimenti(x){
     var parti=[];
     if(x.versato>0) parti.push("versati "+euro(x.versato));
@@ -2405,10 +2443,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ]));
 
     // Riepilogo mese per mese
-    var mesi = riepilogoMensile();
+    var mesi = codiciAttivi ? riepilogoMensileDueCasse() : riepilogoMensile();
     if(mesi.length){
       pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
-        "text":"Riepilogo mensile"}));
+        "text":codiciAttivi ? "Riepilogo mensile \u00B7 Sportium + Sportbet" : "Riepilogo mensile"}));
       var listaMesi = el("div");
       mesi.forEach(function(m, idx){
         listaMesi.appendChild(el("div",{"class":"mese"+(idx===0?" mese-corrente":"")},[
@@ -2423,7 +2461,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
               ? m.n+(m.n===1?" ticket reale":" ticket reali")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
               : "nessuna giocata"}),
             el("span",{"class":"tab","text":testoMovimenti(m)})
-          ])
+          ]),
+          codiciAttivi && m.n ? el("div",{"class":"mese-riga"},[el("span",{"class":"tab","text":m.perBook}),el("span")]) : null
         ]));
       });
       pag.appendChild(listaMesi);
@@ -2432,10 +2471,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
     // Riepilogo giorno per giorno: stesso schema del mensile, ma con vinte/
     // perse/rimborsate esplicite, cosi' l'impatto sulla cassa si legge senza
     // dover riaprire il registro giornata per giornata.
-    var giorni = riepilogoGiornaliero();
+    var giorni = codiciAttivi ? riepilogoGiornalieroDueCasse() : riepilogoGiornaliero();
     if(giorni.length){
       pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
-        "text":"Riepilogo giornaliero"}));
+        "text":codiciAttivi ? "Riepilogo giornaliero \u00B7 Sportium + Sportbet" : "Riepilogo giornaliero"}));
       var listaGiorni = el("div");
       giorni.forEach(function(g, idx){
         var dettaglio = g.n
@@ -2456,7 +2495,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
               ? dettaglio+" · ROI "+(g.roi>=0?"+":"")+g.roi.toFixed(0)+"%"
               : dettaglio}),
             el("span",{"class":"tab","text":testoMovimenti(g)})
-          ])
+          ]),
+          codiciAttivi && g.n ? el("div",{"class":"mese-riga"},[
+            el("span",{"class":"tab","text":g.perBook}),
+            el("span")
+          ]) : null
         ]));
       });
       pag.appendChild(listaGiorni);

@@ -152,6 +152,10 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
     const p=findElement(app,x=>x.tagName==="INPUT"&&x.parentNode&&x.parentNode.className==="codici-riga"&&x.attributes.placeholder===undefined);
     if(stake!==undefined) p.value=stake; else p.value=p.attributes.value;
     findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="+").listeners.click();
+    // L'app usa l'ora in millisecondi come id: a mano due codici non cadono
+    // mai nello stesso millisecondo, qui si'. Senza pausa il test era
+    // instabile (17/10/2026: falliva una volta su due anche su main).
+    await new Promise(resolve=>setTimeout(resolve,3));
   }
   await registra("186516","4.20");
   await registra("521267","7.85","3");
@@ -210,6 +214,33 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(tt.includes("Versato€50,00€0,00€50,00"),"totale versato: "+tt);
   // Risultato: principale +5, codici +19,55 (lo spostamento non conta).
   assert.ok(tt.includes("Risultato reale+€5,00+€19,55+€24,55"),"risultato totale: "+tt);
+
+  // Riepilogo giornaliero delle due casse (v4.38). Il 16/10: principale +5
+  // (Inter - Roma, Sportium) e codici -1 (111111, Sportbet) = +4. Oggi solo
+  // il codice vinto,
+  // +20,55; lo spostamento di 20 fra le casse si annulla e non compare.
+  assert.ok(app.textContent.includes("Riepilogo giornaliero · Sportium + Sportbet"),"titolo del riepilogo a due casse");
+  const giorno=d=>findElement(app,x=>x.className&&String(x.className).indexOf("mese")===0&&x.children.length>=3&&
+    x.children[0].textContent.indexOf(d)===0);
+  const ieri=giorno("16/10");
+  assert.ok(ieri,"riga del 16/10 mancante");
+  assert.equal(ieri.children[0].textContent,"16/10+€4,00","totale del 16/10 = +5 - 1: "+ieri.textContent);
+  assert.equal(ieri.children[2].textContent,"Sportium +€5,00 · Sportbet -€1,00","dettaglio per cassa: "+ieri.textContent);
+  const oggiRiga=giorno(oggiIso.slice(8,10)+"/"+oggiIso.slice(5,7));
+  assert.ok(oggiRiga,"riga di oggi mancante");
+  assert.equal(oggiRiga.children[0].textContent.slice(5),"+€20,55","oggi conta il codice vinto: "+oggiRiga.textContent);
+  assert.equal(oggiRiga.children[2].textContent,"Sportbet +€20,55","oggi gioca solo la cassa codici: "+oggiRiga.textContent);
+  assert.ok(!oggiRiga.textContent.includes("rettifica"),"lo spostamento fra casse si annulla: "+oggiRiga.textContent);
+
+  // Riepilogo mensile delle due casse: ottobre 2026 = Sportium +5 e
+  // Sportbet -1, piu' il codice vinto di oggi se il test gira in ottobre.
+  assert.ok(app.textContent.includes("Riepilogo mensile · Sportium + Sportbet"),"titolo del mensile a due casse");
+  const ottobre=findElement(app,x=>x.className&&String(x.className).indexOf("mese")===0&&x.children.length>=3&&
+    x.children[0].textContent.indexOf("Ottobre 2026")===0);
+  assert.ok(ottobre,"riga di ottobre 2026 mancante");
+  const inOttobre=oggiIso.slice(0,7)==="2026-10";
+  assert.equal(ottobre.children[0].textContent,"Ottobre 2026"+(inOttobre?"+€24,55":"+€4,00"),"totale del mese: "+ottobre.textContent);
+  assert.equal(ottobre.children[2].textContent,"Sportium +€5,00 · Sportbet "+(inOttobre?"+€19,55":"-€1,00"),"mese per bookmaker: "+ottobre.textContent);
 
   // Registro: i codici non lo intasano, compaiono solo col loro filtro.
   clickNav(app,"Registro");
