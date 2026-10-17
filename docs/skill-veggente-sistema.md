@@ -31,12 +31,22 @@ migliorano il rendimento atteso. Per questo le fisse sono le più selettive.
   proposte (Scelta del Veggente, poi CONCORDE, poi COMPATIBILE…). Con meno di
   3 fisse **il sistema non si fa**: dillo in apertura, insieme a quante A in
   fascia c'erano.
-- **Doppie: al massimo 2.** Partite degli articoli del Veggente di OGGI su cui
-  c'è una sua giocata A o B sull'esito (1, X, 2, 1X, X2, 12). La doppia copre i
-  due segni che contengono la sua indicazione: 1 → 1X, 2 → X2, X → 1X o X2
-  verso la squadra con quota più alta, 1X/X2/12 → gli stessi due segni. Solo
-  se la quota del segno principale è fra 1.70 e 2.60: sotto è una fissa, sopra
-  è una lotteria.
+- **Doppie: al massimo 2, solo su "partite da X"** (deciso da Carmine il
+  17/10/2026: la doppia serve a prendere il pareggio, che a quota 3 o più fa
+  la vincita grossa). Una partita degli articoli di OGGI è candidata se:
+  - c'è un'indicazione di pareggio: X secca o X in un pronostico del Veggente,
+    oppure X di Cassandra, oppure una giocata del Veggente Under 2.5 o No
+    Goal (partita chiusa, pochi gol);
+  - la quota della X è fra 2.90 e 3.60: il mercato stesso la ritiene
+    possibile;
+  - le quote di 1 e di 2 sono entrambe almeno 2.00: nessun favorito netto.
+
+  La doppia copre **X più il segno del favorito** (1X o X2, verso la quota
+  più bassa fra 1 e 2). Ordine: prima la X secca del Veggente con voto A o B,
+  poi la X di Cassandra, poi le partite Under 2.5 / No Goal; a parità, X con
+  quota più alta. Nello storico al 17/10/2026 la X secca del Veggente ha 4
+  vinte su 7 chiuse a quota media 3.21: campione troppo piccolo, è proprio
+  quello che la prova deve misurare.
 - **Tripla: al massimo 1.** La partita più equilibrata del giorno fra quelle
   degli articoli del Veggente: tutte e tre le quote 1X2 fra 2.20 e 4.20. Se non
   c'è, niente tripla.
@@ -62,7 +72,7 @@ SISTEMA (in prova sulla carta) | [n] colonne × 0,50 € = X,XX € | vincita mi
 Fisse:
 - Partita — mercato @ quota (fonte) · voto · Cassandra: esito · hh:mm
 Doppie:
-- Partita — 1X (1 @ q · X @ q · fonte) · indicazione Veggente: mercato, voto
+- Partita — 1X (1 @ q · X @ q · fonte) · perché da X: indicazione (Veggente X / Cassandra X / Under-No Goal), voto
 Tripla:
 - Partita — 1X2 (1 @ q · X @ q · 2 @ q · fonte)
 Con i favoriti: vince/perde X,XX €
@@ -87,7 +97,8 @@ calcolata come al §4 (0 se perso).
 - **sistema (sulla carta):** giorni con e senza sistema, costo totale,
   vincite totali, saldo, quante volte vinto e quante di queste con i
   favoriti in perdita; fisse, doppie e triple saltate separatamente, per
-  capire quale parte regge.
+  capire quale parte regge; per le doppie, quante volte è uscita la X
+  (è la cosa che decide se l'idea funziona).
 ```
 
 ## In §7. Supabase — nell'elenco delle tabelle
