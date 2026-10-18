@@ -324,6 +324,16 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(app.textContent.includes("186516: 7 partite collegate al Live."),"messaggio di conferma: "+app.textContent.slice(0,300));
   assert.ok(app.textContent.includes("sul ticket la puntata e' €2,20, qui €1,00"),"puntata diversa segnalata");
   assert.ok(app.textContent.includes("· 7 partite · Sistema (7)"),"la riga del codice mostra le partite");
+  // La ricevuta aggiunge il ticket, ma la giocata nel cloud resta la stessa
+  // riga (18/10/2026: il codice 664156 era finito due volte nel cloud).
+  clickNav(app,"Dati");
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
+  await new Promise(resolve=>setTimeout(resolve,5));
+  const inviate=calls.filter(x=>x.azione==="upsert"&&x.table==="picks").pop().rows.filter(r=>r.codice_schedina==="186516");
+  const conPartite=inviate.find(r=>(r.gambe||[]).length===7);
+  assert.ok(conPartite,"il codice con le partite va al cloud");
+  assert.equal(conPartite.legacy_id,String(conTicket.id),"stessa identita' di prima: niente seconda riga nel cloud");
+  clickNav(app,"Codici");
 
   // Codice nuovo da screenshot: puntata compilata, quota da scrivere (sistema).
   await scegli(findElement(app,x=>x.tagName==="INPUT"&&x.type==="file"&&x.parentNode&&x.parentNode.className==="pag"));
