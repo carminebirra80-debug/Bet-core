@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.40</title>
+<title>Registro BET Core v4.41</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -1718,7 +1718,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
       codiceSchedina:origine==="CODICI"?(f.codiceSchedina||""):""};
     try{ localStorage.setItem(CHIAVE_BOOK,dati.bookmaker); }catch(e){}
     if(inEdit){
-      S.giocate.forEach(function(g){if(String(g.id)===String(S.editingId)){Object.keys(dati).forEach(function(k){g[k]=dati[k];});g.cloudDirty=true;if(g.esito==="vinta")g.profitto=g.stake*g.quota-g.stake;else if(g.esito==="persa")g.profitto=-g.stake;}});
+      // Stessa regola della ricevuta sui codici: cambiare il ticket in modifica
+      // non deve cambiare l'identita' della giocata nel cloud.
+      S.giocate.forEach(function(g){if(String(g.id)===String(S.editingId)){if(!g.cloudLegacyId)g.cloudLegacyId=legacyCloud(g);Object.keys(dati).forEach(function(k){g[k]=dati[k];});g.cloudDirty=true;if(g.esito==="vinta")g.profitto=g.stake*g.quota-g.stake;else if(g.esito==="persa")g.profitto=-g.stake;}});
       S.editingId=null;
     }else{
       dati.id=Date.now();dati.esito="aperta";dati.profitto=0;dati.cloudDirty=true;S.giocate.unshift(dati);
@@ -2759,7 +2761,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var gambe=gambeDaRicevuta(r);
     if(!gambe.length) return "Nello screenshot non ho trovato partite: apri il ticket con i dettagli delle selezioni.";
     g.gambe=gambe; g.nota=notaSistema(r,g.nota);
-    if(!g.ticketId && ticketLibero(r.ticketId,g.id)) g.ticketId=String(r.ticketId).toUpperCase();
+    // L'identita' nel cloud dipende anche dal ticket (legacyCloud): va fissata
+    // prima di aggiungerlo, se no la sincronizzazione crea una seconda riga
+    // (successo il 18/10/2026 col codice 664156, finito due volte nel cloud).
+    if(!g.ticketId && ticketLibero(r.ticketId,g.id)){
+      if(!g.cloudLegacyId) g.cloudLegacyId=legacyCloud(g);
+      g.ticketId=String(r.ticketId).toUpperCase();
+    }
     g.cloudDirty=true; aggiornaTassonomia(g); salva();
     var avvisi=[];
     if(r.stake && Math.abs(Number(r.stake)-Number(g.stake))>0.004)
