@@ -422,6 +422,39 @@
     };
   }
 
+  // Importo, bonus e vincita del ticket Sportbet da una lettura "a testo
+  // sparso" (Tesseract psm 11), 18/10/2026: nel ticket da telefono il
+  // riquadro "Importo / Bonus" letto riga per riga esce illeggibile, a testo
+  // sparso no ("Importo totale 2,00 € 1,00 € Vincita potenziale 21,13 €").
+  // Si leggono solo gli importi DOPO la parola Importo: prima, nello
+  // screenshot da computer, c'e' la pagina dietro.
+  function importiSportbet(testo, quota){
+    var t = compatta(String(testo || "").replace(/\s+/g, " "));
+    var out = {stake:null, bonus:null, vincita:null};
+    var i = t.search(/\bIMPORTO\b(?!\s*:)/i);
+    if(i < 0) return out;
+    var dopo = t.slice(i);
+    var fine = dopo.search(/\bRIGIOCA\b|\bREF\b|\bCONDIVIDI\b/i);
+    if(fine > 0) dopo = dopo.slice(0, fine);
+    var vin = dopo.match(/\bV\w*NCITA\s+(?:POTENZIALE|MASSIMA)?\s*([0-9][0-9.,]*)\s*€/i);
+    if(vin){ out.vincita = numeroSportbet(vin[1]); dopo = dopo.replace(vin[0], " "); }
+    var euro = [], re = /([0-9][0-9.,]*)\s*€/g, e;
+    while((e = re.exec(dopo))) euro.push(numeroSportbet(e[1]));
+    euro = euro.filter(function(x){ return x !== null && x > 0; });
+    if(euro.length) out.stake = euro[0];
+    var etichette = t.slice(Math.max(0, i - 60), i + 40);
+    if(/\bBONUS\b/i.test(etichette) && euro.length > 1) out.bonus = euro[1];
+    // Controllo: vincita = puntata x quota + bonus. Se il bonus non si legge
+    // ma vincita e quota si', il bonus e' la differenza.
+    var q = Number(quota);
+    if(out.stake && q > 1 && out.vincita){
+      var diff = Math.round((out.vincita - out.stake * q) * 100) / 100;
+      if(out.bonus === null && diff > 0.05) out.bonus = diff;
+      if(out.bonus !== null && Math.abs(diff - out.bonus) > 0.1) out.bonus = diff > 0.05 ? diff : null;
+    }
+    return out;
+  }
+
   function riconosciBookmaker(testo){
     var s = String(testo || "");
     if(/\bADM\s*[:;]/i.test(s) || /GIOCATA\s+DEL/i.test(s)) return "Sportium";
@@ -436,6 +469,7 @@
   return {
     parseRicevuta:parseRicevuta,
     parseSportbet:parseSportbet,
+    importiSportbet:importiSportbet,
     riconosciBookmaker:riconosciBookmaker,
     parseSportium:parseSportium,
     tipoMercato:tipoMercato,

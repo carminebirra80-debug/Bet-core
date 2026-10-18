@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.44</title>
+<title>Registro BET Core v4.45</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -251,10 +251,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261018c"></script>
-<script src="./market-metrics.js?v=20261018c"></script>
-<script src="./sync-merge.js?v=20261018c"></script>
-<script src="./receipt-parser.js?v=20261018c"></script>
+<script src="./market-taxonomy.js?v=20261018d"></script>
+<script src="./market-metrics.js?v=20261018d"></script>
+<script src="./sync-merge.js?v=20261018d"></script>
+<script src="./receipt-parser.js?v=20261018d"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -298,6 +298,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
   var CHIAVE_PUNTATA_CODICI = "registro-ultima-puntata-codici";
   // La cassa su cui lavorano conti, riepiloghi, tetti e andamento. Di norma
   // e' la principale; la scheda Codici la cambia solo mentre calcola la sua.
+  // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
+  // merge si capisce se il telefono ha gia' preso quella nuova. Deve
+  // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
+  var VERSIONE = "4.45";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -566,6 +570,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(r.bookmaker) S.form.bookmaker=r.bookmaker;
     if(r.quota) S.form.quota=r.quota.toFixed(2);
     if(r.stake){S.form.stake=r.stake.toFixed(2);S.form.toccato=true;}
+    if(r.bonus>0) S.form.bonus=String(Math.round(r.bonus*100)/100);
     if(r.eventi&&r.eventi.length>1){
       S.form.tipoSchedina="MULTIPLA";
       S.form.evento="Multipla · "+r.eventi.length+" gambe"; S.form.mercato="MULTIPLA";
@@ -709,6 +714,22 @@ textarea{width:100%;min-height:78px;resize:vertical}
         var letturaContrasto=await worker.recognize(contrasto);
         var alternativa=leggiTestoRicevuta(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
         if(punteggioRicevuta(alternativa)>punteggioRicevuta(risultato)) risultato=alternativa;
+      }
+      // Importo e bonus Sportbet (18/10/2026): nel ticket da telefono il
+      // riquadro "Importo / Bonus" si legge solo a testo sparso (psm 11).
+      var P=window.BetCoreReceiptParser;
+      if(risultato.bookmaker==="Sportbet" && P.importiSportbet && (!risultato.stake || risultato.bonus==null)){
+        faseLettura="Lettura di puntata e bonus";
+        ultimo=-1;avanza(1,faseLettura);
+        if(worker.setParameters) await worker.setParameters({tessedit_pageseg_mode:"11"});
+        var sparsa=await worker.recognize(await creaRicevutaInvertitaSeScura(file,true));
+        var imp=P.importiSportbet(sparsa&&sparsa.data?sparsa.data.text:"",risultato.quota);
+        if(!risultato.stake && imp.stake){
+          risultato.stake=imp.stake;
+          risultato.avvisi=(risultato.avvisi||[]).filter(function(a){return !/Importo non riconosciuto/.test(a);});
+        }
+        if(risultato.bonus==null && imp.bonus) risultato.bonus=imp.bonus;
+        if(!risultato.vincitaPotenziale && imp.vincita) risultato.vincitaPotenziale=imp.vincita;
       }
       return risultato;
     }finally{
@@ -2749,6 +2770,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ]));
     pag.appendChild(input);
     pag.appendChild(el("p",{"class":"avviso","text":"L'importazione aggiunge i dati e salta i doppioni banali; non cancella lo storico gia presente."}));
+    pag.appendChild(el("p",{"class":"avviso versione-app","text":"BET Core versione "+VERSIONE+" · se dopo un aggiornamento vedi ancora la vecchia, chiudi e riapri l'app due volte."}));
     return pag;
   }
 
@@ -2892,7 +2914,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
     }else if(letta){
       pag.appendChild(el("div",{"class":"ricevuta-esito codici-letta"},[
         el("strong",{"text":"Ticket letto: "+letta.eventi.length+(letta.eventi.length===1?" partita":" partite")+
-          (letta.stake?" · puntata "+euro(letta.stake):"")+(letta.sistema?" · sistema":letta.quota?" · quota "+Number(letta.quota).toFixed(2):"")}),
+          (letta.stake?" · puntata "+euro(letta.stake):"")+(letta.sistema?" · sistema":letta.quota?" · quota "+Number(letta.quota).toFixed(2):"")+
+          (letta.bonus>0?" · bonus "+euro(letta.bonus):"")}),
         el("p",{"class":"mercato-letto","text":letta.eventi.map(function(x){return x.evento+" — "+(x.mercato||"mercato non letto");}).join(" · ")}),
         letta.avvisi&&letta.avvisi.length?el("p",{"class":"ricevuta-warn","text":"Da controllare: "+letta.avvisi.join(" · ")}):null,
         el("p",{"class":"avviso","text":letta.sistema
