@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.41</title>
+<title>Registro BET Core v4.42</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -245,10 +245,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261018a"></script>
-<script src="./market-metrics.js?v=20261018a"></script>
-<script src="./sync-merge.js?v=20261018a"></script>
-<script src="./receipt-parser.js?v=20261018a"></script>
+<script src="./market-taxonomy.js?v=20261018b"></script>
+<script src="./market-metrics.js?v=20261018b"></script>
+<script src="./sync-merge.js?v=20261018b"></script>
+<script src="./receipt-parser.js?v=20261018b"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -2909,7 +2909,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
             (g.gambe&&g.gambe.length?" · "+g.gambe.length+" partite":"")+(g.nota?" · "+g.nota:"")})
         ]),
         el("div",{"class":"codici-destra"},[destra,
-          g.esito==="aperta" && !(g.gambe&&g.gambe.length) ? ricevutaPer(g) : null,
+          // Anche quando qualche partita e' rimasta senza mercato: la ricevuta
+          // si puo' rileggere (18/10/2026, codice 664156).
+          g.esito==="aperta" && (!(g.gambe&&g.gambe.length) || g.gambe.some(function(x){ return !x.mercato; })) ? ricevutaPer(g) : null,
           el("button",{"class":"codici-mini","text":"✕","onclick":function(){ void eliminaGiocata(g); }})])
       ]);
     }

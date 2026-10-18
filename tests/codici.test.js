@@ -324,6 +324,8 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(app.textContent.includes("186516: 7 partite collegate al Live."),"messaggio di conferma: "+app.textContent.slice(0,300));
   assert.ok(app.textContent.includes("sul ticket la puntata e' €2,20, qui €1,00"),"puntata diversa segnalata");
   assert.ok(app.textContent.includes("· 7 partite · Sistema (7)"),"la riga del codice mostra le partite");
+  assert.ok(!findElement(app,x=>x.tagName==="LI"&&x.className==="codici-voce"&&x.textContent.includes("7 partite")&&x.textContent.includes("Ricevuta")),
+    "con tutte le partite lette il pulsante Ricevuta sparisce");
   // La ricevuta aggiunge il ticket, ma la giocata nel cloud resta la stessa
   // riga (18/10/2026: il codice 664156 era finito due volte nel cloud).
   clickNav(app,"Dati");
