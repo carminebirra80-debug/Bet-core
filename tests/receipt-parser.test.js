@@ -244,4 +244,24 @@ assert.equal(perGamba["Union Berlino vs Borussia Dortmund"],"","segno perso: nie
 assert.equal(perGamba["Fulham FC vs Hull City"],"1 + GG","1+6G corretto in 1 + GG");
 assert.ok(scarso.avvisi.some(a=>/evento 2 .*il Live non la seguira/.test(a)),"l'avviso dice cosa e' stato letto");
 
+// Ticket Sportbet da telefono del 18/10/2026 (codice 664156): intestazione
+// semplice "U/O 2,5" col segno scritto per esteso "OVER". La v4.40 la
+// scartava (regola di sicurezza troppo larga): il Live le dava "non seguite".
+const tel=P.parseRicevuta(fs.readFileSync(require.resolve("./dati/sportbet-multipla-telefono.txt"),"utf8"));
+assert.equal(tel.sistema,0);
+assert.equal(tel.quota,10.06);
+assert.equal(tel.ticketId,"DF07EA0A123279BC1504");
+assert.deepEqual(tel.eventi.map(e=>e.evento+" | "+e.mercato),[
+  "Osasuna vs Racing Santander | OVER 2.5",
+  "Valerenga IF vs Brann | OVER 2.5",
+  "Milan vs Atalanta | OVER 2.5",
+  "CF Malaga vs Real Sociedad | OVER 2.5",
+  "Al-Fateh SC vs Al-Khaleej Club | OVER 2.5"
+]);
+// Intestazioni semplici: segno per esteso o abbreviato, e niente mercato se
+// il segno non si capisce.
+assert.equal(P.parseSportbet("Italia | Serie A | 18/10/2026 15:00\nJuventus - Lazio\nGG/NG    GOAL    1.80\nRef. DF07EA0A123279BC1599 | 18/10/2026 13:49").eventi[0].mercato,"GG");
+assert.equal(P.parseSportbet("Italia | Serie A | 18/10/2026 15:00\nJuventus - Lazio\nU/O 1,5    UNDER    3.10\nRef. DF07EA0A123279BC1599 | 18/10/2026 13:49").eventi[0].mercato,"UNDER 1.5");
+assert.equal(P.parseSportbet("Italia | Serie A | 18/10/2026 15:00\nJuventus - Lazio\nU/O 2,5    0VFR    1.80\nRef. DF07EA0A123279BC1599 | 18/10/2026 13:49").eventi[0].mercato,"","segno illeggibile: niente mercato");
+
 console.log("receipt-parser: ok");

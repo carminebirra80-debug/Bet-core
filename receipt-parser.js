@@ -239,8 +239,10 @@
     if(/^(?:IX|LX)$/.test(x)) return "1X";
     if(/^(?:GG|G6|6G|66|GC|CG|C6|6C)$/.test(x)) return "GG";
     if(/^(?:NG|N6|NC)$/.test(x)) return "NG";
-    if(/^(?:O|0)+V+$/.test(x)) return "OV";
-    if(/^U+N+$/.test(x)) return "UN";
+    if(/^(?:O|0)+V+$/.test(x) || /^[O0]VER$/.test(x)) return "OV";
+    if(/^U+N+$/.test(x) || x === "UNDER") return "UN";
+    if(x === "GOAL") return "GG";
+    if(x === "NOGOAL") return "NG";
     return null;
   }
   // Intestazioni combinate del ticket: "1X2 + GG/NG" col segno "2 + GG",
@@ -279,6 +281,13 @@
       var comb = mercatoCombinato(n, s);
       if(comb !== undefined) return comb || "";
     }
+    // Intestazioni semplici del ticket da telefono (18/10/2026): "U/O 2,5"
+    // col segno "OVER", "GG/NG" col segno "GG", doppia chance col segno "1X".
+    var nn = n.replace(/\s/g, ""), t = tokenSegno(s);
+    var uoSemplice = nn.match(/^(?:U\/[O0]|UNDER\/OVER)(\d+[.,]\d)$/);
+    if(uoSemplice) return t === "OV" || t === "UN" ? (t === "OV" ? "OVER " : "UNDER ") + uoSemplice[1].replace(",", ".") : "";
+    if(/^(?:GG\/NG|GOAL\/NOGOAL)$/.test(nn)) return t === "GG" || t === "NG" ? t : "";
+    if(/^(?:DOPPIACHANCE|DC)$/.test(nn)) return /^(?:1X|X2|12)$/.test(t || "") ? t : "";
     // "Under/Over 3.5" col segno "UN"/"OV", anche combinato: "1X + Under/Over
     // 3.5" con segno "1X + UN" diventa "1X + UNDER 3.5" (schedina del 07/10/2026).
     var uo = n.match(/UNDER\s*\/\s*OVER\s*(\d+[.,]\d)/);
