@@ -264,4 +264,10 @@ assert.equal(P.parseSportbet("Italia | Serie A | 18/10/2026 15:00\nJuventus - La
 assert.equal(P.parseSportbet("Italia | Serie A | 18/10/2026 15:00\nJuventus - Lazio\nU/O 1,5    UNDER    3.10\nRef. DF07EA0A123279BC1599 | 18/10/2026 13:49").eventi[0].mercato,"UNDER 1.5");
 assert.equal(P.parseSportbet("Italia | Serie A | 18/10/2026 15:00\nJuventus - Lazio\nU/O 2,5    0VFR    1.80\nRef. DF07EA0A123279BC1599 | 18/10/2026 13:49").eventi[0].mercato,"","segno illeggibile: niente mercato");
 
+// Letture storpiate di "U/O 2,5" (codice 331860 del 18/10): "V/O 2,5", "UFO 25".
+const storpia=t=>P.parseSportbet("Italia | Serie A | 18/10/2026 15:00\nJuventus - Lazio\n"+t+"    OVER    1.80\nRef. DF07EA0A123279BC1599 | 18/10/2026 13:49").eventi[0].mercato;
+assert.equal(storpia("V/O 2,5"),"OVER 2.5");
+assert.equal(storpia("UFO 25"),"OVER 2.5");
+assert.equal(storpia("U/O25"),"OVER 2.5");
+
 console.log("receipt-parser: ok");

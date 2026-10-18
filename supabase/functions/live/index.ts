@@ -138,15 +138,35 @@ function norm(s: string) {
   if (ALIAS[b]) b = ALIAS[b];
   return b.split(" ").filter((t) => t && !VUOTE.has(t)).join(" ");
 }
+// Distanza di modifica fra due parole, solo per nomi quasi uguali.
+function distanza(a: string, b: string) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  let prec = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prec[j] + 1, cur[j - 1] + 1, prec[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prec = cur;
+  }
+  return prec[b.length];
+}
+// Una lettera di differenza nei nomi lunghi non deve far perdere la partita
+// (18/10/2026: "Olympiakos" sul ticket, "Olympiacos" su ESPN).
+function parolaUguale(t: string, u: string) {
+  if (t === u) return true;
+  const n = Math.min(t.length, u.length);
+  return n >= 6 && distanza(t, u) <= 1;
+}
 function simile(a: string, b: string) {
   const x = norm(a), y = norm(b);
   if (!x || !y) return 0;
   if (x === y) return 1;
   if ((x.length >= 4 && y.includes(x)) || (y.length >= 4 && x.includes(y))) return 0.9;
-  const tx = new Set(x.split(" ")), ty = new Set(y.split(" "));
+  const tx = new Set(x.split(" ")), ty = [...new Set(y.split(" "))];
   let comuni = 0;
-  tx.forEach((t) => { if (ty.has(t) && t.length >= 3) comuni++; });
-  return comuni / Math.max(tx.size, ty.size);
+  tx.forEach((t) => { if (t.length >= 3 && ty.some((u) => parolaUguale(t, u))) comuni++; });
+  return comuni / Math.max(tx.size, ty.length);
 }
 function squadre(evento: string): [string, string] | null {
   const p = (evento || "").split(/\s+(?:vs\.?|v|-|–)\s+/i);
@@ -190,6 +210,8 @@ function leggiMercato(testo: string, segni?: string | null): { cond: Cond[]; leg
   // di una squadra) resta "non seguito" invece di essere letto come un
   // mercato simile: meglio nessuna proposta di esito che una sbagliata.
   if (NON_GESTITI.test(s)) return { cond: [], leggibile: false };
+  // "V/O 2,5", "UFO 25": l'OCR del ticket Sportbet storpia "U/O" (18/10/2026).
+  s = s.replace(/(^|[^A-Z])[UV]\s*[\/F]\s*[O0](?![A-Z])/g, "$1U/O");
   s = s.replace(/U\/0/g, "U/O").replace(/0V(ER)?/g, "OV$1").replace(/,/g, ".");
   let linea: number | null = null;
   const m1 = s.match(/U\/O\s*(\d)\.?(\d)/);
