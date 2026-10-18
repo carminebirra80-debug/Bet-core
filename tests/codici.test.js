@@ -117,7 +117,20 @@ const db={
     update:()=>({eq:()=>({eq:async()=>({error:null})})})
   })
 };
+// Lettore OCR finto (18/10/2026): restituisce il testo vero di Tesseract sul
+// ticket Sportbet del sistema del 17/10. Basta a provare i pulsanti
+// "Da screenshot" e "Ricevuta" della scheda Codici senza immagini vere.
+const testoTicket=fs.readFileSync(require.resolve("./dati/sportbet-sistema-pc.txt"),"utf8");
+const _crea=document.createElement.bind(document);
+document.createElement=function(tag){
+  const e=_crea(tag);
+  if(String(tag).toLowerCase()==="canvas") e.getContext=()=>({drawImage(){},putImageData(){},
+    getImageData:()=>({data:new Uint8ClampedArray(64).fill(20)})});
+  return e;
+};
 const window={
+  Tesseract:{createWorker:async()=>({setParameters:async()=>{},recognize:async()=>({data:{text:testoTicket}}),terminate:async()=>{}})},
+  createImageBitmap:async()=>({width:671,height:1076,close(){}}),
   BetCoreMarketTaxonomy:require("../market-taxonomy.js"),
   BetCoreMarketMetrics:require("../market-metrics.js"),
   BetCoreSyncMerge:require("../sync-merge.js"),
@@ -289,6 +302,48 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   const upV=calls.filter(x=>x.azione==="upsert"&&x.table==="versamenti").pop();
   assert.ok(upV.rows.some(r=>r.cassa==="CODICI"&&r.importo===20),"il movimento della cassa codici va al cloud con la sua cassa");
   assert.ok(upV.rows.some(r=>r.cassa==="PRINCIPALE"&&r.importo===50),"i movimenti vecchi restano della principale");
+
+  // Ricevuta su un codice gia' registrato (18/10/2026): le partite del ticket
+  // si attaccano al codice, la nota dice che e' un sistema, il ticket si
+  // salva; la puntata diversa viene segnalata ma non cambiata da sola.
+  clickNav(app,"Codici");
+  const scegli=async(input)=>{ input.files=[{name:"ticket.jpg"}]; input.listeners.change.call(input); await new Promise(r=>setTimeout(r,20)); };
+  const riga186=findElement(app,x=>x.tagName==="LI"&&x.className==="codici-voce"&&x.textContent.includes("186516")&&x.textContent.includes("Ricevuta"));
+  assert.ok(riga186,"il codice aperto senza partite deve avere il pulsante Ricevuta");
+  assert.ok(!findElement(app,x=>x.tagName==="LI"&&x.className==="codici-voce"&&x.textContent.includes("521267")&&x.textContent.includes("Ricevuta")),
+    "un codice gia' chiuso non ha il pulsante Ricevuta");
+  await scegli(findElement(riga186,x=>x.tagName==="INPUT"&&x.type==="file"));
+  let salv=JSON.parse(storage["registro-tipster-v1"]).giocate;
+  const conTicket=salv.find(g=>g.codiceSchedina==="186516"&&g.gambe.length);
+  assert.ok(conTicket,"partite attaccate al codice");
+  assert.equal(conTicket.gambe.length,7);
+  assert.deepEqual(conTicket.gambe[4],{evento:"Brentford vs Liverpool",mercato:"GG + OVER 2.5",quota:1.69,esito:null});
+  assert.equal(conTicket.nota,"Sistema (7)","la nota dice che e' un sistema: il Live non lo dara' perso alla prima gamba");
+  assert.equal(conTicket.ticketId,"DF07EA0A1110CF360907");
+  assert.equal(conTicket.stake,1,"la puntata non cambia da sola");
+  assert.ok(app.textContent.includes("186516: 7 partite collegate al Live."),"messaggio di conferma: "+app.textContent.slice(0,300));
+  assert.ok(app.textContent.includes("sul ticket la puntata e' €2,20, qui €1,00"),"puntata diversa segnalata");
+  assert.ok(app.textContent.includes("· 7 partite · Sistema (7)"),"la riga del codice mostra le partite");
+
+  // Codice nuovo da screenshot: puntata compilata, quota da scrivere (sistema).
+  await scegli(findElement(app,x=>x.tagName==="INPUT"&&x.type==="file"&&x.parentNode&&x.parentNode.className==="pag"));
+  assert.ok(app.textContent.includes("Ticket letto: 7 partite · puntata €2,20 · sistema"),"riepilogo del ticket letto");
+  assert.ok(app.textContent.includes("Venezia vs Napoli — 2 + GG"));
+  const qn=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="Quota?");
+  assert.ok(qn,"per un sistema la quota resta da scrivere");
+  const pn=findElement(app,x=>x.tagName==="INPUT"&&x.parentNode&&x.parentNode.className==="codici-riga"&&x.attributes.value==="2.2");
+  assert.ok(pn,"puntata letta dal ticket");
+  findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="Codice").value="576335";
+  qn.value="10.31";
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="+").listeners.click();
+  salv=JSON.parse(storage["registro-tipster-v1"]).giocate;
+  const nuovoSis=salv.find(g=>g.codiceSchedina==="576335");
+  assert.ok(nuovoSis,"codice da screenshot registrato");
+  assert.equal(nuovoSis.stake,2.2); assert.equal(nuovoSis.quota,10.31);
+  assert.equal(nuovoSis.gambe.length,7);
+  assert.equal(nuovoSis.nota,"Sistema (7)");
+  assert.equal(nuovoSis.ticketId,"","il ticket e' gia' su un altro codice: non si duplica");
+  assert.ok(!app.textContent.includes("Ticket letto:"),"dopo il + il riquadro del ticket sparisce");
 
   console.log("codici: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});

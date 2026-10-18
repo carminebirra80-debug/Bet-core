@@ -1,6 +1,7 @@
 "use strict";
 
 const assert=require("node:assert/strict");
+const fs=require("node:fs");
 const P=require("../receipt-parser.js");
 
 // Testi reali prodotti dall'OCR sulle ricevute Sportium del 31/08/2026.
@@ -212,5 +213,35 @@ assert.deepEqual(aperte.eventi.map(x=>[x.evento,x.mercato,x.quota]),[
 ]);
 // Limite noto: l'OCR legge "9" come "O" nel Ref. (vero: DF07EA0A0831DC91BE0C).
 assert.equal(aperte.ticketId,"DF07EA0A0831DC01BE0C");
+
+// Ticket Sportbet da computer ("Controlla il tuo ticket"), sistema su 7
+// partite del 17/10/2026. Testo vero di Tesseract sull'immagine ingrandita 2x
+// e invertita sul canale piu' luminoso (il segno e' arancione).
+const sistemaPc=fs.readFileSync(require.resolve("./dati/sportbet-sistema-pc.txt"),"utf8");
+const sis=P.parseRicevuta(sistemaPc);
+assert.equal(sis.bookmaker,"Sportbet");
+assert.equal(sis.sistema,7,"riconosce il sistema");
+assert.equal(sis.quota,null,"un sistema non ha quota totale: niente prodotto delle gambe");
+assert.equal(sis.stake,2.2);
+assert.equal(sis.ticketId,"DF07EA0A1110CF360907");
+assert.deepEqual(sis.eventi.map(e=>e.evento+" | "+e.mercato),[
+  "Venezia vs Napoli | 2 + GG",
+  "Amburgo vs Stoccarda | 2 + GG",
+  "Schalke 04 vs Mainz | 2 + GG",
+  "Union Berlino vs Borussia Dortmund | 2 + GG",
+  "Brentford vs Liverpool | GG + OVER 2.5",
+  "Fulham FC vs Hull City | 1 + GG",
+  "Villarreal vs Elche | 1 + GG"
+],"partite pulite dal punteggio e mercati combinati letti, anche con 1+6G e GG+OVV");
+assert.ok(sis.avvisi.some(a=>/Sistema su 7/.test(a)));
+
+// Stessa immagine senza ingrandimento: due segni persi. Quelle gambe devono
+// restare senza mercato (il Live non le segue), mai con un mercato a meta'.
+const scarso=P.parseRicevuta("Controlla il tuo Ticket Poportbette sc ety sportbetitscommes.. \u2014 [J        x\n23 sportbet.it/xsportapp/xsport_desktop/checkbetticket...\n                   RN\nSistema (7)\nEvento                      SEGNO           QUOTA ESITO\n2 Italia | Serie a | 17/10/2026 15:00\nVenezia - Napoli 1-0                                                     iche\nHT 0:0\n1X2 + GG/NG                     2+66           3.25 @            .\ne cliccas\n8 Germania | Bundesliga | 17/10/2026 15:30\n\u2018Amburgo - Stoccarda 1-0\nComers: 5:9 | ComersHT: 2:4 | HT: 0:0\nI 1X2 + GG/NG                  2466         275 @\n\u20ac3 Germania | Bundesliga | 17/10/2026 15:30                                e A Quota Fi\nSchalke 04- Mainz 0-1\nComers: 4:1 | ComersHT: 2:3 | HT: 0:1\n1X2 + GG/NG                         2+6G            395 @\n3 Germania | Bundesliga | 17/10/2026 15:30\nUnion Berlino - Borussia Dortmund 0 - 0\nCards: 3:3 | Corners: 5:5 | CornersHT: 2:2 | HT: 0:0\n1X2 + GG/NG                    2466          275 @       Enporto\n\u2018\u20ac Inghilterra | Premier League | 17/10/2026 16:00\nBrentford - Liverpool 1 - 2\nCards: 7:3 | Comers: 3:10 | ComerstT: 3:4 | HT: 1:0                                        43\nU/0 2.5 + GG/NG                      GG+OV              169 @\n@ Inghilterra | Premier League | 17/10/2026 16:00                      1,00 \u20ac\nFulham FC - Hull City 1-0\nCards: 4:2 | Comers: 10:2 | ComerstT: 7:1 | HT: 1:0\n1X2 + GG/NG                      1+6G           3.30     e       2,20\u20ac\n\u2018\u20ac8 Spagna | Laliga | 17/10/2026 16:15\nVillarreal - Elche 0-0                                                     00 \u20ac\nCards: 2:4 | Comers: 10:5 | ComersHT: 5:1 | HT? 0:0\n1X2 + GG/NG                    1+6G          246 @\nBooe\nImporto                                         Quota totale\n2,20\u20ac                                 Non disponibile\n00 \u20ac\nRigioca\n6 \u00a9 @ Ga                            a         oo \u20ac\nSistema                         Ref, DFO7EADAI110CF260907 | 17/10/2026 12:15\nVerifica sistema\nSistema: 5-pla                                                             Combinazioni: 23\nImporto: 0,10 \u20ac             Vincita minima: 10,72             Vincita massimar 22,69 \u20ac\nSictomat 7a\n5\n");
+const perGamba=Object.fromEntries(scarso.eventi.map(e=>[e.evento,e.mercato]));
+assert.equal(perGamba["Amburgo vs Stoccarda"],"","segno perso: niente mercato");
+assert.equal(perGamba["Union Berlino vs Borussia Dortmund"],"","segno perso: niente mercato");
+assert.equal(perGamba["Fulham FC vs Hull City"],"1 + GG","1+6G corretto in 1 + GG");
+assert.ok(scarso.avvisi.some(a=>/evento 2 .*il Live non la seguira/.test(a)),"l'avviso dice cosa e' stato letto");
 
 console.log("receipt-parser: ok");

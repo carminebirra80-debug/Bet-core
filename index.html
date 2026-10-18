@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.39</title>
+<title>Registro BET Core v4.40</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -175,6 +175,9 @@ li.vers{display:flex;justify-content:space-between;align-items:baseline;gap:12px
 .codici-destra{display:flex;align-items:center;gap:6px}
 .codici-azioni{display:flex;align-items:center;gap:6px}
 .codici-azioni button{width:auto;padding:8px 10px;font-size:13px;border:1px solid var(--bordo);border-radius:4px;background:none}
+.codici-foto{margin-top:8px;font-size:13px;padding:9px}
+.codici-letta{margin-top:10px}
+.codici-ricevuta{color:var(--live,#5B9BD5)!important;text-decoration:underline}
 .codici-mini{width:auto;padding:6px 8px;font-size:12px;color:var(--tenue2);background:none;border:none}
 .proposta-voce{display:block;width:100%;text-align:left;margin-top:10px;padding:10px 12px;border:1px solid var(--bordo);border-radius:4px;background:none;color:var(--testo);font:inherit}
 .proposta-voce strong{display:block;font-size:12px;color:var(--oro);margin-bottom:4px}
@@ -242,10 +245,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
 </head>
 <body>
 <div id="app"></div>
-<script src="./market-taxonomy.js?v=20261017e"></script>
-<script src="./market-metrics.js?v=20261017e"></script>
-<script src="./sync-merge.js?v=20261017e"></script>
-<script src="./receipt-parser.js?v=20261017e"></script>
+<script src="./market-taxonomy.js?v=20261018a"></script>
+<script src="./market-metrics.js?v=20261018a"></script>
+<script src="./sync-merge.js?v=20261018a"></script>
+<script src="./receipt-parser.js?v=20261018a"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4"></script>
 
 <script>
@@ -611,8 +614,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(sorgente.close) sorgente.close();
     var immagine=ctx.getImageData(0,0,w,h),px=immagine.data;
     if(luminositaMedia(px)>=110) return ingrandisci?canvas:null;
+    // Canale piu' luminoso, non luminanza (18/10/2026): il segno arancione
+    // del ticket Sportbet ("2 + GG") con la luminanza diventava grigio scuro
+    // e l'OCR lo perdeva; col massimo dei tre canali resta nero su bianco.
     for(var i=0;i<px.length;i+=4){
-      var v=255-Math.round(px[i]*.299+px[i+1]*.587+px[i+2]*.114);
+      var v=255-Math.max(px[i],px[i+1],px[i+2]);
       px[i]=v;px[i+1]=v;px[i+2]=v;px[i+3]=255;
     }
     ctx.putImageData(immagine,0,0);
@@ -653,23 +659,20 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return typeof P.parseRicevuta==="function"?P.parseRicevuta(testo):P.parseSportium(testo);
   }
 
-  async function leggiRicevuta(file){
-    if(!file) return;
-    if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
-    PROP.suggerita=null;
-    OCR.stato="loading";OCR.progresso=1;OCR.fase="Caricamento lettore";OCR.messaggio="";OCR.risultato=null;disegna();
+  // Lettura OCR di una ricevuta, condivisa da Nuova e Codici (18/10/2026).
+  // avanza(percentuale, fase) riceve l'avanzamento; subitoGrande parte gia'
+  // dall'immagine ingrandita (i ticket Sportbet da computer la richiedono).
+  async function ocrRicevuta(file,avanza,subitoGrande){
     var worker=null,ultimo=-1,faseLettura="Lettura della ricevuta";
+    function passo(p,fase){ if(p===100 || p-ultimo>=5){ultimo=p;avanza(p,fase);} }
     try{
       var T=await caricaLibreriaOCR();
       worker=await T.createWorker("eng",1,{logger:function(m){
         var p=Math.max(1,Math.round(Number(m.progress||0)*100));
-        OCR.progresso=p;OCR.fase=m.status==="recognizing text"
-          ? faseLettura
-          : "Preparazione del lettore";
-        if(p===100 || p-ultimo>=5){ultimo=p;disegna();}
+        passo(p,m.status==="recognizing text" ? faseLettura : "Preparazione del lettore");
       }});
       if(worker.setParameters) await worker.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
-      var invertita=await creaRicevutaInvertitaSeScura(file);
+      var invertita=await creaRicevutaInvertitaSeScura(file,!!subitoGrande);
       var lettura=await worker.recognize(invertita||file);
       var risultato=leggiTestoRicevuta(lettura&&lettura.data?lettura.data.text:"");
       if(invertita&&(risultato.avvisi||[]).length){
@@ -677,29 +680,42 @@ textarea{width:100%;min-height:78px;resize:vertical}
         var originale=leggiTestoRicevuta(letturaOriginale&&letturaOriginale.data?letturaOriginale.data.text:"");
         if(punteggioRicevuta(originale)>punteggioRicevuta(risultato)) risultato=originale;
       }
-      if(!risultato.quota||!risultato.stake){
+      var mancaMercato=(risultato.eventi||[]).some(function(x){return !x.mercato;});
+      if(!subitoGrande && ((!risultato.quota && !risultato.sistema)||!risultato.stake||mancaMercato)){
         faseLettura="Rilettura ingrandita di importo e quota";
-        ultimo=-1;OCR.progresso=1;OCR.fase=faseLettura;disegna();
+        ultimo=-1;avanza(1,faseLettura);
         var grande=await creaRicevutaInvertitaSeScura(file,true);
         var letturaGrande=await worker.recognize(grande);
         var ingrandita=leggiTestoRicevuta(letturaGrande&&letturaGrande.data?letturaGrande.data.text:"");
         if(punteggioRicevuta(ingrandita)>punteggioRicevuta(risultato)) risultato=ingrandita;
       }
-      var mancaMercato=(risultato.eventi||[]).some(function(x){return !x.mercato;});
-      if(mancaMercato||!risultato.quota||!risultato.stake){
+      mancaMercato=(risultato.eventi||[]).some(function(x){return !x.mercato;});
+      if(mancaMercato||(!risultato.quota&&!risultato.sistema)||!risultato.stake){
         faseLettura="Recupero del mercato ad alto contrasto";
-        ultimo=-1;OCR.progresso=1;OCR.fase=faseLettura;disegna();
+        ultimo=-1;avanza(1,faseLettura);
         var contrasto=await creaRicevutaAltoContrasto(file);
         var letturaContrasto=await worker.recognize(contrasto);
         var alternativa=leggiTestoRicevuta(letturaContrasto&&letturaContrasto.data?letturaContrasto.data.text:"");
         if(punteggioRicevuta(alternativa)>punteggioRicevuta(risultato)) risultato=alternativa;
       }
+      return risultato;
+    }finally{
+      if(worker){try{await worker.terminate();}catch(_e){}}
+    }
+  }
+
+  async function leggiRicevuta(file){
+    if(!file) return;
+    if(!window.BetCoreReceiptParser){OCR.stato="error";OCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
+    PROP.suggerita=null;
+    OCR.stato="loading";OCR.progresso=1;OCR.fase="Caricamento lettore";OCR.messaggio="";OCR.risultato=null;disegna();
+    try{
+      var risultato=await ocrRicevuta(file,function(p,fase){OCR.progresso=p;OCR.fase=fase;disegna();});
       applicaRicevuta(risultato);
       void cercaPropostaPerRicevuta();
     }catch(e){
       OCR.stato="error";OCR.progresso=0;OCR.messaggio=e&&e.message?e.message:"Non sono riuscito a leggere questa immagine.";
     }finally{
-      if(worker){try{await worker.terminate();}catch(_e){}}
       disegna();
     }
   }
@@ -2723,7 +2739,58 @@ textarea{width:100%;min-height:78px;resize:vertical}
     try{ var v=parseFloat(localStorage.getItem(CHIAVE_PUNTATA_CODICI)); return v>0?v:1; }catch(e){ return 1; }
   }
 
-  function aggiungiCodice(codice,quota,puntata){
+  // Ricevute dei codici (18/10/2026): lo screenshot del ticket Sportbet
+  // attacca le partite al codice, cosi' il Live lo segue come le altre
+  // schedine. Per un codice nuovo compila anche quota e puntata.
+  var CODOCR={stato:"idle",progresso:0,fase:"",messaggio:"",risultato:null,perId:null};
+  function gambeDaRicevuta(r){
+    return normalizzaGambe((r&&r.eventi||[]).filter(function(x){ return x.evento; })
+      .map(function(x){ return {evento:x.evento,mercato:x.mercato||"",quota:x.quota}; }));
+  }
+  function notaSistema(r,nota){
+    if(!r||!r.sistema||/\bsistema\b/i.test(nota||"")) return nota||"";
+    return "Sistema ("+r.sistema+")"+(nota?" · "+nota:"");
+  }
+  function ticketLibero(t,id){
+    t=String(t||"").toUpperCase();
+    return t && !S.giocate.some(function(x){ return String(x.id)!==String(id) && String(x.ticketId||"").toUpperCase()===t; });
+  }
+  function attaccaRicevuta(g,r){
+    var gambe=gambeDaRicevuta(r);
+    if(!gambe.length) return "Nello screenshot non ho trovato partite: apri il ticket con i dettagli delle selezioni.";
+    g.gambe=gambe; g.nota=notaSistema(r,g.nota);
+    if(!g.ticketId && ticketLibero(r.ticketId,g.id)) g.ticketId=String(r.ticketId).toUpperCase();
+    g.cloudDirty=true; aggiornaTassonomia(g); salva();
+    var avvisi=[];
+    if(r.stake && Math.abs(Number(r.stake)-Number(g.stake))>0.004)
+      avvisi.push("sul ticket la puntata e' "+euro(r.stake)+", qui "+euro(g.stake)+": correggila dal Registro");
+    var senza=gambe.filter(function(x){ return !x.mercato; }).length;
+    if(senza) avvisi.push(senza+(senza===1?" partita senza mercato letto: il Live non la seguira'":" partite senza mercato letto: il Live non le seguira'"));
+    return "Codice "+(g.codiceSchedina||"")+": "+gambe.length+(gambe.length===1?" partita collegata":" partite collegate")+" al Live."+
+      (avvisi.length?" Da controllare: "+avvisi.join(" · ")+".":"");
+  }
+  async function leggiRicevutaCodice(file,g){
+    if(!file) return;
+    if(!window.BetCoreReceiptParser){CODOCR.stato="error";CODOCR.messaggio="Parser ricevuta non caricato.";disegna();return;}
+    CODOCR={stato:"loading",progresso:1,fase:"Caricamento lettore",messaggio:"",risultato:null,perId:g?g.id:null};
+    disegna();
+    try{
+      var r=await ocrRicevuta(file,function(p,fase){CODOCR.progresso=p;CODOCR.fase=fase;disegna();},true);
+      if(g){
+        var vivo=S.giocate.find(function(x){ return x.id===g.id; });
+        CODOCR.stato="fatto"; CODOCR.messaggio=vivo?attaccaRicevuta(vivo,r):"Il codice non c'e' piu'.";
+      }else if(!gambeDaRicevuta(r).length){
+        CODOCR.stato="error"; CODOCR.messaggio="Nello screenshot non ho trovato partite: apri il ticket con i dettagli delle selezioni.";
+      }else{
+        CODOCR.stato="pronto"; CODOCR.risultato=r;
+      }
+    }catch(e){
+      CODOCR.stato="error"; CODOCR.messaggio=e&&e.message?e.message:"Non sono riuscito a leggere questa immagine.";
+    }
+    disegna();
+  }
+
+  function aggiungiCodice(codice,quota,puntata,ricevuta){
     var q=parseFloat(String(quota).replace(",",".")), st=parseFloat(String(puntata).replace(",","."));
     if(!(q>1)){ bloccaConErrore("Inserisci la quota del codice."); return false; }
     if(!(st>0)){ bloccaConErrore("Inserisci la puntata."); return false; }
@@ -2731,12 +2798,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var ora=new Date().toISOString();
     S.giocate.unshift(aggiornaTassonomia({
       id:Date.now(), data:oggi(), tipster:"io", origine:"CODICI", codiceSchedina:cod,
-      evento:cod?"Codice "+cod:"Codice Veggente", mercato:"MULTIPLA", nota:"", quota:Math.round(q*100)/100,
+      evento:cod?"Codice "+cod:"Codice Veggente", mercato:"MULTIPLA", nota:notaSistema(ricevuta,""), quota:Math.round(q*100)/100,
       quotaCheck:null, quotaChiusura:null, probabilitaStimata:null, probabilitaTimestamp:"",
       confidence:null, debrief:"", statoCore:"ufficiale", stake:Math.round(st*100)/100, osservata:false,
-      bookmaker:"Sportbet", faseIngresso:"PRE", classificazione:"PERSONALE", ticketId:"",
+      bookmaker:"Sportbet", faseIngresso:"PRE", classificazione:"PERSONALE",
+      ticketId:ricevuta && ticketLibero(ricevuta.ticketId,null) ? String(ricevuta.ticketId).toUpperCase() : "",
       // Ora con i secondi: due codici uguali giocati di fila restano due giocate.
-      orarioIngresso:ora, tipoSchedina:"MULTIPLA", gambe:[],
+      orarioIngresso:ora, tipoSchedina:"MULTIPLA", gambe:ricevuta?gambeDaRicevuta(ricevuta):[],
       propostaVeggenteId:null, propostaTipo:"", propostaVariante:false,
       esito:"aperta", profitto:0, cloudDirty:true
     }));
@@ -2761,10 +2829,16 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     // Riga di inserimento: codice, quota, puntata, +.
     var inCodice=el("input",{"type":"text","inputmode":"numeric","placeholder":"Codice","autocomplete":"off","class":"tab"});
-    var inQuota=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"Quota","class":"tab"});
-    var inPuntata=el("input",{"type":"number","inputmode":"decimal","step":"0.5","class":"tab","value":String(ultimaPuntataCodici())});
+    var letta=CODOCR.stato==="pronto"?CODOCR.risultato:null;
+    var inQuota=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":letta&&letta.sistema?"Quota?":"Quota","class":"tab",
+      "value":letta&&letta.quota?String(letta.quota):""});
+    var inPuntata=el("input",{"type":"number","inputmode":"decimal","step":"0.5","class":"tab",
+      "value":String(letta&&letta.stake?letta.stake:ultimaPuntataCodici())});
     function aggiungi(){
-      if(aggiungiCodice(inCodice.value,inQuota.value,inPuntata.value)) disegna();
+      if(aggiungiCodice(inCodice.value,inQuota.value,inPuntata.value,letta)){
+        if(letta) CODOCR={stato:"idle",progresso:0,fase:"",messaggio:"",risultato:null,perId:null};
+        disegna();
+      }
     }
     [inCodice,inQuota,inPuntata].forEach(function(x){
       x.addEventListener("keydown",function(e){ if(e && e.key==="Enter") aggiungi(); });
@@ -2772,11 +2846,43 @@ textarea{width:100%;min-height:78px;resize:vertical}
     pag.appendChild(el("div",{"class":"codici-riga"},[inCodice,inQuota,inPuntata,
       el("button",{"class":"principale codici-piu","text":"+","onclick":aggiungi})]));
 
+    // Da screenshot: il ticket Sportbet compila quota, puntata e partite.
+    var occupato=CODOCR.stato==="loading";
+    var fileNuovo=el("input",{"type":"file","accept":"image/*","style":{display:"none"}});
+    fileNuovo.addEventListener("change",function(){var f=this.files&&this.files[0];if(f)void leggiRicevutaCodice(f,null);});
+    pag.appendChild(fileNuovo);
+    pag.appendChild(el("button",{"class":"secondario codici-foto","text":occupato?"Lettura…":"Da screenshot del ticket",
+      "disabled":occupato?"disabled":null,"onclick":function(){fileNuovo.click();}}));
+    if(occupato){
+      pag.appendChild(el("div",{"class":"ricevuta-progresso"},[el("span",{"style":{width:CODOCR.progresso+"%"}})]));
+      pag.appendChild(el("p",{"class":"avviso","text":CODOCR.fase+" · "+CODOCR.progresso+"%"}));
+    }else if(letta){
+      pag.appendChild(el("div",{"class":"ricevuta-esito codici-letta"},[
+        el("strong",{"text":"Ticket letto: "+letta.eventi.length+(letta.eventi.length===1?" partita":" partite")+
+          (letta.stake?" · puntata "+euro(letta.stake):"")+(letta.sistema?" · sistema":letta.quota?" · quota "+Number(letta.quota).toFixed(2):"")}),
+        el("p",{"class":"mercato-letto","text":letta.eventi.map(function(x){return x.evento+" — "+(x.mercato||"mercato non letto");}).join(" · ")}),
+        letta.avvisi&&letta.avvisi.length?el("p",{"class":"ricevuta-warn","text":"Da controllare: "+letta.avvisi.join(" · ")}):null,
+        el("p",{"class":"avviso","text":letta.sistema
+          ? "Scrivi il codice e la quota (vincita massima diviso puntata), poi premi +."
+          : "Scrivi il codice e premi +: le partite vanno nel Live."}),
+        el("button",{"class":"codici-mini","text":"Annulla","onclick":function(){CODOCR={stato:"idle",progresso:0,fase:"",messaggio:"",risultato:null,perId:null};disegna();}})
+      ]));
+    }else if(CODOCR.stato==="fatto"||CODOCR.stato==="error"){
+      pag.appendChild(el("p",{"class":CODOCR.stato==="error"?"errore":"avviso codici-msg","text":CODOCR.messaggio}));
+    }
+
     var tutti=S.giocate.filter(function(g){ return origineDi(g)==="CODICI"; });
     var dataOggi=oggi();
     var aperteVecchie=tutti.filter(function(g){ return g.esito==="aperta" && g.data<dataOggi; });
     var diOggi=tutti.filter(function(g){ return g.data===dataOggi; });
 
+    // Codice gia' registrato ma senza partite: lo screenshot le attacca.
+    function ricevutaPer(g){
+      var input=el("input",{"type":"file","accept":"image/*","style":{display:"none"}});
+      input.addEventListener("change",function(){var f=this.files&&this.files[0];if(f)void leggiRicevutaCodice(f,g);});
+      return el("span",null,[input,el("button",{"class":"codici-mini codici-ricevuta","text":"Ricevuta",
+        "disabled":occupato?"disabled":null,"onclick":function(){input.click();}})]);
+    }
     function riga(g){
       var colore=g.esito==="vinta"?"#4FB286":g.esito==="persa"?"#D4635F":"#8C9BA8";
       var destra=g.esito==="aperta"
@@ -2791,9 +2897,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
       return el("li",{"class":"codici-voce"},[
         el("div",null,[
           el("span",{"class":"tab codici-codice","text":g.codiceSchedina||"—"}),
-          el("span",{"class":"tab codici-dett","text":(g.data!==dataOggi?breve(g.data)+" · ":"")+"quota "+Number(g.quota).toFixed(2)+" · "+euro(g.stake)+(g.nota?" · "+g.nota:"")})
+          el("span",{"class":"tab codici-dett","text":(g.data!==dataOggi?breve(g.data)+" · ":"")+"quota "+Number(g.quota).toFixed(2)+" · "+euro(g.stake)+
+            (g.gambe&&g.gambe.length?" · "+g.gambe.length+" partite":"")+(g.nota?" · "+g.nota:"")})
         ]),
         el("div",{"class":"codici-destra"},[destra,
+          g.esito==="aperta" && !(g.gambe&&g.gambe.length) ? ricevutaPer(g) : null,
           el("button",{"class":"codici-mini","text":"✕","onclick":function(){ void eliminaGiocata(g); }})])
       ]);
     }

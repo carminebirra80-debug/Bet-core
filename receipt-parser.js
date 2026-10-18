@@ -218,16 +218,67 @@
   }
 
   function eventoSportbet(linea){
-    var s = compatta(linea).replace(/\s+\d+\s*[-:]\s*\d+\s*$/, "");
+    // Dopo il punteggio ("Venezia - Napoli 1 - 0") lo screenshot del ticket
+    // da computer puo' avere pezzi della pagina dietro ("1-0 che", "1-2 oo€"):
+    // si taglia dal punteggio in poi, e i segni sporchi in testa.
+    var s = compatta(linea).replace(/\s+\d+\s*[-:]\s*\d+(?:\s.*)?$/, "").replace(/^[^A-Za-z0-9\u00C0-\u017F]+/, "");
     var parti = s.split(/\s*-\s+|\s+-\s*/);
     if(parti.length !== 2 || !parti[0] || !parti[1]) return "";
     return normalizzaEvento(parti[0] + " vs " + parti[1]);
   }
 
+  // Errori tipici dell'OCR sul segno arancione del ticket Sportbet (ticket
+  // da computer del 17/10/2026): "6G"/"66" per GG, "OVV" per OV. Un segno che
+  // resta incomprensibile restituisce null: meglio una gamba "non seguita"
+  // che un mercato letto a meta' (con "1+6G" letto come "1" il Live avrebbe
+  // potuto dare vinta una gamba persa).
+  function tokenSegno(t){
+    var x = String(t || "").toUpperCase().replace(/\s/g, "");
+    if(/^[1IL|]$/.test(x)) return "1";
+    if(/^(?:X|2|1X|X2|12)$/.test(x)) return x;
+    if(/^(?:IX|LX)$/.test(x)) return "1X";
+    if(/^(?:GG|G6|6G|66|GC|CG|C6|6C)$/.test(x)) return "GG";
+    if(/^(?:NG|N6|NC)$/.test(x)) return "NG";
+    if(/^(?:O|0)+V+$/.test(x)) return "OV";
+    if(/^U+N+$/.test(x)) return "UN";
+    return null;
+  }
+  // Intestazioni combinate del ticket: "1X2 + GG/NG" col segno "2 + GG",
+  // "U/O 2.5 + GG/NG" col segno "GG + OV" (l'ordine del segno puo' cambiare).
+  // Restituisce undefined se l'intestazione non e' una combinazione nota,
+  // null se lo e' ma il segno non si legge con sicurezza.
+  function mercatoCombinato(n, s){
+    var parti = n.split(/\s*\+\s*/), soglia = null, ammessi = {};
+    for(var i = 0; i < parti.length; i++){
+      var p = parti[i].replace(/\s/g, "").replace(/^[|IL]+(?=1X2)/, "");
+      var uo = p.match(/^(?:U\/[O0]|UNDER\/OVER)(\d+[.,]\d)$/);
+      if(/^[1IL|]?X2$/.test(p) || p === "ESITOFINALE") ammessi.segno = true;
+      else if(/^GG\/NG$|^GOAL\/NOGOAL$/.test(p)) ammessi.gol = true;
+      else if(uo){ ammessi.uo = true; soglia = uo[1].replace(",", "."); }
+      else return undefined;
+    }
+    var pezzi = s.split(/\s*\+\s*/).filter(Boolean);
+    if(pezzi.length !== parti.length) return null;
+    var out = [];
+    for(var j = 0; j < pezzi.length; j++){
+      var t = tokenSegno(pezzi[j]);
+      if(!t) return null;
+      if(/^(?:1|X|2|1X|X2|12)$/.test(t) && ammessi.segno) out.unshift(t);
+      else if((t === "GG" || t === "NG") && ammessi.gol) out.push(t);
+      else if((t === "OV" || t === "UN") && ammessi.uo) out.push((t === "OV" ? "OVER " : "UNDER ") + soglia);
+      else return null;
+    }
+    return out.join(" + ");
+  }
+
   function mercatoSportbet(nome, segno){
-    var n = compatta(nome).toUpperCase();
+    var n = compatta(nome).toUpperCase().replace(/^[|IL1]\s+(?=1X2|U\/|GG)/, "");
     var s = compatta(segno).toUpperCase().replace(/[^0-9A-Z+.,\/ ]/g, "");
-    if(/^[1IL|]?X2$/.test(n.replace(/\s/g, "")) || n === "1X2" || n === "ESITO FINALE") return s;
+    if(/^[1IL|]?X2$/.test(n.replace(/\s/g, "")) || n === "1X2" || n === "ESITO FINALE") return tokenSegno(s) || s;
+    if(/\+/.test(n)){
+      var comb = mercatoCombinato(n, s);
+      if(comb !== undefined) return comb || "";
+    }
     // "Under/Over 3.5" col segno "UN"/"OV", anche combinato: "1X + Under/Over
     // 3.5" con segno "1X + UN" diventa "1X + UNDER 3.5" (schedina del 07/10/2026).
     var uo = n.match(/UNDER\s*\/\s*OVER\s*(\d+[.,]\d)/);
@@ -237,7 +288,11 @@
         return /^UN/.test(p) ? "UNDER " + soglia : /^OV/.test(p) ? "OVER " + soglia : p;
       }).join(" + ");
     }
-    return compatta(n + " " + s);
+    // Un'intestazione rimasta nel mercato ("I 1X2 + GG/NG") vuol dire che il
+    // segno non e' stato letto: niente mercato, la gamba resta da completare.
+    var fuori = compatta(n + " " + s);
+    if(/1X2|GG\/NG|U\/[O0]\s*\d/.test(fuori)) return "";
+    return fuori;
   }
 
   // La lista "Mie scommesse" di Sportbet puo' contenere piu' schedine una
@@ -268,11 +323,20 @@
         if(/^(?:HT|FT|CARDS|CORNERS)\b/i.test(righe[j])) continue;
         // Il segno puo' essere combinato, es. "1X + UN".
         var m = righe[j].match(/^(.*?\S)\s+(\S{1,6}(?:\s*\+\s*\S{1,6})?)\s+(\d+[.,]\d{2}|\d{3,4})\b/);
-        if(m){ gamba.mercato = mercatoSportbet(m[1], m[2]); gamba.quota = numeroSportbet(m[3]); break; }
+        if(m){
+          gamba.mercato = mercatoSportbet(m[1], m[2]); gamba.quota = numeroSportbet(m[3]);
+          if(!gamba.mercato) gamba.grezzo = compatta(m[1] + " " + m[2]);
+          break;
+        }
         if(/^IMPORTO\b/i.test(righe[j])) break;
       }
       eventi.push(gamba);
     }
+
+    // Sistema (ticket "Sistema (7)"): la quota totale non esiste ("Non
+    // disponibile") e una gamba persa non vuol dire schedina persa.
+    var sistemaRiga = righe.join("\n").match(/\bSISTEMA\s*\((\d+)\)/i);
+    var sistema = sistemaRiga ? Number(sistemaRiga[1]) : 0;
 
     var stake = null, bonus = null, quota = null, importoFinale = null, esitoBook = "";
     // Con selezioni ancora aperte Sportbet aggiunge a sinistra la colonna
@@ -308,7 +372,10 @@
     // Controllo incrociato: la quota totale e' il prodotto delle gambe.
     var prodotto = eventi.length && eventi.every(function(x){ return x.quota > 1; })
       ? eventi.reduce(function(p, x){ return p * x.quota; }, 1) : null;
-    if(prodotto && (!quota || Math.abs(quota - prodotto) / prodotto > .03)){
+    if(sistema){
+      quota = null;
+      avvisi.push("Sistema su " + sistema + " partite: la quota totale non esiste, inseriscila tu (vincita massima / puntata)");
+    }else if(prodotto && (!quota || Math.abs(quota - prodotto) / prodotto > .03)){
       if(quota) avvisi.push("Quota totale letta (" + quota.toFixed(2) + ") diversa dal prodotto delle gambe: uso " + prodotto.toFixed(2));
       quota = Math.round(prodotto * 100) / 100;
     }
@@ -316,12 +383,12 @@
     var ref = righe.join("\n").match(/\bRef\b\.?\s*([A-Z0-9]{10,})\s*\|?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2})[:.](\d{2})/i);
 
     if(!ref) avvisi.push("Codice Ref. e data della giocata non riconosciuti");
-    if(!quota || quota <= 1) avvisi.push("Quota non riconosciuta");
+    if(!sistema && (!quota || quota <= 1)) avvisi.push("Quota non riconosciuta");
     if(!stake || stake <= 0) avvisi.push("Importo non riconosciuto");
     if(!eventi.length) avvisi.push("Evento non riconosciuto (apri i Dettagli della schedina prima dello screenshot)");
     eventi.forEach(function(x, n){
       if(!x.evento) avvisi.push("Evento non riconosciuto per la gamba " + (n + 1));
-      if(!x.mercato) avvisi.push("Mercato non riconosciuto per l'evento " + (n + 1));
+      if(!x.mercato) avvisi.push("Mercato non riconosciuto per l'evento " + (n + 1) + (x.grezzo ? " (letto: " + x.grezzo + "): il Live non la seguira'" : ""));
     });
     if(sel.totale > 1) avvisi.push("Nello screenshot ci sono " + sel.totale + " schedine: letta solo quella con i dettagli aperti");
 
@@ -336,6 +403,7 @@
       vincitaPotenziale:esitoBook === "persa" ? null : importoFinale,
       esitoBook:esitoBook,
       tipoSchedina:eventi.length > 1 ? "MULTIPLA" : "SINGOLA",
+      sistema:sistema,
       eventi:eventi.filter(function(x){ return x.evento; }).map(function(x){
         return {evento:x.evento, mercato:x.mercato, quota:x.quota, struttura:tipoMercato(x.mercato)};
       }),
