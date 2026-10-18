@@ -284,8 +284,9 @@
     // Intestazioni semplici del ticket da telefono (18/10/2026): "U/O 2,5"
     // col segno "OVER", "GG/NG" col segno "GG", doppia chance col segno "1X".
     var nn = n.replace(/\s/g, ""), t = tokenSegno(s);
-    var uoSemplice = nn.match(/^(?:U\/[O0]|UNDER\/OVER)(\d+[.,]\d)$/);
-    if(uoSemplice) return t === "OV" || t === "UN" ? (t === "OV" ? "OVER " : "UNDER ") + uoSemplice[1].replace(",", ".") : "";
+    // Anche le letture storpiate dall'OCR: "V/O 2,5", "UFO 25", "U/O25".
+    var uoSemplice = nn.match(/^(?:[UV][\/F]?[O0]|UNDER\/OVER)(\d)[.,]?(\d)$/);
+    if(uoSemplice) return t === "OV" || t === "UN" ? (t === "OV" ? "OVER " : "UNDER ") + uoSemplice[1] + "." + uoSemplice[2] : "";
     if(/^(?:GG\/NG|GOAL\/NOGOAL)$/.test(nn)) return t === "GG" || t === "NG" ? t : "";
     if(/^(?:DOPPIACHANCE|DC)$/.test(nn)) return /^(?:1X|X2|12)$/.test(t || "") ? t : "";
     // "Under/Over 3.5" col segno "UN"/"OV", anche combinato: "1X + Under/Over
@@ -300,7 +301,7 @@
     // Un'intestazione rimasta nel mercato ("I 1X2 + GG/NG") vuol dire che il
     // segno non e' stato letto: niente mercato, la gamba resta da completare.
     var fuori = compatta(n + " " + s);
-    if(/1X2|GG\/NG|U\/[O0]\s*\d/.test(fuori)) return "";
+    if(/1X2|GG\/NG|[UV]\s*[\/F]\s*[O0]\s*\d/.test(fuori)) return "";
     return fuori;
   }
 

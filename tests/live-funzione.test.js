@@ -23,7 +23,10 @@ const espn={events:[
   partita(1,"Fiorentina","Como",1,1),          // GG vinta
   partita(2,"Juventus","Lazio",0,0),           // 1 persa
   partita(3,"Milan","Atalanta",2,1),           // 1 + GG vinta
-  partita(4,"Udinese","Lecce",2,0)             // 1 vinta
+  partita(4,"Udinese","Lecce",2,0),            // 1 vinta
+  partita(5,"Panetolikos","Olympiacos",0,2,"greek-super-league"),
+  partita(6,"Brighton & Hove Albion","Crystal Palace",3,0,"english-premier-league"),
+  partita(7,"Olympiacos","Panathinaikos",1,0,"greek-super-league")
 ]};
 const picks=[
   // Codice con ticket letto: sistema su 3 partite, una persa.
@@ -37,7 +40,13 @@ const picks=[
   // Sistema con tutte le gambe vinte: comunque nessuna proposta, solo l'avviso.
   {id:"c",legacy_id:"3",data:"2026-10-18",evento:"Codice 333333",mercato:"MULTIPLA",nota:"Sistema (2) · bonus",
     gambe:[{evento:"Fiorentina vs Como",mercato:"GG"},{evento:"Udinese vs Lecce",mercato:"1"}],
-    quota:4,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"333333",tipo_schedina:"MULTIPLA"}
+    quota:4,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"333333",tipo_schedina:"MULTIPLA"},
+  // Codice 948761/331860 del 18/10: "Olympiakos" sul ticket ("Olympiacos" su
+  // ESPN) e "V/O 2,5 OVER" letto male dall'OCR.
+  {id:"d",legacy_id:"4",data:"2026-10-18",evento:"Codice 444444",mercato:"MULTIPLA",nota:"",
+    gambe:[{evento:"Panetolikos FC vs Olympiakos",mercato:"2"},{evento:"Brighton vs Crystal Palace",mercato:"V/O 2,5 OVER"},
+      {evento:"Brighton vs Crystal Palace",mercato:"UFO 25 OVER"}],
+    quota:3,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"444444",tipo_schedina:"MULTIPLA"}
 ];
 
 const chiamate=[];
@@ -86,6 +95,12 @@ assert.ok(gestore,"Deno.serve non chiamato");
   const tutto=per["3"];
   assert.equal(tutto.proposta,null,"sistema vinto: niente 'vinta' automatica, l'importo dipende dalle combinazioni");
   assert.match(tutto.motivo,/Sistema: 0 gambe perse su 2/);
+
+  const tol=per["4"];
+  assert.equal(tol.gambe.find(g=>/Panetolikos/.test(g.partita)).abbinata.ospite,"Olympiacos","una lettera di differenza: partita trovata");
+  assert.notEqual(tol.gambe.find(g=>/Panetolikos/.test(g.partita)).abbinata.casa,"Olympiacos","non scambiata con un'altra partita dell'Olympiacos");
+  assert.deepEqual(tol.gambe.map(g=>g.mercato).sort(),["2","Over 2.5","Over 2.5"],"V/O 2,5 e UFO 25 sono U/O 2.5");
+  assert.equal(tol.proposta,"vinta");
 
   // Orari in ora italiana (ESPN li da' in UTC).
   assert.equal(sis.gambe[0].ora,"2026-10-18T15:00:00+02:00");
