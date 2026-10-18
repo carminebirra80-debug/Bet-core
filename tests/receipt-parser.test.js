@@ -270,4 +270,15 @@ assert.equal(storpia("V/O 2,5"),"OVER 2.5");
 assert.equal(storpia("UFO 25"),"OVER 2.5");
 assert.equal(storpia("U/O25"),"OVER 2.5");
 
+// Importo e bonus dalla lettura a testo sparso (v4.45).
+const sparsoTel=P.importiSportbet(fs.readFileSync(require.resolve("./dati/sportbet-multipla-telefono-sparso.txt"),"utf8"),10.06);
+assert.deepEqual(sparsoTel,{stake:2,bonus:1,vincita:21.13},"ticket da telefono: puntata 2, bonus 1");
+const sparsoSis=P.importiSportbet(fs.readFileSync(require.resolve("./dati/sportbet-sistema-pc-sparso.txt"),"utf8"),null);
+assert.equal(sparsoSis.stake,2.2,"sistema: puntata 2,20, non il 2,00 della pagina dietro");
+assert.equal(sparsoSis.bonus,null,"sistema senza bonus");
+// Bonus illeggibile: si ricava da vincita - puntata x quota.
+assert.equal(P.importiSportbet("Importo Bonus totale 2,00 € ??? Vincita potenziale 21,13 € Rigioca",10.06).bonus,1.01);
+// Bonus letto in contrasto con la vincita: vince il conto.
+assert.equal(P.importiSportbet("Importo Bonus totale 2,00 € 7,00 € Vincita potenziale 21,13 €",10.06).bonus,1.01);
+
 console.log("receipt-parser: ok");
