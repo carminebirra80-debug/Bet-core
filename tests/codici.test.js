@@ -357,6 +357,43 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.equal(nuovoSis.ticketId,"","il ticket e' gia' su un altro codice: non si duplica");
   assert.ok(!app.textContent.includes("Ticket letto:"),"dopo il + il riquadro del ticket sparisce");
 
+  // Tasto Bonus (v4.44): su un codice aperto conta quando si chiude Vinta;
+  // su uno gia' vinto ricalcola il profitto. La quota resta quella vera.
+  // (Qui restano i codici registrati da screenshot: l'"Invia ora" piu' sopra
+  // ha riallineato il resto al cloud finto, che e' vuoto.)
+  clickNav(app,"Codici");
+  const riga576=()=>findElement(app,x=>x.tagName==="LI"&&x.className==="codici-voce"&&x.textContent.includes("576335"));
+  const bonusSu=(valore)=>{
+    findElement(riga576(),x=>x.tagName==="BUTTON"&&/^Bonus/.test(x.textContent)).listeners.click();
+    const inB=findElement(riga576(),x=>x.tagName==="INPUT"&&x.attributes.placeholder==="Bonus €");
+    assert.ok(inB,"campo bonus nella riga");
+    inB.value=valore;
+    findElement(riga576(),x=>x.tagName==="BUTTON"&&x.textContent==="OK").listeners.click();
+  };
+  const g576=()=>JSON.parse(storage["registro-tipster-v1"]).giocate.find(g=>g.codiceSchedina==="576335");
+  bonusSu("1");
+  assert.equal(g576().bonus,1);
+  assert.equal(g576().esito,"aperta");
+  assert.ok(riga576().textContent.includes("€2,20 · 7 partite · bonus €1,00"),"il bonus si vede nella riga: "+riga576().textContent);
+  assert.ok(findElement(riga576(),x=>x.tagName==="BUTTON"&&x.textContent==="Bonus ✓"),"il tasto mostra che il bonus c'e'");
+  findElement(riga576(),x=>x.tagName==="BUTTON"&&x.textContent==="Vinta").listeners.click();
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(g576().esito,"vinta");
+  assert.equal(g576().quota,10.31,"la quota resta quella vera");
+  assert.equal(Math.round(g576().profitto*100)/100,21.48,"2,20 x 10,31 - 2,20 + 1 di bonus");
+  bonusSu("2,50");
+  assert.equal(Math.round(g576().profitto*100)/100,22.98,"bonus cambiato dopo la vincita: profitto ricalcolato");
+  // Il bonus va al cloud; le giocate senza bonus non mandano la colonna.
+  clickNav(app,"Dati");
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
+  await new Promise(resolve=>setTimeout(resolve,5));
+  const righe=calls.filter(x=>x.azione==="upsert"&&x.table==="picks").pop().rows;
+  assert.equal(righe.find(r=>r.codice_schedina==="576335").bonus,2.5,"il bonus va al cloud");
+  const tutteInviate=calls.filter(x=>x.azione==="upsert"&&x.table==="picks").flatMap(x=>x.rows);
+  assert.ok(tutteInviate.some(r=>!r.bonus),"ci sono giocate inviate senza bonus");
+  assert.ok(tutteInviate.filter(r=>r.codice_schedina!=="576335").every(r=>!("bonus" in r)),
+    "senza bonus niente colonna: l'app funziona anche prima della migrazione");
+
   console.log("codici: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});
 
