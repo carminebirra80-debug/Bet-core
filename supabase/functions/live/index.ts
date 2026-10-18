@@ -1,24 +1,21 @@
 // BET CORE Live (17/10/2026).
 // Restituisce le giocate aperte dell'utente con, per ogni gamba, la partita
-// abbinata su API-Football, minuto, punteggio e stato (passa / non passa /
-// vinta / persa).
+// abbinata, minuto, punteggio e stato (passa / non passa / vinta / persa).
 //
-// Dalle 18:40 del 17/10/2026 questa funzione NON chiama piu' API-Football:
-// il piano gratuito non accetta richieste dai server cloud condivisi di
-// Supabase (account sospeso). Il calendario lo scarica il telefono di
-// Carmine con la chiave che riceve da qui dopo il login, e lo manda a
-// questa funzione (POST {giorni: {"AAAA-MM-GG": [...]}}), che lo tiene in
-// live_cache. La risposta dice quali giorni scaricare (da_scaricare),
-// rispettando un tetto giornaliero sotto le 100 richieste.
+// Fonte dalle 20:00 del 17/10/2026: il tabellone pubblico di ESPN
+// (site.api.espn.com, senza chiave), letto da qui. API-Football e' stata
+// lasciata: il piano gratuito ha sospeso l'account perche' non accetta
+// richieste dai server cloud. ESPN non e' un servizio ufficiale con
+// garanzie: se cambia o smette di rispondere, il Live mostra un avviso.
+// Il campo da_scaricare resta nella risposta, sempre vuoto, per le app
+// v4.37 che sanno ancora scaricare il calendario dal telefono.
 
 const URL_DB = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GIORNO_TTL_MS = 6 * 3600 * 1000; // calendario del giorno: ogni 6 ore
-const LIVE_TTL_MS = 240 * 1000; // con partite in corso: al massimo ogni 4 minuti
-// (il piano gratuito non permette di chiedere singole partite per id: il
-// calendario del giorno porta gia' minuto e punteggio di tutte)
-const TETTO_GIORNO = 90; // scaricamenti al giorno chiesti al telefono (limite fonte: 100)
+const LIVE_TTL_MS = 120 * 1000; // con partite in corso: ogni 2 minuti
+const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -57,42 +54,78 @@ async function cacheScrivi(chiave: string, dati: unknown) {
   });
 }
 
-// ---------- dati ricevuti dal telefono ----------
-function oggiRoma() {
-  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Rome" }).format(new Date());
+// ---------- fonte: ESPN ----------
+const STATI_ESPN: Record<string, string> = {
+  STATUS_SCHEDULED: "NS", STATUS_FIRST_HALF: "1H", STATUS_HALFTIME: "HT", STATUS_SECOND_HALF: "2H",
+  STATUS_FULL_TIME: "FT", STATUS_FINAL: "FT", STATUS_END_OF_REGULATION: "ET", STATUS_OVERTIME: "ET",
+  STATUS_EXTRA_TIME: "ET", STATUS_END_OF_EXTRATIME: "ET", STATUS_HALFTIME_ET: "ET", STATUS_SHOOTOUT: "P",
+  STATUS_FINAL_AET: "AET", STATUS_FINAL_PEN: "PEN", STATUS_FINAL_ET: "AET",
+  STATUS_POSTPONED: "PST", STATUS_CANCELED: "CANC", STATUS_ABANDONED: "ABD", STATUS_FORFEIT: "AWD",
+  STATUS_SUSPENDED: "SUSP", STATUS_DELAYED: "SUSP", STATUS_RAIN_DELAY: "SUSP",
+};
+// Ora italiana con fuso esplicito ("2026-10-17T18:00:00+02:00"): l'app ne
+// mostra i caratteri 11-16, quindi l'ora UTC di ESPN va convertita qui.
+function oraRoma(iso: string) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const p: Record<string, string> = {};
+  new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false, timeZoneName: "longOffset" })
+    .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  const off = (p.timeZoneName || "GMT+01:00").replace("GMT", "") || "+00:00";
+  return `${p.year}-${p.month}-${p.day}T${p.hour === "24" ? "00" : p.hour}:${p.minute}:00${off}`;
 }
-async function contatore(): Promise<number> {
-  const c = await cacheLeggi("contatore:" + oggiRoma());
-  return c ? Number(c.dati?.n || 0) : 0;
-}
-async function conta(n: number) {
-  await cacheScrivi("contatore:" + oggiRoma(), { n: (await contatore()) + n });
-}
-const testo = (v: unknown, max = 120) => (v === null || v === undefined ? null : String(v).slice(0, max));
 const numero = (v: unknown) => (v === null || v === undefined || v === "" || isNaN(Number(v)) ? null : Number(v));
-function pulisci(f: any) {
+function compatta(e: any) {
+  const c = e.competitions?.[0] || {};
+  const t = c.competitors || [];
+  const h = t.find((x: any) => x.homeAway === "home") || {}, a = t.find((x: any) => x.homeAway === "away") || {};
+  const tipo = e.status?.type || {};
+  let stato = STATI_ESPN[tipo.name] || (tipo.state === "in" ? "LIVE" : tipo.state === "pre" ? "NS" : tipo.completed ? "FT" : "?");
+  const iniziata = stato !== "NS" && stato !== "PST" && stato !== "CANC";
+  const gc = iniziata ? numero(h.score) : null, go = iniziata ? numero(a.score) : null;
+  // A fine partita ESPN da' il punteggio finale. Dopo i supplementari non si
+  // sa quello dei 90 minuti (su cui si chiudono le giocate): resta da verificare.
+  const fin90 = stato === "FT";
   return {
-    id: numero(f?.id), ora: testo(f?.ora, 40), stato: testo(f?.stato, 8), minuto: numero(f?.minuto),
-    lega: testo(f?.lega), paese: testo(f?.paese), casa: testo(f?.casa), ospite: testo(f?.ospite),
-    gc: numero(f?.gc), go: numero(f?.go), ft_c: numero(f?.ft_c), ft_o: numero(f?.ft_o),
+    id: numero(e.id), ora: oraRoma(e.date), stato, minuto: numero(String(e.status?.displayClock || "").split("'")[0]),
+    lega: String(e.season?.slug || "").replace(/^\d{4}(-\d{2})?-/, "").replace(/-/g, " "), paese: null,
+    casa: h.team?.displayName || null, ospite: a.team?.displayName || null, gc, go,
+    ft_c: fin90 ? gc : null, ft_o: fin90 ? go : null,
   };
+}
+// Giorno ESPN (AAAAMMGG, giornata americana): una giornata italiana D cade
+// fra il giorno D-1 (partite fra mezzanotte e le 6) e il giorno D di ESPN.
+function giorniEspn(d: string) {
+  const t = new Date(d + "T12:00:00Z").getTime();
+  return [t - 86400000, t].map((x) => new Date(x).toISOString().slice(0, 10).replace(/-/g, ""));
+}
+async function scaricaEspn(g: string) {
+  const r = await fetch(`${ESPN}?dates=${g}&limit=1000`, {
+    headers: { "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/129 Mobile Safari/537.36", Accept: "application/json" },
+  });
+  if (!r.ok) throw new Error(`ESPN ${r.status}`);
+  const j = await r.json();
+  const lista = (j.events || []).map(compatta).filter((f: any) => f.id !== null);
+  await cacheScrivi("espn:" + g, lista);
+  return lista;
 }
 
 // ---------- nomi squadre ----------
 const ALIAS: Record<string, string> = {
-  "bayern monaco": "bayern munchen", "lipsia": "rb leipzig", "barcellona": "barcelona", "strasburgo": "strasbourg",
-  "psg": "paris saint germain", "siviglia": "sevilla", "colonia": "koln", "francoforte": "frankfurt",
+  "bayern monaco": "bayern munich", "bayern munchen": "bayern munich", "lipsia": "rb leipzig", "barcellona": "barcelona", "strasburgo": "strasbourg",
+  "psg": "paris saint germain", "siviglia": "sevilla", "colonia": "cologne", "koln": "cologne", "francoforte": "frankfurt",
   "eintracht francoforte": "eintracht frankfurt", "real betis": "betis", "atletico madrid": "atletico madrid",
   "atletico": "atletico madrid", "inter": "inter", "internazionale": "inter", "milan": "ac milan",
   "man utd": "manchester united", "man united": "manchester united", "man city": "manchester city",
   "nottingham": "nottingham forest", "dortmund": "borussia dortmund", "gladbach": "borussia monchengladbach",
   "sporting lisbona": "sporting cp", "lisbona": "sporting cp", "marsiglia": "marseille", "lione": "lyon",
-  "nizza": "nice", "tolosa": "toulouse", "amburgo": "hamburger sv", "stoccarda": "stuttgart", "magonza": "mainz",
+  "nizza": "nice", "tolosa": "toulouse", "amburgo": "hamburg", "stoccarda": "stuttgart", "magonza": "mainz",
   "friburgo": "freiburg", "brema": "werder bremen", "werder brema": "werder bremen", "norimberga": "nurnberg",
-  "salisburgo": "salzburg", "stella rossa": "crvena zvezda", "bruges": "club brugge", "anversa": "antwerp",
+  "salisburgo": "salzburg", "stella rossa": "crvena zvezda", "red star belgrade": "crvena zvezda", "bruges": "club brugge", "anversa": "antwerp",
   "maiorca": "mallorca", "saragozza": "zaragoza", "copenaghen": "copenhagen", "zurigo": "zurich",
-  "basilea": "basel", "ginevra": "servette", "atene": "athens", "lovanio": "oh leuven", "praga": "praha",
-  "monaco 1860": "1860 munchen", "eintracht": "eintracht frankfurt", "verona": "verona", "spal": "spal",
+  "basilea": "basel", "ginevra": "servette", "atene": "athens", "lovanio": "oh leuven", "praga": "prague",
+  "monaco 1860": "1860 munich", "eintracht": "eintracht frankfurt", "verona": "verona", "spal": "spal",
 };
 const VUOTE = new Set(["fc", "ac", "as", "ss", "ssc", "us", "cf", "sc", "afc", "cfc", "calcio", "club", "the", "de",
   "sv", "vfb", "vfl", "tsg", "fk", "sk", "if", "bk", "ud", "cd", "rcd", "sd", "rc", "ogc", "losc", "1", "1899", "1909", "1913"]);
@@ -119,8 +152,8 @@ function squadre(evento: string): [string, string] | null {
   const p = (evento || "").split(/\s+(?:vs\.?|v|-|–)\s+/i);
   return p.length === 2 ? [p[0].trim(), p[1].trim()] : null;
 }
-const GIOVANILI = /\b(u1[5-9]|u2[0-3]|women|w|ii|iii|b|reserves?|youth|primavera)\b/i;
-const LEGHE_ESCLUSE = /(u1[5-9]|u2[0-3]|women|feminine|wsl|youth|primavera|reserve|frauen|femenina)/i;
+const GIOVANILI = /\b(u1[5-9]|u2[0-3]|women|w|ii|iii|b|reserves?|youth|primavera|jong|amateurs)\b/i;
+const LEGHE_ESCLUSE = /(u1[5-9]|u2[0-3]|women|feminine|wsl|youth|primavera|reserve|frauen|femenina|liga f\b|ncaa)/i;
 function abbina(evento: string, partite: any[]) {
   const sq = squadre(evento);
   if (!sq) return null;
@@ -203,6 +236,7 @@ function statoGamba(cond: Cond[], f: any): string {
   if (!IN_CORSO.has(f.stato) && !FINITE.has(f.stato)) return "da_iniziare";
   if (!cond.length) return "non_seguita";
   const fin = FINITE.has(f.stato);
+  if (fin && f.stato !== "FT" && (f.ft_c === null || f.ft_c === undefined)) return "da_verificare";
   const h = fin && f.ft_c !== null && f.ft_c !== undefined ? f.ft_c : (f.gc ?? 0);
   const a = fin && f.ft_o !== null && f.ft_o !== undefined ? f.ft_o : (f.go ?? 0);
   const esiti = cond.map((c) => verifica(c, h, a));
@@ -216,7 +250,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     // 1. Solo un utente loggato, e solo le sue giocate.
-    let uid = "", utenteVero = false;
+    let uid = "";
     const prova = req.headers.get("x-live-prova") || "";
     if (prova) {
       // Ingresso per le prove lato server: codice nel Vault, utente indicato.
@@ -231,33 +265,14 @@ Deno.serve(async (req) => {
       const utente = await ru.json();
       uid = utente?.id || "";
       if (!uid) return json({ errore: "Utente non riconosciuto." }, 401);
-      utenteVero = true;
     }
 
-    // La chiave API va solo al telefono di chi ha fatto il login (mai alle prove).
-    if (new URL(req.url).searchParams.get("azione") === "chiave") {
-      if (!utenteVero) return json({ errore: "Solo dall'app." }, 403);
-      return json({ chiave: await rest("rpc/live_chiave_api_football", { method: "POST", body: "{}" }) });
-    }
-
-    // Calendari scaricati dal telefono.
     const avvisi: string[] = [];
-    if (req.method === "POST") {
-      const corpo = await req.json().catch(() => ({}));
-      const ricevuti = corpo && typeof corpo.giorni === "object" && corpo.giorni ? corpo.giorni : {};
-      let n = 0;
-      for (const d of Object.keys(ricevuti).slice(0, 4)) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !Array.isArray(ricevuti[d])) continue;
-        await cacheScrivi("giorno:" + d, ricevuti[d].slice(0, 6000).map(pulisci).filter((f: any) => f.id !== null));
-        n++;
-      }
-      if (n) await conta(n);
-    }
 
     // 2. Giocate aperte degli ultimi 3 giorni.
     const dal = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
     const picks = await rest(`picks?user_id=eq.${uid}&tipo=eq.reale&esito=eq.Aperta&data=gte.${dal}` +
-      `&select=id,legacy_id,data,evento,mercato,gambe,quota,stake,bookmaker,origine,codice_schedina,tipo_schedina&order=data.asc`);
+      `&select=id,legacy_id,data,evento,mercato,nota,gambe,quota,stake,bookmaker,origine,codice_schedina,tipo_schedina&order=data.asc`);
 
     // 3. Gambe pulite dal registro del Veggente, quando la giocata e' collegata.
     const ids = picks.map((p: any) => p.id);
@@ -271,17 +286,24 @@ Deno.serve(async (req) => {
       ? await rest(`veggente_giocate?id=in.(${gids.join(",")})&select=id,partita,mercato,kickoff`) : [];
     const giocById = new Map(gioc.map((g: any) => [g.id, g]));
 
-    // 4. Calendario dei giorni coinvolti, dalla cache riempita dal telefono.
-    const giorni = [...new Set(picks.map((p: any) => p.data))] as string[];
-    const partite: any[] = [];
+    // 4. Calendario ESPN dei giorni coinvolti: dalla cache se ha meno di 6
+    //    ore, altrimenti scaricato ora.
+    const giorni = [...new Set(picks.flatMap((p: any) => giorniEspn(p.data)))] as string[];
+    const perGiorno: Record<string, any[]> = {};
     const eta: Record<string, number> = {};
-    for (const d of giorni) {
-      const c = await cacheLeggi("giorno:" + d);
-      if (c) { partite.push(...c.dati); eta[d] = c.eta; }
+    let errori = 0;
+    for (const g of giorni) {
+      const c = await cacheLeggi("espn:" + g);
+      if (c) { perGiorno[g] = c.dati; eta[g] = c.eta; }
+      if (!c || c.eta > GIORNO_TTL_MS) {
+        try { perGiorno[g] = await scaricaEspn(g); eta[g] = 0; } catch (_) { errori++; }
+      }
     }
+    const tutte = () => giorni.flatMap((g) => (perGiorno[g] || []).map((f: any) => ({ ...f, g })));
+    let partite = tutte();
 
     // 5. Gambe di ogni giocata, abbinate alle partite.
-    const schedine = picks.map((p: any) => {
+    const prepara = () => picks.map((p: any) => {
       const prop = proposte.find((x: any) => x.pick_id === p.id);
       let gambe: any[] = [];
       if (prop) {
@@ -298,20 +320,23 @@ Deno.serve(async (req) => {
       return { p, prop, gambe: gambe.map((g: any) => ({ ...g, f: abbina(g.evento, partite) })) };
     });
 
-    // 6. Cosa deve scaricare il telefono: il giorno che manca, quello vecchio
-    //    di 6 ore, o con partite in corso (o al via fra 15 minuti) ogni 4 minuti.
+    let schedine = prepara();
+
+    // 6. Con partite in corso (o al via fra 15 minuti) il giorno si riscarica
+    //    ogni 2 minuti; poi si riabbina.
     const adesso = Date.now();
-    const daScaricare: string[] = [];
-    for (const d of giorni) {
-      const vivo = schedine.some((s: any) => s.gambe.some((g: any) => g.f && String(g.f.ora).slice(0, 10) === d &&
-        !FINITE.has(g.f.stato) && !NULLE.has(g.f.stato) && new Date(g.f.ora).getTime() - adesso < 15 * 60000));
-      if (!(d in eta) || eta[d] > GIORNO_TTL_MS || (vivo && eta[d] > LIVE_TTL_MS)) daScaricare.push(d);
+    const vivi = new Set<string>();
+    schedine.forEach((s: any) => s.gambe.forEach((g: any) => {
+      if (g.f && !FINITE.has(g.f.stato) && !NULLE.has(g.f.stato) && new Date(g.f.ora).getTime() - adesso < 15 * 60000) vivi.add(g.f.g);
+    }));
+    let rifatti = 0;
+    for (const g of vivi) {
+      if ((eta[g] ?? Infinity) > LIVE_TTL_MS) {
+        try { perGiorno[g] = await scaricaEspn(g); eta[g] = 0; rifatti++; } catch (_) { errori++; }
+      }
     }
-    const usati = await contatore();
-    if (daScaricare.length && usati + daScaricare.length > TETTO_GIORNO) {
-      avvisi.push("Richieste del giorno quasi finite: punteggi non aggiornati fino a domani.");
-      daScaricare.length = 0;
-    }
+    if (rifatti) { partite = tutte(); schedine = prepara(); }
+    if (errori) avvisi.push("La fonte dei risultati (ESPN) non ha risposto: punteggi forse non aggiornati.");
 
     // 7. Risposta.
     const out = schedine.map((s: any) => {
@@ -329,8 +354,13 @@ Deno.serve(async (req) => {
       }).sort((a: any, b: any) => String(a.ora || "9").localeCompare(String(b.ora || "9")));
       const st = gambe.map((g: any) => g.stato);
       const sistema = !!(s.prop && s.prop.colonne);
+      // Sistema a combinazioni del ticket Sportbet (18/10/2026): l'app scrive
+      // "Sistema (N)" nella nota quando lo legge dallo screenshot. Qui una
+      // gamba persa non vuol dire schedina persa: nessuna proposta di esito.
+      const combinazioni = !s.prop?.colonne && /\bsistema\b/i.test(String(s.p.nota || ""));
       let stato = "in_corso";
       if (!gambe.length) stato = "senza_partite";
+      else if (combinazioni) stato = st.every((x: string) => x === "da_iniziare") ? "da_iniziare" : "in_corso";
       else if (st.includes("persa")) stato = "persa";
       else if (st.every((x: string) => x === "vinta")) stato = "vinta";
       else if (st.every((x: string) => x === "da_iniziare")) stato = "da_iniziare";
@@ -338,7 +368,12 @@ Deno.serve(async (req) => {
       // persa appena una gamba e' persa; vinta solo se tutte le gambe sono
       // vinte e non e' un sistema (lì l'importo dipende dai segni usciti).
       let proposta: string | null = null, motivo = "";
-      if (st.includes("persa")) proposta = "persa";
+      if (combinazioni) {
+        const finite = gambe.every((g: any) => FINITE.has(g.stato_partita) || NULLE.has(g.stato_partita) || g.stato === "non_abbinata");
+        const perse = st.filter((x: string) => x === "persa").length;
+        if (finite) motivo = `Sistema: ${perse} ${perse === 1 ? "gamba persa" : "gambe perse"} su ${gambe.length}. ` +
+          "La vincita dipende dalle combinazioni: chiudilo a mano con l'importo della ricevuta.";
+      } else if (st.includes("persa")) proposta = "persa";
       else if (gambe.length && st.every((x: string) => x === "vinta")) {
         if (sistema) motivo = "Sistema vinto: l'importo dipende dai segni usciti, chiudilo a mano con la vincita della ricevuta.";
         else proposta = "vinta";
@@ -347,7 +382,7 @@ Deno.serve(async (req) => {
       }
       // Avviso esplicito (17/10/2026): partite finite, nessuna persa, ma una o
       // piu' gambe il Live non le sa giudicare. La schedina aspetta Carmine.
-      if (!proposta && !motivo && gambe.length) {
+      if (!proposta && !motivo && gambe.length && !combinazioni) {
         const INCERTE: Record<string, string> = { non_seguita: "non seguita", da_verificare: "linea mancante", non_abbinata: "partita non trovata" };
         const incerte = gambe.filter((g: any) => INCERTE[g.stato]);
         const chiuse = gambe.every((g: any) => g.stato === "vinta" ||
@@ -361,12 +396,12 @@ Deno.serve(async (req) => {
       }
       return {
         id: s.p.id, legacy_id: s.p.legacy_id, proposta, motivo, data: s.p.data, titolo: s.p.codice_schedina ? "Codice " + s.p.codice_schedina : s.p.evento,
-        bookmaker: s.p.bookmaker, quota: s.p.quota, puntata: s.p.stake, origine: s.p.origine, sistema,
+        bookmaker: s.p.bookmaker, quota: s.p.quota, puntata: s.p.stake, origine: s.p.origine, sistema: sistema || combinazioni,
         stato, gambe,
         vive: st.filter((x: string) => x === "passa" || x === "vinta").length,
       };
     });
-    return json({ aggiornato: new Date().toISOString(), da_scaricare: daScaricare, richieste_oggi: usati, avvisi, schedine: out });
+    return json({ aggiornato: new Date().toISOString(), fonte: "ESPN", da_scaricare: [], avvisi, schedine: out });
   } catch (e) {
     return json({ errore: String(e) }, 500);
   }
