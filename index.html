@@ -383,7 +383,16 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var t=0; movimentiCassa().forEach(function(v){ if(eSpostamento(v)) t+=Number(v.importo||0); }); return t;
   }
 
-  function cassaDiGiocata(g){ return origineDi(g)==="CODICI" ? "CODICI" : "PRINCIPALE"; }
+  // Dal 17/10/2026 la cassa codici e' il conto Sportbet: ci vanno i codici e
+  // ogni giocata fatta su Sportbet (19/10: due libere in live finivano nella
+  // principale, cioe' Sportium). Prima di quel giorno la principale conteneva
+  // anche Sportbet e si era allineata al suo saldo: lo storico resta com'era.
+  var INIZIO_CASSA_SPORTBET = "2026-10-17";
+  function cassaDiGiocata(g){
+    if(origineDi(g)==="CODICI") return "CODICI";
+    if(String(g&&g.bookmaker||"").trim().toLowerCase()==="sportbet" && String(g.data||"")>=INIZIO_CASSA_SPORTBET) return "CODICI";
+    return "PRINCIPALE";
+  }
   function cassaDiMovimento(v){ return v && v.cassa==="CODICI" ? "CODICI" : "PRINCIPALE"; }
   function giocateCassa(){ return S.giocate.filter(function(g){ return cassaDiGiocata(g)===CASSA; }); }
   function movimentiCassa(){ return S.versamenti.filter(function(v){ return cassaDiMovimento(v)===CASSA; }); }
