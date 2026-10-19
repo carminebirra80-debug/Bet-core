@@ -3065,7 +3065,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
     });
     pag.appendChild(periodi);
 
-    var chiuse = c.chiuse.filter(nelPeriodo);
+    // Le schede per origine contano le giocate di entrambe le casse: dal
+    // 17/10/2026 una libera o una Veggente su Sportbet sta nella cassa
+    // Sportbet, ma resta una libera o una Veggente. I codici hanno la loro.
+    var cs = conCassa("CODICI",conti);
+    var chiuse = c.chiuse.concat(cs.chiuse.filter(function(g){ return origineDi(g)!=="CODICI"; })).filter(nelPeriodo);
+    var aperte = c.aperte.concat(cs.aperte.filter(function(g){ return origineDi(g)!=="CODICI"; }));
     if(!chiuse.length){
       pag.appendChild(el("p",{"text":"I numeri compaiono appena chiudi la prima giocata.",
         "style":{fontSize:"14px",color:"#6D7F8E",textAlign:"center",padding:"32px 0"}}));
@@ -3091,7 +3096,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     ORIGINI.forEach(function(o){
       var sue = chiuse.filter(function(g){ return origineDi(g)===o.id; });
-      var pend = c.aperte.filter(function(g){ return origineDi(g)===o.id; }).length;
+      var pend = aperte.filter(function(g){ return origineDi(g)===o.id; }).length;
       if(!sue.length && !pend) return;
       var tot = riassumi(sue);
       var n = tot.n;
