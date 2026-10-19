@@ -107,6 +107,13 @@ vm.runInNewContext(html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("<
   // Sportbet: 20 versati + 9,50 della libera vinta; 2 in gioco.
   assert.ok(verd.includes("\u20AC29,50"),"la libera Sportbet vinta va nella cassa Sportbet: "+verd);
   assert.ok(verd.includes("\u20AC2,00 in gioco"),"l'aperta Sportbet e' in gioco nella cassa Sportbet: "+verd);
+  // Rendimento: la libera Sportbet resta fra le Libere, l'aperta fra le pendenti.
+  clickNav(app,"Rendimento");
+  const libere=findElement(app,x=>x.className==="scheda"&&x.textContent.startsWith("Libera"));
+  assert.ok(libere,"scheda Libere mancante");
+  assert.ok(libere.textContent.includes("Giocate2"),"le libere sono due, una per cassa: "+libere.textContent);
+  assert.ok(libere.textContent.includes("+\u20AC14,50"),"9,50 + 5: "+libere.textContent);
+  assert.ok(libere.textContent.includes("1 giocata ancora aperta"),"l'aperta Sportbet conta fra le pendenti: "+libere.textContent);
   console.log("cassa-sportbet: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});
 
