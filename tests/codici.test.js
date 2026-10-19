@@ -292,7 +292,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
-  assert.ok(app.textContent.includes("BET Core versione 4.46"),"la versione si vede in fondo a Dati");
+  assert.ok(app.textContent.includes("BET Core versione 4.47"),"la versione si vede in fondo a Dati");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
   const up=calls.filter(x=>x.azione==="upsert"&&x.table==="picks").pop();

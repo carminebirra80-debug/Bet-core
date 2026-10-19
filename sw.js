@@ -1,4 +1,4 @@
-const CACHE='bet-core-v4-46-identita-cloud';
+const CACHE='bet-core-v4-47-rendimento-casse';
 const ASSETS=['./','./index.html','./market-taxonomy.js?v=20261018d','./market-metrics.js?v=20261018d','./sync-merge.js?v=20261018d','./receipt-parser.js?v=20261018d','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
