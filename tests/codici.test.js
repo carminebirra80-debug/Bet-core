@@ -292,12 +292,16 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
-  assert.ok(app.textContent.includes("BET Core versione 4.45"),"la versione si vede in fondo a Dati");
+  assert.ok(app.textContent.includes("BET Core versione 4.46"),"la versione si vede in fondo a Dati");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
   const up=calls.filter(x=>x.azione==="upsert"&&x.table==="picks").pop();
   const rigaCodice=up.rows.find(r=>r.codice_schedina==="521267");
   assert.ok(rigaCodice,"il codice va al cloud");
+  // Dopo il primo invio l'identita' nel cloud e' fissata sulla giocata: un
+  // ticket aggiunto dopo non deve piu' cambiarla (19/10/2026, codice 685766).
+  const dopoInvio=JSON.parse(storage["registro-tipster-v1"]).giocate.filter(g=>g.codiceSchedina==="186516");
+  assert.ok(dopoInvio.length&&dopoInvio.every(g=>g.cloudLegacyId===String(g.id)),"identita' cloud fissata al primo invio: "+JSON.stringify(dopoInvio.map(g=>g.cloudLegacyId)));
   assert.equal(rigaCodice.origine,"CODICI");
   assert.equal(rigaCodice.nota,"bonus 4,20 incluso nella quota","la nota va al cloud");
   const upV=calls.filter(x=>x.azione==="upsert"&&x.table==="versamenti").pop();

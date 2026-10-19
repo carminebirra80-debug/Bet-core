@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.45</title>
+<title>Registro BET Core v4.46</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -301,7 +301,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.45";
+  var VERSIONE = "4.46";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -1027,6 +1027,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
           if(x.statoCore==null) x.statoCore = x.osservata ? "scartata" : "ufficiale";
           x.bookmaker=x.bookmaker||"Sportium"; x.faseIngresso=x.faseIngresso||"PRE";
           x.classificazione=classificazioneLegacy(x); x.ticketId=x.ticketId||""; x.orarioIngresso=x.orarioIngresso||"";
+          // Gia' inviata senza ticket: nel cloud e' sotto il suo id, e li' resta.
+          if(x.cloudSynced && !x.cloudLegacyId && !String(x.ticketId).trim()) x.cloudLegacyId=String(x.id);
           x.tipoSchedina=x.tipoSchedina||(((x.mercato||"").toUpperCase()==="MULTIPLA" || (x.nota||"").toLowerCase().indexOf("multipla")>=0)?"MULTIPLA":"SINGOLA");
           x.gambe=normalizzaGambe(x.gambe);
           x.origine=origineDi(x);
@@ -1127,9 +1129,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var piano=window.BetCoreSyncMerge.pianifica(S.giocate,remote,legacyCloud);
       var invio=piano.invio,unite=piano.uniti;
       if(invio.length){
-        var r2=await DB.from("picks").upsert(invio.map(pickCloud),{onConflict:"user_id,legacy_id"});
+        var righeInviate=invio.map(pickCloud);
+        var r2=await DB.from("picks").upsert(righeInviate,{onConflict:"user_id,legacy_id"});
         if(r2.error) throw r2.error;
-        invio.forEach(function(g){g.cloudDirty=false;g.cloudSynced=true;});
+        // Dal primo invio l'identita' nel cloud resta quella: un ticket
+        // aggiunto dopo, da qualunque strada, non deve creare una seconda riga
+        // (19/10/2026: codice 685766 finito due volte nel cloud).
+        invio.forEach(function(g,i){if(!g.cloudLegacyId)g.cloudLegacyId=righeInviate[i].legacy_id;g.cloudDirty=false;g.cloudSynced=true;});
       }
       S.giocate=deduplicaGiocate(unite);
 
