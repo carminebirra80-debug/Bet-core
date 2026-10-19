@@ -114,6 +114,31 @@ vm.runInNewContext(html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("<
   assert.ok(libere.textContent.includes("Giocate2"),"le libere sono due, una per cassa: "+libere.textContent);
   assert.ok(libere.textContent.includes("+\u20AC14,50"),"9,50 + 5: "+libere.textContent);
   assert.ok(libere.textContent.includes("1 giocata ancora aperta"),"l'aperta Sportbet conta fra le pendenti: "+libere.textContent);
+  assert.ok(!libere.textContent.includes("Pre-partita"),"senza giocate live niente divisione");
+
+  // Live (19/10/2026): dal modulo di modifica la giocata diventa live, si
+  // vede nel Registro e il Rendimento separa prima della partita e live.
+  clickNav(app,"Registro");
+  const voce=findElement(app,x=>x.tagName==="LI"&&String(x.className).indexOf("voce")===0&&x.textContent.includes("Tottenham vs Coventry City"));
+  assert.ok(voce,"giocata nel Registro");
+  findElement(voce,x=>x.tagName==="BUTTON"&&x.textContent==="Modifica").listeners.click();
+  const fase=findElement(app,x=>x.tagName==="SELECT"&&x.id==="campo-fase");
+  assert.ok(fase,"campo Quando mancante nel modulo");
+  assert.equal(fase.children.find(o=>o.selected).value,"PRE","di serie: prima della partita");
+  fase.value="LIVE"; fase.listeners.change.call(fase);
+  findElement(app,x=>x.tagName==="BUTTON"&&x.id==="bottone-registra").listeners.click();
+  await new Promise(r=>setTimeout(r,5));
+  const salvata=JSON.parse(storage["registro-tipster-v1"]).giocate.find(g=>g.evento==="Tottenham vs Coventry City");
+  assert.equal(salvata.faseIngresso,"LIVE","la fase si salva");
+  clickNav(app,"Registro");
+  const voceLive=findElement(app,x=>x.tagName==="LI"&&String(x.className).indexOf("voce")===0&&x.textContent.includes("Tottenham vs Coventry City"));
+  assert.ok(findElement(voceLive,x=>x.className==="badge-meta"&&x.textContent==="Live"),"etichetta Live nel Registro");
+  const altra=findElement(app,x=>x.tagName==="LI"&&String(x.className).indexOf("voce")===0&&x.textContent.includes("Inter - Roma"));
+  assert.ok(!findElement(altra,x=>x.className==="badge-meta"&&x.textContent==="Live"),"le altre restano senza etichetta");
+  clickNav(app,"Rendimento");
+  const libere2=findElement(app,x=>x.className==="scheda"&&x.textContent.startsWith("Libera")).textContent;
+  assert.ok(libere2.includes("Pre-partita+\u20AC5,00"),"prima della partita: "+libere2);
+  assert.ok(libere2.includes("Live+\u20AC9,50"),"live: "+libere2);
   console.log("cassa-sportbet: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

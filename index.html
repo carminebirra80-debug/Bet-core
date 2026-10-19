@@ -1661,6 +1661,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
     inNota.value=f.nota||"";
     inNota.id="campo-nota";
     inNota.addEventListener("input",function(){f.nota=this.value;});
+    // Live (19/10/2026): giocata fatta a partita in corso. La colonna
+    // fase_ingresso nel cloud accetta gia' PRE e LIVE.
+    var inFase=selectGuidato([["PRE","Prima della partita"],["LIVE","Live"]],f.faseIngresso==="LIVE"?"LIVE":"PRE",function(v){f.faseIngresso=v;});
+    inFase.id="campo-fase";
     var inBonus=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"0.00","class":"tab","value":f.bonus||""});
     inBonus.id="campo-bonus";
     inBonus.addEventListener("input",function(){f.bonus=this.value;aggiornaCassaForm(c);});
@@ -1673,7 +1677,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("div",{"class":"gruppo due"},[campo(f.tipoSchedina==="MULTIPLA"?"Quota totale":"Quota",inQuota),campo("Puntata",inStake)]),
       el("div",{"class":"gruppo"},[rigaCassa]),
       el("div",{"class":"gruppo due"},[campo("Bookmaker",inBook),campo("Data",inData)]),
-      el("div",{"class":"gruppo due"},[campo("Bonus \u20AC (se vince)",inBonus),el("div")]),
+      el("div",{"class":"gruppo due"},[campo("Bonus \u20AC (se vince)",inBonus),campo("Quando",inFase)]),
       el("div",{"class":"gruppo"},[campo("Nota",inNota)]),
       f.ticketId ? el("p",{"class":"avviso","text":"Ricevuta "+f.ticketId}) : null
     ];
@@ -2194,6 +2198,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           el("div",null,[
             el("span",{"class":"badge-meta","text":g.tipoSchedina||"SINGOLA"}),
             el("span",{"class":"badge-meta","text":g.bookmaker||"Sportium"}),
+            g.faseIngresso==="LIVE"?el("span",{"class":"badge-meta","text":"Live"}):null,
             g.propostaVeggenteId?el("span",{"class":"badge-meta","text":nomeProposta(g.propostaTipo)+(g.propostaVariante?" · variante":"")}):null,
             g.tipoSchedina!=="MULTIPLA"&&g.famigliaMercato!=="NON_CLASSIFICATO"?el("span",{"class":"badge-meta","text":etichettaFamiglia(g)}):null,
             // Solo per il protocollo: una pick BET Core senza probabilità
@@ -3123,6 +3128,18 @@ textarea{width:100%;min-height:78px;resize:vertical}
         ]) : null;
       });
 
+      // Prima della partita e live separate, appena c'e' una giocata live.
+      var perFase = sue.some(function(g){ return g.faseIngresso==="LIVE"; })
+        ? [["PRE","Pre-partita"],["LIVE","Live"]].map(function(t){
+            var r = riassumi(sue.filter(function(g){ return (g.faseIngresso==="LIVE"?"LIVE":"PRE")===t[0]; }));
+            return r.n ? el("div",{"class":"recente"},[
+              el("span",{"class":"k","text":t[1]}),
+              el("span",{"class":"tab","style":{fontSize:"12px",color:r.profitto>=0?"#4FB286":"#D4635F"},
+                "text":segnato(r.profitto)+"  ·  "+r.vinte+"/"+r.n+" vinte  ·  ROI "+(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%"})
+            ]) : null;
+          })
+        : [null,null];
+
       pag.appendChild(el("div",{"class":"scheda"},[
         el("div",{"class":"scheda-top"},[
           el("span",{"class":"serif scheda-nome","text":o.nome,"style":{color:o.tinta}}),
@@ -3132,6 +3149,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         ]),
         celle,
         perTipo[0], perTipo[1],
+        perFase[0], perFase[1],
         o.id==="VEGGENTE" ? righeProposta(sue) : null,
         n ? el("div",{"class":"recente"},[
           el("span",{"class":"k","text":"Ultimi 30 giorni"}),
