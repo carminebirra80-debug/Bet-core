@@ -350,7 +350,7 @@ Deno.serve(async (req) => {
       ? await rest(`veggente_proposte_gambe?proposta_id=in.(${pids.join(",")})&select=proposta_id,giocata_id,ruolo,segni`) : [];
     const gids = [...new Set(pg.map((g: any) => g.giocata_id))];
     const gioc = gids.length
-      ? await rest(`veggente_giocate?id=in.(${gids.join(",")})&select=id,partita,mercato,kickoff`) : [];
+      ? await rest(`veggente_giocate?id=in.(${gids.join(",")})&select=id,partita,mercato,kickoff,quota_sportbet,quota_rif`) : [];
     const giocById = new Map(gioc.map((g: any) => [g.id, g]));
 
     // 4. Calendario ESPN dei giorni coinvolti: dalla cache se ha meno di 6
@@ -373,12 +373,31 @@ Deno.serve(async (req) => {
     const prepara = () => picks.map((p: any) => {
       const prop = proposte.find((x: any) => x.pick_id === p.id);
       let gambe: any[] = [];
-      // La ricevuta dice cosa e' stato giocato davvero (20/10/2026: raddoppio
-      // del Veggente giocato "2" e "1" invece di "2 + Multigol 2-5" e "1
-      // Handicap"). Il registro del Veggente serve per i sistemi a colonne o
-      // quando la ricevuta manca.
+      // Giocata collegata a una proposta del Veggente, con la ricevuta letta
+      // (20/10/2026). La proposta ha il mercato scritto per intero, la
+      // ricevuta quello giocato davvero ma a volte troncato dal lettore: il
+      // raddoppio "2 + Multigol 2-5" e "1 Handicap (-1)" letto "2" e "1".
+      // Gamba per gamba: se il mercato letto e' l'inizio di quello della
+      // proposta e la quota non si scosta di oltre il 15%, vale la proposta;
+      // se e' un altro mercato, o la quota e' diversa (Liverpool "1" a 1.49
+      // contro "1 + Over 2.5" a 1.95: variante), vale la ricevuta.
       const ric = Array.isArray(p.gambe) ? p.gambe.filter((g: any) => g && g.evento) : [];
       const colonne = prop && Number(prop.colonne) > 1;
+      if (prop && !colonne && ric.length) {
+        const vg = pg.filter((g: any) => g.proposta_id === prop.id).map((g: any) => giocById.get(g.giocata_id)).filter(Boolean);
+        const piatto = (x: string) => String(x || "").toUpperCase().replace(/\s+/g, "").replace(/,/g, ".");
+        gambe = ric.map((r: any) => {
+          const sr = squadre(r.evento);
+          const v: any = sr && vg.find((x: any) => { const sv = squadre(x.partita); return sv && simile(sr[0], sv[0]) >= 0.6 && simile(sr[1], sv[1]) >= 0.6; });
+          const daRicevuta = { evento: r.evento, mercato: r.mercato, fonte: "ricevuta" };
+          if (!v) return daRicevuta;
+          const mr = piatto(r.mercato), mv = piatto(v.mercato);
+          const qv = Number(v.quota_sportbet || v.quota_rif) || 0, qr = Number(r.quota) || 0;
+          const quotaDiversa = qv > 1 && qr > 1 && Math.abs(qr - qv) / qv > 0.15;
+          if (!mr || (mv.startsWith(mr) && !quotaDiversa)) return { evento: r.evento, mercato: v.mercato, fonte: "veggente" };
+          return daRicevuta;
+        });
+      }
       if (prop && (colonne || !ric.length)) {
         gambe = pg.filter((g: any) => g.proposta_id === prop.id).map((g: any) => {
           const v: any = giocById.get(g.giocata_id) || {};

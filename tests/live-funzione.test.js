@@ -56,7 +56,16 @@ const picks=[
   // Raddoppio del Veggente giocato in variante (20/10): conta la ricevuta.
   {id:"f",legacy_id:"6",data:"2026-10-18",evento:"Multipla · 1 gambe",mercato:"MULTIPLA",nota:"",
     gambe:[{evento:"Udinese vs Lecce",mercato:"1"}],
-    quota:1.5,stake:5,bookmaker:"Sportbet",origine:"VEGGENTE",tipo_schedina:"MULTIPLA"}
+    quota:1.5,stake:5,bookmaker:"Sportbet",origine:"VEGGENTE",tipo_schedina:"MULTIPLA"},
+  // Raddoppio del 20/10: il lettore ha troncato "1 Handicap (-1)" in "1",
+  // quota vicina a quella della proposta: vale la proposta.
+  {id:"g",legacy_id:"7",data:"2026-10-18",evento:"Multipla · 1 gambe",mercato:"MULTIPLA",nota:"",
+    gambe:[{evento:"Udinese vs Lecce",mercato:"1",quota:1.32},{evento:"Milan vs Atalanta",mercato:"",quota:null}],
+    quota:1.32,stake:5,bookmaker:"Sportbet",origine:"VEGGENTE",tipo_schedina:"MULTIPLA"},
+  // Variante vera: "1" a 1.49 contro "1 + Over 2.5" a 1.95 della proposta.
+  {id:"h",legacy_id:"8",data:"2026-10-18",evento:"Multipla · 1 gambe",mercato:"MULTIPLA",nota:"",
+    gambe:[{evento:"Milan vs Atalanta",mercato:"1",quota:1.49}],
+    quota:1.49,stake:5,bookmaker:"Sportbet",origine:"VEGGENTE",tipo_schedina:"MULTIPLA"}
 ];
 
 const chiamate=[];
@@ -69,9 +78,12 @@ async function fetchFinto(url,init){
     assert.ok(u.includes("nota"),"la funzione deve leggere la nota delle giocate");
     return risposta(picks);
   }
-  if(u.includes("/rest/v1/veggente_proposte_gambe")) return risposta([{proposta_id:900,giocata_id:7,ruolo:null,segni:null}]);
-  if(u.includes("/rest/v1/veggente_proposte")) return risposta([{id:900,pick_id:"f",colonne:null}]);
-  if(u.includes("/rest/v1/veggente_giocate")) return risposta([{id:7,partita:"Udinese - Lecce",mercato:"2 + Multigol 2-5"}]);
+  if(u.includes("/rest/v1/veggente_proposte_gambe")) return risposta([{proposta_id:900,giocata_id:7},{proposta_id:901,giocata_id:8},{proposta_id:901,giocata_id:10},{proposta_id:902,giocata_id:9}]);
+  if(u.includes("/rest/v1/veggente_proposte")) return risposta([{id:900,pick_id:"f",colonne:null},{id:901,pick_id:"g",colonne:null},{id:902,pick_id:"h",colonne:null}]);
+  if(u.includes("/rest/v1/veggente_giocate")) return risposta([{id:7,partita:"Udinese - Lecce",mercato:"2 + Multigol 2-5"},
+    {id:8,partita:"Udinese - Lecce",mercato:"1 Handicap (-1)",quota_sportbet:"1.45"},
+    {id:9,partita:"Milan - Atalanta",mercato:"1 + Over 2.5",quota_sportbet:"1.95"},
+    {id:10,partita:"Milan - Atalanta",mercato:"GG"}]);
   if(u.includes("/rest/v1/live_cache")) return init&&init.method==="POST" ? risposta() : risposta([]);
   if(u.startsWith("https://site.api.espn.com/")) return risposta(espn);
   throw new Error("chiamata inattesa: "+u);
@@ -123,6 +135,13 @@ assert.ok(gestore,"Deno.serve non chiamato");
   assert.equal(vg.gambe[0].mercato,"1","conta il mercato giocato (ricevuta), non quello della proposta");
   assert.equal(vg.gambe[0].stato,"vinta");
   assert.equal(vg.proposta,"vinta");
+  const tronc=per["7"];
+  assert.equal(tronc.gambe.find(g=>/Udinese/.test(g.partita)).mercato,"1 Handicap (-1)","mercato troncato dal lettore: vale quello intero della proposta");
+  assert.equal(tronc.gambe.find(g=>/Milan/.test(g.partita)).mercato,"Goal","mercato non letto: vale quello della proposta");
+  assert.equal(tronc.gambe.find(g=>/Udinese/.test(g.partita)).stato,"non_seguita","l'handicap non si valuta: niente 'vinta' sul solo segno");
+  assert.equal(tronc.proposta,null);
+  const variante=per["8"];
+  assert.equal(variante.gambe[0].mercato,"1","quota molto diversa: e' una variante, vale la ricevuta");
 
   // Orari in ora italiana (ESPN li da' in UTC).
   assert.equal(sis.gambe[0].ora,"2026-10-18T15:00:00+02:00");
