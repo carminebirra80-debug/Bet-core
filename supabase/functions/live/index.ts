@@ -202,7 +202,31 @@ function abbina(evento: string, partite: any[]) {
 
 // ---------- mercati ----------
 type Cond = { tipo: "segno"; segno: string } | { tipo: "ou"; over: boolean; linea: number | null }
-  | { tipo: "gg"; si: boolean } | { tipo: "multigol"; da: number; a: number };
+  | { tipo: "gg"; si: boolean } | { tipo: "multigol"; da: number; a: number }
+  | { tipo: "squadra"; lato: "c" | "o"; da: number | null; a: number | null; over: boolean | null; linea: number | null };
+
+// Gol di una sola squadra (20/10/2026: codice con sei "MULTIGOL x-y OSPITE SI"
+// tutti "non seguito"). Si valutano col risultato: multigol e over/under della
+// squadra di casa o ospite. Tutto il resto con casa/ospite (tiri, angoli,
+// tempi, segno insieme) resta non seguito.
+function mercatoSquadra(s: string): Cond | null {
+  if (/TIRI|\bTRI\b|PORTA|ANGOL|CORNER|CARTELL|AMMONIZ|TEMPO|\b[12]\s?T\b|[12]\s?°|HANDICAP|ESATT|PARI|DISPARI|MARCATOR|\bNO\b|\bPT\b/.test(s)) return null;
+  const osp = /OSPITE|TEAM\s*2|SQUADRA\s*2|\bAWAY\b/.test(s), cas = /\bCASA\b|TEAM\s*1|SQUADRA\s*1|\bHOME\b/.test(s);
+  if (osp === cas) return null;
+  let t = s.replace(/(^|[^A-Z])[UV]\s*[\/F]\s*[O0](?![A-Z])/g, "$1U/O").replace(/,/g, ".");
+  const mg = t.match(/MULTIGOL\s*(\d)\s*-\s*(\d)/);
+  const ou = t.match(/(OVER|UNDER)\s*(\d)\.(\d)/) || t.match(/U\/O\s*(\d)\.?(\d)\b.*\b(OVER|UNDER)/);
+  if (!!mg === !!ou) return null;
+  // Niente altro nel testo: "1 + MULTIGOL CASA 2-3" non si legge a meta'.
+  const resto = t.replace(/MULTIGOL\s*\d\s*-\s*\d|U\/O\s*\d\.?\d|(OVER|UNDER)\s*\d\.\d|OVER|UNDER|OSPITE|CASA|TEAM\s*[12]|SQUADRA\s*[12]|AWAY|HOME|GOL|\bS[IL1]\b|[^A-Z0-9]/g, "");
+  if (resto) return null;
+  const lato = osp ? "o" : "c";
+  if (mg) return { tipo: "squadra", lato, da: Number(mg[1]), a: Number(mg[2]), over: null, linea: null };
+  const o = ou as RegExpMatchArray;
+  const over = (o[1] === "OVER" || o[3] === "OVER");
+  const linea = o[1] === "OVER" || o[1] === "UNDER" ? Number(o[2] + "." + o[3]) : Number(o[1] + "." + o[2]);
+  return { tipo: "squadra", lato, da: null, a: null, over, linea };
+}
 
 const NON_GESTITI = new RegExp([
   "HANDICAP", "HCP", "\\bAH\\b", "\\bEH\\b", "\\(\\s*[-+]\\s*\\d", "DNB", "DRAW NO BET", "RIMBORS",
@@ -210,13 +234,15 @@ const NON_GESTITI = new RegExp([
   "ESATT", "ANGOL", "CORNER", "CARTELL", "AMMONIZ", "ESPULS", "\\bCARD", "MARCATOR", "GOLEADOR", "ANYTIME",
   "\\bPARI\\b", "DISPARI", "SQUADRA", "CASA OVER", "OSPITE OVER", "OVER CASA", "OVER OSPITE", "UNDER CASA", "UNDER OSPITE",
   "\\bTEAM\\b", "VINCE", "SEGNA IN", "\\bCASA\\b", "\\bOSPITE\\b", "\\bHOME\\b", "\\bAWAY\\b",
-  "\\sO\\s", "PT/FT", "\\bPT\\b", "ALMENO", "PALO", "MULTIGOL(?!\\s*\\d\\s*-\\s*\\d)",
+  "TIRI", "\\bTRI\\b", "PORTA", "\\sO\\s", "PT/FT", "\\bPT\\b", "ALMENO", "PALO", "MULTIGOL(?!\\s*\\d\\s*-\\s*\\d)",
 ].join("|"));
 function leggiMercato(testo: string, segni?: string | null): { cond: Cond[]; leggibile: boolean } {
   const cond: Cond[] = [];
   let s = (testo || "").toUpperCase();
   const tronca = s.indexOf("COMBINAZIONI");
   if (tronca > 0) s = s.slice(0, tronca);
+  const sq = mercatoSquadra(s);
+  if (sq) return { cond: [sq], leggibile: true };
   // Prudenza (17/10/2026): un mercato che il Live non sa valutare (tempi,
   // handicap, DNB, esatto, angoli, cartellini, marcatori, pari/dispari, gol
   // di una squadra) resta "non seguito" invece di essere letto come un
@@ -249,7 +275,9 @@ function leggiMercato(testo: string, segni?: string | null): { cond: Cond[]; leg
 function descrivi(cond: Cond[]) {
   return cond.map((c) => c.tipo === "segno" ? c.segno
     : c.tipo === "ou" ? (c.over ? "Over" : "Under") + (c.linea !== null ? " " + c.linea : " (linea?)")
-    : c.tipo === "gg" ? (c.si ? "Goal" : "No Goal") : `Multigol ${c.da}-${c.a}`).join(" + ");
+    : c.tipo === "gg" ? (c.si ? "Goal" : "No Goal")
+    : c.tipo === "squadra" ? (c.da !== null ? `Multigol ${c.da}-${c.a}` : (c.over ? "Over " : "Under ") + c.linea) + (c.lato === "c" ? " casa" : " ospite")
+    : `Multigol ${c.da}-${c.a}`).join(" + ");
 }
 function verifica(c: Cond, h: number, a: number): boolean | null {
   const tot = h + a;
@@ -259,6 +287,11 @@ function verifica(c: Cond, h: number, a: number): boolean | null {
   }
   if (c.tipo === "ou") return c.linea === null ? null : c.over ? tot > c.linea : tot < c.linea;
   if (c.tipo === "gg") return c.si ? h > 0 && a > 0 : !(h > 0 && a > 0);
+  if (c.tipo === "squadra") {
+    const g = c.lato === "c" ? h : a;
+    if (c.da !== null && c.a !== null) return g >= c.da && g <= c.a;
+    return c.linea === null ? null : c.over ? g > c.linea : g < c.linea;
+  }
   return tot >= c.da && tot <= c.a;
 }
 const FINITE = new Set(["FT", "AET", "PEN"]);
@@ -340,7 +373,13 @@ Deno.serve(async (req) => {
     const prepara = () => picks.map((p: any) => {
       const prop = proposte.find((x: any) => x.pick_id === p.id);
       let gambe: any[] = [];
-      if (prop) {
+      // La ricevuta dice cosa e' stato giocato davvero (20/10/2026: raddoppio
+      // del Veggente giocato "2" e "1" invece di "2 + Multigol 2-5" e "1
+      // Handicap"). Il registro del Veggente serve per i sistemi a colonne o
+      // quando la ricevuta manca.
+      const ric = Array.isArray(p.gambe) ? p.gambe.filter((g: any) => g && g.evento) : [];
+      const colonne = prop && Number(prop.colonne) > 1;
+      if (prop && (colonne || !ric.length)) {
         gambe = pg.filter((g: any) => g.proposta_id === prop.id).map((g: any) => {
           const v: any = giocById.get(g.giocata_id) || {};
           return { evento: v.partita, mercato: v.mercato, segni: g.ruolo === "DOPPIA" || g.ruolo === "TRIPLA" ? g.segni : null, ruolo: g.ruolo, fonte: "veggente" };

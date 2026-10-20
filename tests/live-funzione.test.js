@@ -46,7 +46,17 @@ const picks=[
   {id:"d",legacy_id:"4",data:"2026-10-18",evento:"Codice 444444",mercato:"MULTIPLA",nota:"",
     gambe:[{evento:"Panetolikos FC vs Olympiakos",mercato:"2"},{evento:"Brighton vs Crystal Palace",mercato:"V/O 2,5 OVER"},
       {evento:"Brighton vs Crystal Palace",mercato:"UFO 25 OVER"}],
-    quota:3,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"444444",tipo_schedina:"MULTIPLA"}
+    quota:3,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"444444",tipo_schedina:"MULTIPLA"},
+  // Codice 320296 del 20/10: gol di una squadra, valutabili col risultato.
+  // I tiri in porta no.
+  {id:"e",legacy_id:"5",data:"2026-10-18",evento:"Codice 555555",mercato:"MULTIPLA",nota:"",
+    gambe:[{evento:"Fiorentina vs Como",mercato:"MULTIGOL 1-2 OSPITE SI"},{evento:"Milan vs Atalanta",mercato:"OVER 1.5 CASA"},
+      {evento:"Juventus vs Lazio",mercato:"UJO TIRI IN PORTA TEAM 2 OVER"}],
+    quota:9,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"555555",tipo_schedina:"MULTIPLA"},
+  // Raddoppio del Veggente giocato in variante (20/10): conta la ricevuta.
+  {id:"f",legacy_id:"6",data:"2026-10-18",evento:"Multipla · 1 gambe",mercato:"MULTIPLA",nota:"",
+    gambe:[{evento:"Udinese vs Lecce",mercato:"1"}],
+    quota:1.5,stake:5,bookmaker:"Sportbet",origine:"VEGGENTE",tipo_schedina:"MULTIPLA"}
 ];
 
 const chiamate=[];
@@ -59,7 +69,9 @@ async function fetchFinto(url,init){
     assert.ok(u.includes("nota"),"la funzione deve leggere la nota delle giocate");
     return risposta(picks);
   }
-  if(u.includes("/rest/v1/veggente_")) return risposta([]);
+  if(u.includes("/rest/v1/veggente_proposte_gambe")) return risposta([{proposta_id:900,giocata_id:7,ruolo:null,segni:null}]);
+  if(u.includes("/rest/v1/veggente_proposte")) return risposta([{id:900,pick_id:"f",colonne:null}]);
+  if(u.includes("/rest/v1/veggente_giocate")) return risposta([{id:7,partita:"Udinese - Lecce",mercato:"2 + Multigol 2-5"}]);
   if(u.includes("/rest/v1/live_cache")) return init&&init.method==="POST" ? risposta() : risposta([]);
   if(u.startsWith("https://site.api.espn.com/")) return risposta(espn);
   throw new Error("chiamata inattesa: "+u);
@@ -101,6 +113,16 @@ assert.ok(gestore,"Deno.serve non chiamato");
   assert.notEqual(tol.gambe.find(g=>/Panetolikos/.test(g.partita)).abbinata.casa,"Olympiacos","non scambiata con un'altra partita dell'Olympiacos");
   assert.deepEqual(tol.gambe.map(g=>g.mercato).sort(),["2","Over 2.5","Over 2.5"],"V/O 2,5 e UFO 25 sono U/O 2.5");
   assert.equal(tol.proposta,"vinta");
+
+  const sq=per["5"];
+  assert.deepEqual(sq.gambe.map(g=>g.mercato),["Multigol 1-2 ospite","Over 1.5 casa","UJO TIRI IN PORTA TEAM 2 OVER"],"mercati di una squadra");
+  assert.deepEqual(sq.gambe.map(g=>g.stato),["vinta","vinta","non_seguita"],"gol della squadra dal risultato; tiri in porta non seguiti");
+
+  const vg=per["6"];
+  assert.equal(vg.gambe.length,1);
+  assert.equal(vg.gambe[0].mercato,"1","conta il mercato giocato (ricevuta), non quello della proposta");
+  assert.equal(vg.gambe[0].stato,"vinta");
+  assert.equal(vg.proposta,"vinta");
 
   // Orari in ora italiana (ESPN li da' in UTC).
   assert.equal(sis.gambe[0].ora,"2026-10-18T15:00:00+02:00");
