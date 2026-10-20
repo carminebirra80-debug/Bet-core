@@ -76,7 +76,9 @@ const picks=[
 const storage={
   "registro-tipster-v1":JSON.stringify({giocate:picks,versamenti:[
     {id:1,data:"2026-10-01",importo:50,tipoMovimento:"versamento"},
-    {id:2,data:"2026-10-17",importo:20,tipoMovimento:"versamento",cassa:"CODICI"}
+    {id:2,data:"2026-10-17",importo:20,tipoMovimento:"versamento",cassa:"CODICI"},
+    // Prelievo Sportbet registrato per sbaglio nella principale, gia' nel cloud.
+    {id:3,data:"2026-10-20",importo:10,tipoMovimento:"prelievo",cassa:"PRINCIPALE",cloudSynced:true,cloudDirty:false}
   ],tetti:{sabato:10,domenica:10,feriali:5},budgetMese:200}),
   "registro-tipster-guided-v1":"1"
 };
@@ -100,8 +102,8 @@ vm.runInNewContext(html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("<
   await new Promise(r=>setTimeout(r,5));
   const app=document.getElementById("app");
   const inAlto=app.children[0].textContent;
-  // Principale: 50 versati + 5 (Sportium) + 3 (Sportbet del 16/10) = 58.
-  assert.ok(inAlto.includes("\u20AC58,00"),"cassa principale senza le giocate Sportbet dal 17/10: "+inAlto.slice(0,60));
+  // Principale: 50 versati + 5 (Sportium) + 3 (Sportbet del 16/10) - 10 prelevati = 48.
+  assert.ok(inAlto.includes("\u20AC48,00"),"cassa principale senza le giocate Sportbet dal 17/10: "+inAlto.slice(0,60));
   clickNav(app,"Codici");
   const verd=findElement(app,x=>x.className==="verdetto").textContent;
   // Sportbet: 20 versati + 9,50 della libera vinta; 2 in gioco.
@@ -139,6 +141,23 @@ vm.runInNewContext(html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("<
   const libere2=findElement(app,x=>x.className==="scheda"&&x.textContent.startsWith("Libera")).textContent;
   assert.ok(libere2.includes("Pre-partita+\u20AC5,00"),"prima della partita: "+libere2);
   assert.ok(libere2.includes("Live+\u20AC9,50"),"live: "+libere2);
+
+  // Movimento nella cassa sbagliata (20/10/2026): un prelievo Sportbet
+  // registrato dalla scheda Cassa si sposta con un tasto, senza rifarlo.
+  clickNav(app,"Cassa");
+  assert.ok(app.textContent.includes("Per versare o prelevare su Sportbet usa la scheda Codici"),"il riquadro dice di quale cassa e'");
+  const riga=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("prelievo"));
+  assert.ok(riga,"prelievo nello storico");
+  assert.ok(!findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("versamento")&&x.textContent.includes("Sposta in Sportium")),"nella principale il tasto porta verso Sportbet");
+  findElement(riga,x=>x.tagName==="BUTTON"&&x.textContent==="Sposta in Sportbet").listeners.click();
+  assert.ok(app.children[0].textContent.includes("\u20AC58,00"),"la principale torna a 58: "+app.children[0].textContent.slice(0,60));
+  const mov=JSON.parse(storage["registro-tipster-v1"]).versamenti.find(v=>v.tipoMovimento==="prelievo");
+  assert.equal(mov.cassa,"CODICI","il prelievo e' ora nella cassa Sportbet");
+  assert.equal(mov.cloudDirty,true,"la correzione va al cloud");
+  clickNav(app,"Codici");
+  const verd2=findElement(app,x=>x.className==="verdetto").textContent;
+  assert.ok(verd2.includes("\u20AC19,50"),"Sportbet: 29,50 - 10: "+verd2);
+  assert.ok(findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("prelievo")&&x.textContent.includes("Sposta in Sportium")),"e da li' si puo' riportare indietro");
   console.log("cassa-sportbet: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

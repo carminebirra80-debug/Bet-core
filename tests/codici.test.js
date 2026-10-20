@@ -198,6 +198,11 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(verd.includes("risultato +€0,00"),"spostare soldi non e' un risultato: "+verd);
   const mov=JSON.parse(storage["registro-tipster-v1"]).versamenti;
   assert.ok(mov.some(v=>v.cassa==="CODICI"&&v.importo===20&&v.tipoMovimento==="rettifica"));
+  // Lo spostamento fra casse e' una coppia di righe: niente tasto per
+  // spostarne una sola nell'altra cassa (20/10/2026).
+  const rigaSpost=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("spostamento"));
+  assert.ok(rigaSpost,"spostamento nella lista dei movimenti codici");
+  assert.ok(!findElement(rigaSpost,x=>x.tagName==="BUTTON"&&/^Sposta in/.test(x.textContent)),"niente tasto Sposta sullo spostamento");
   assert.ok(mov.some(v=>v.cassa==="PRINCIPALE"&&v.importo===-20&&v.tipoMovimento==="rettifica"));
 
   // Chiusura direttamente dalla lista: 521267 vinto (3 x 7.85 - 3 = 20.55).
@@ -292,7 +297,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
-  assert.ok(app.textContent.includes("BET Core versione 4.47"),"la versione si vede in fondo a Dati");
+  assert.ok(app.textContent.includes("BET Core versione 4.48"),"la versione si vede in fondo a Dati");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
   const up=calls.filter(x=>x.azione==="upsert"&&x.table==="picks").pop();
