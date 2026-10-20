@@ -129,14 +129,26 @@ const ALIAS: Record<string, string> = {
 };
 const VUOTE = new Set(["fc", "ac", "as", "ss", "ssc", "us", "cf", "sc", "afc", "cfc", "calcio", "club", "the", "de",
   "sv", "vfb", "vfl", "tsg", "fk", "sk", "if", "bk", "ud", "cd", "rcd", "sd", "rc", "ogc", "losc", "1", "1899", "1909", "1913"]);
+// Nomi di citta' in italiano dentro un nome di squadra: il ticket scrive
+// "AEK Atene" e "Slavia Praga", ESPN "AEK Athens" e "Slavia Prague"
+// (20/10/2026, due gambe di Champions "partita non trovata"). Si traducono
+// parola per parola, a differenza di ALIAS che vale solo per il nome intero.
+const PAROLE: Record<string, string> = {
+  "atene": "athens", "praga": "prague", "belgrado": "belgrade", "zagabria": "zagreb", "kiev": "kyiv",
+  "mosca": "moscow", "varsavia": "warsaw", "bucarest": "bucharest", "salonicco": "thessaloniki",
+  "lisbona": "lisbon", "copenaghen": "copenhagen",
+};
+// Lettere che la scomposizione NFD non riduce a una lettera semplice:
+// senza questo "Bodø" diventava "bod" e non si abbinava a "Bodo".
+const LETTERE: Record<string, string> = { "ø": "o", "æ": "ae", "œ": "oe", "ß": "ss", "ł": "l", "đ": "d", "ı": "i", "þ": "th" };
 function base(s: string) {
-  return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+  return (s || "").toLowerCase().replace(/[øæœßłđıþ]/g, (c) => LETTERE[c]).normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
 }
 function norm(s: string) {
   let b = base(s);
   if (ALIAS[b]) b = ALIAS[b];
-  return b.split(" ").filter((t) => t && !VUOTE.has(t)).join(" ");
+  return b.split(" ").map((t) => PAROLE[t] || t).filter((t) => t && !VUOTE.has(t)).join(" ");
 }
 // Distanza di modifica fra due parole, solo per nomi quasi uguali.
 function distanza(a: string, b: string) {
