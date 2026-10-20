@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.47</title>
+<title>Registro BET Core v4.48</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -129,8 +129,9 @@ li.voce-oss{background:rgba(255,255,255,.012)}
 .verdetto{border:1px solid var(--bordo);border-radius:4px;padding:20px 16px;margin-bottom:20px;text-align:center}
 .verdetto-cifra{font-size:38px;font-weight:700;margin:8px 0 10px;line-height:1}
 .verdetto-nota{font-size:12px;color:var(--tenue);margin:0;line-height:1.5}
-li.vers{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+li.vers{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 12px;
   padding:12px 0;border-top:1px solid var(--bordo2)}
+.vers-azioni{display:flex;gap:16px;width:100%;justify-content:flex-end}
 
 .mese{padding:12px 0;border-top:1px solid var(--bordo2)}
 .mese-top{display:flex;justify-content:space-between;font-size:14px}
@@ -301,7 +302,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.47";
+  var VERSIONE = "4.48";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -2429,6 +2430,20 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return parti.join(" \u00B7 ");
   }
 
+  // Movimento registrato nella cassa sbagliata (20/10/2026: un prelievo
+  // Sportbet finito nella principale): si sposta, senza cancellarlo e
+  // rifarlo. La sync aggiorna la stessa riga nel cloud.
+  function cambiaCassaMovimento(v){
+    var verso=cassaDiMovimento(v)==="CODICI"?"PRINCIPALE":"CODICI";
+    if(!window.confirm("Spostare questo movimento nella cassa "+(verso==="CODICI"?"Sportbet":"Sportium")+"?")) return;
+    v.cassa=verso; v.cloudDirty=true; salva(); disegna();
+  }
+  function tastoCambiaCassa(v){
+    if(eSpostamento(v)) return null; // le coppie dello spostamento fra casse restano insieme
+    return el("button",{"class":"tasto-cassa","text":cassaDiMovimento(v)==="CODICI"?"Sposta in Sportium":"Sposta in Sportbet",
+      "style":{fontSize:"11px","color":"#6D7F8E","textDecoration":"underline"},"onclick":function(){ cambiaCassaMovimento(v); }});
+  }
+
   async function eliminaVersamento(v){
     if(!v || !window.confirm("Eliminare definitivamente questo movimento?")) return;
     try{
@@ -2607,7 +2622,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       salva(); disegna();
     }
     pag.appendChild(el("div",{"class":"gruppo"},[
-      el("label",{"text":"Nuovo movimento"}),
+      el("label",{"text":"Nuovo movimento \u00B7 cassa Sportium"}),
+      el("p",{"class":"avviso","style":{margin:"0 0 10px"},"text":"Per versare o prelevare su Sportbet usa la scheda Codici."}),
       el("div",{"class":"due","style":{marginBottom:"12px"}},[ inImporto, inDataV ]),
       el("div",{"class":"due"},[
         el("button",{"class":"principale","text":"Registra versamento","onclick":function(){ registraMovimento("versamento"); }}),
@@ -2627,8 +2643,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
             "text":breve(v.data)+" · "+tipoMovimento(v)}),
           el("span",{"class":"tab","style":{fontSize:"14px"},
             "text":tipoMovimento(v)==="versamento" ? euro(v.importo) : segnato(importoCassa(v))}),
-          el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E",
-            "textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})
+          el("span",{"class":"vers-azioni"},[tastoCambiaCassa(v),
+            el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E",
+              "textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})])
         ]));
       });
       pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px"},"text":"Storico movimenti"}));
@@ -3036,7 +3053,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       salva(); disegna();
     }
     pag.appendChild(el("div",{"class":"gruppo","style":{marginTop:"28px"}},[
-      el("label",{"text":"Soldi della cassa codici"}),
+      el("label",{"text":"Soldi della cassa Sportbet"}),
       el("div",{"style":{marginBottom:"10px"}},[inImporto]),
       el("div",{"class":"tre"},[
         el("button",{"class":"secondario","text":"Sposta dalla principale","onclick":function(){ movimento("sposta"); }}),
@@ -3050,7 +3067,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
         return el("li",{"class":"vers"},[
           el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},"text":breve(v.data)+" · "+(tipoMovimento(v)==="rettifica"?"spostamento":tipoMovimento(v))}),
           el("span",{"class":"tab","style":{fontSize:"14px"},"text":segnato(importoCassa(v))}),
-          el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E","textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})
+          el("span",{"class":"vers-azioni"},[tastoCambiaCassa(v),
+            el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E","textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})])
         ]);
       })));
     }

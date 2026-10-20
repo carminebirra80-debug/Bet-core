@@ -23,7 +23,7 @@ locali.forEach(function(src){
 });
 assert.equal(versioni.size,1,"gli script hanno versioni diverse");
 
-// La versione mostrata in Dati e' la stessa del titolo (v4.47).
+// La versione mostrata in Dati e' la stessa del titolo (v4.48).
 const titolo=html.match(/<title>Registro BET Core v([\d.]+)<\/title>/);
 const costante=html.match(/var VERSIONE = "([\d.]+)";/);
 assert.ok(titolo&&costante,"titolo o VERSIONE mancanti");
