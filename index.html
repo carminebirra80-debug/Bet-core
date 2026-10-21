@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.48</title>
+<title>Registro BET Core v4.49</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -302,7 +302,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.48";
+  var VERSIONE = "4.49";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -500,6 +500,31 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return pulite;
 
     function visto(k){return Object.prototype.hasOwnProperty.call(viste,k);}
+  }
+
+  // Stessa giocata gia' nel cloud sotto un'altra identita' (19 e 20/10/2026,
+  // codici 685766 e 836079: la riga senza ticket e, poco dopo, la stessa
+  // giocata col ticket finita in una seconda riga). La strada esatta non e'
+  // stata trovata, quindi si ripara prima dell'invio: una giocata modificata
+  // che non ha ancora un'identita' fissata e il cui legacy non c'e' nel cloud
+  // prende quella della riga con la stessa ora di registrazione al
+  // millesimo, lo stesso evento e la stessa puntata. Le ore tonde (modifiche
+  // fatte dal modulo, che tronca ai minuti) non bastano e non si usano.
+  function riconosciNelCloud(locali,remoti){
+    var noti={},perOra={},usati={};
+    function chiaveOra(g){
+      var t=new Date(g&&g.orarioIngresso||"").getTime();
+      if(!isFinite(t) || t%1000===0) return null;
+      return t+"|"+testoChiave(g.evento||"")+"|"+Number(g.stake||0).toFixed(2);
+    }
+    (remoti||[]).forEach(function(r){ var k=chiaveOra(r); noti[legacyCloud(r)]=1; if(k) perOra[k]=perOra[k]===undefined?r:null; });
+    (locali||[]).forEach(function(g){ usati[legacyCloud(g)]=(usati[legacyCloud(g)]||0)+1; });
+    (locali||[]).forEach(function(g){
+      if(g.cloudLegacyId || !g.cloudDirty || noti[legacyCloud(g)]) return;
+      var k=chiaveOra(g), r=k&&perOra[k];
+      if(!r || usati[legacyCloud(r)]) return;
+      g.cloudLegacyId=legacyCloud(r);
+    });
   }
 
   function legacyCloud(g){
@@ -1136,6 +1161,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var lettura=await DB.from("picks").select("*").eq("user_id",CLOUD.user.id);
       if(lettura.error) throw lettura.error;
       var remote=(lettura.data||[]).map(daCloudPick);
+      riconosciNelCloud(S.giocate,remote);
       var piano=window.BetCoreSyncMerge.pianifica(S.giocate,remote,legacyCloud);
       var invio=piano.invio,unite=piano.uniti;
       if(invio.length){
