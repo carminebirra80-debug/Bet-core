@@ -132,6 +132,23 @@ python3 analytics/analisi_log.py report
 Nessuna credenziale Supabase va gestita da qui. Le migrazioni al database le
 esegue Carmine dal SQL Editor, con la query fornita in chat.
 
+**Tabelle nuove: permessi espliciti (dal 30 ottobre 2026).** Da quella data
+Supabase non concede più in automatico l'accesso all'API alle tabelle nuove
+dello schema `public`: senza `GRANT` l'app riceve "permission denied". Le
+tabelle già esistenti non cambiano. Ogni migrazione che crea una tabella deve
+quindi contenere, subito dopo il `create table`, i permessi che servono e la
+RLS, per esempio:
+
+```sql
+alter table public.nuova_tabella enable row level security;
+grant select, insert, update, delete on public.nuova_tabella to authenticated;
+grant all on public.nuova_tabella to service_role;  -- funzioni Edge
+-- a anon solo se la tabella deve essere letta senza login
+```
+
+Vale anche per le migrazioni che ricreano lo schema (rami di anteprima,
+`supabase db reset` in locale) e per le tabelle create da Codex.
+
 **Mai chiedere né accettare la `service_role` key**: legge, scrive e cancella
 tutto ignorando le policy, e in chat resterebbe scritta per sempre. Per
 leggere i dati del registro esiste un canale di sola lettura — vedi
