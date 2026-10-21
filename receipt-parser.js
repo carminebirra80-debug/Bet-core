@@ -285,7 +285,7 @@
     // col segno "OVER", "GG/NG" col segno "GG", doppia chance col segno "1X".
     var nn = n.replace(/\s/g, ""), t = tokenSegno(s);
     // Anche le letture storpiate dall'OCR: "V/O 2,5", "UFO 25", "U/O25".
-    var uoSemplice = nn.match(/^(?:[UV][\/F]?[O0]|UNDER\/OVER)(\d)[.,]?(\d)$/);
+    var uoSemplice = nn.match(/^(?:[UV][\/F]?[O0][O0]?|UNDER\/OVER)(\d)[.,]?(\d)$/);
     if(uoSemplice) return t === "OV" || t === "UN" ? (t === "OV" ? "OVER " : "UNDER ") + uoSemplice[1] + "." + uoSemplice[2] : "";
     if(/^(?:GG\/NG|GOAL\/NOGOAL)$/.test(nn)) return t === "GG" || t === "NG" ? t : "";
     if(/^(?:DOPPIACHANCE|DC)$/.test(nn)) return /^(?:1X|X2|12)$/.test(t || "") ? t : "";
@@ -455,6 +455,92 @@
     return out;
   }
 
+  // Riquadro Importo / Bonus / Quota totale / Vincita del ticket Sportbet
+  // letto per posizione (21/10/2026). A testo sparso l'ordine delle parole
+  // si mescola (il 19/10 il bonus 1,02 era finito come puntata); con le
+  // coordinate di ogni parola si prende il numero sotto la sua etichetta.
+  // Poi il controllo: vincita = puntata x quota + bonus. Se la quota letta
+  // e' monca ("10.2" per 10.28) o non torna, si ricava dagli altri tre.
+  function paroleDaTsv(tsv){
+    var out = [];
+    String(tsv || "").split(/\r?\n/).forEach(function(riga){
+      var c = riga.split("\t");
+      if(c.length < 12 || c[0] !== "5") return;
+      var t = String(c[11] || "").trim();
+      if(!t) return;
+      var x = Number(c[6]), y = Number(c[7]), w = Number(c[8]), hh = Number(c[9]);
+      if(!isFinite(x) || !isFinite(y)) return;
+      out.push({t:t, x0:x, y0:y, x1:x + w, y1:y + hh});
+    });
+    return out;
+  }
+
+  function importiDaParole(parole, sistema){
+    var out = {stake:null, bonus:null, quota:null, vincita:null, coerente:false, quotaRicavata:false};
+    var P = (parole || []).map(function(p){
+      return {t:String(p.t || ""), u:String(p.t || "").toUpperCase().replace(/[^A-Z0-9.,/]/g, ""), x0:p.x0, y0:p.y0, x1:p.x1, y1:p.y1};
+    });
+    var NUM = /^\d{1,5}[.,]\d{1,2}$/;
+    function alta(p){ return Math.max(8, p.y1 - p.y0); }
+    function etichetta(nome){ return P.filter(function(p){ return p.u === nome; }); }
+    function sotto(lab, dal){
+      var h = alta(lab), base = dal === undefined ? lab.y1 : dal, migliore = null;
+      P.forEach(function(p){
+        if(!NUM.test(p.u)) return;
+        var cx = (p.x0 + p.x1) / 2;
+        if(cx < lab.x0 - h || cx > lab.x1 + 2 * h) return;
+        if(p.y0 < base - 0.4 * h || p.y0 > base + 3 * h) return;
+        if(!migliore || p.y0 < migliore.y0) migliore = p;
+      });
+      return migliore;
+    }
+    function numero(p){
+      if(!p) return null;
+      var s = p.u.replace(",", ".");
+      var n = Number(s);
+      return isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+    }
+    var imp = etichetta("IMPORTO")[0];
+    if(!imp) return out;
+    var hImp = alta(imp);
+    // Le altre etichette del riquadro stanno sulla stessa fascia di Importo.
+    function vicina(lista){ return lista.filter(function(p){ return Math.abs(p.y0 - imp.y0) < 4 * hImp; })[0] || null; }
+    var bon = vicina(etichetta("BONUS"));
+    var quo = null;
+    etichetta("QUOTA").forEach(function(q){
+      if(quo) return;
+      var tot = P.filter(function(p){ return p.u === "TOTALE" && p.y0 > q.y0 && p.y0 - q.y1 < 2 * alta(q) && Math.abs(p.x0 - q.x0) < 2 * alta(q); })[0];
+      if(tot && Math.abs(q.y0 - imp.y0) < 4 * hImp) quo = {lab:q, tot:tot};
+    });
+    var vin = vicina(etichetta("VINCITA"));
+    out.stake = numero(sotto(imp));
+    if(bon){ var b = sotto(bon); out.bonus = b ? numero(b) : null; }
+    var qp = quo ? sotto(quo.tot) : null;
+    var q = numero(qp), qDecimali = qp ? (qp.u.split(/[.,]/)[1] || "").length : 0;
+    if(vin){
+      var hv = alta(vin), v = null;
+      P.forEach(function(p){
+        if(!NUM.test(p.u) || p.x0 <= vin.x1) return;
+        if(p.y1 < vin.y0 - 0.5 * hv || p.y0 > vin.y1 + 0.5 * hv) return;
+        if(!v || p.x0 < v.x0) v = p;
+      });
+      out.vincita = numero(v);
+    }
+    if(sistema){ out.quota = null; return out; }
+    var s = out.stake, bb = out.bonus || 0, vv = out.vincita;
+    var torna = function(x){ return s && vv && x > 1 && Math.abs(s * x + bb - vv) <= 0.02 + 0.006 * s; };
+    if(q && qDecimali === 2 && torna(q)){ out.quota = q; out.coerente = true; }
+    else if(s && vv && vv > s){
+      var calc = Math.round((vv - bb) / s * 100) / 100;
+      // La quota ricavata deve somigliare a quella letta, se ce n'e' una:
+      // "10.2" e 10.28 si', un 3.5 contro 10.28 no (vuol dire letture sbagliate).
+      if(!q || String(calc).indexOf(String(q).replace(/0+$/, "").replace(/\.$/, "")) === 0 || Math.abs(calc - q) < 0.1){
+        out.quota = calc; out.quotaRicavata = true; out.coerente = true;
+      } else out.quota = qDecimali === 2 ? q : null;
+    } else out.quota = qDecimali === 2 ? q : null;
+    return out;
+  }
+
   function riconosciBookmaker(testo){
     var s = String(testo || "");
     if(/\bADM\s*[:;]/i.test(s) || /GIOCATA\s+DEL/i.test(s)) return "Sportium";
@@ -470,6 +556,8 @@
     parseRicevuta:parseRicevuta,
     parseSportbet:parseSportbet,
     importiSportbet:importiSportbet,
+    importiDaParole:importiDaParole,
+    paroleDaTsv:paroleDaTsv,
     riconosciBookmaker:riconosciBookmaker,
     parseSportium:parseSportium,
     tipoMercato:tipoMercato,

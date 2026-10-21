@@ -282,3 +282,27 @@ assert.equal(P.importiSportbet("Importo Bonus totale 2,00 € ??? Vincita potenz
 assert.equal(P.importiSportbet("Importo Bonus totale 2,00 € 7,00 € Vincita potenziale 21,13 €",10.06).bonus,1.01);
 
 console.log("receipt-parser: ok");
+
+// Riquadro Importo / Bonus / Quota totale / Vincita letto per posizione
+// (21/10/2026). Parole e coordinate vere di Tesseract (testo sparso, tsv)
+// sui ticket da telefono del 18/10 (664156) e del 19/10 (685766).
+{
+  const parole=f=>P.paroleDaTsv(fs.readFileSync(require.resolve("./dati/"+f),"utf8"));
+  const t1=P.importiDaParole(parole("sportbet-multipla-telefono-sparso.tsv"),false);
+  assert.deepEqual([t1.stake,t1.bonus,t1.quota,t1.vincita,t1.coerente,t1.quotaRicavata],[2,1,10.06,21.13,true,false],"664156: "+JSON.stringify(t1));
+  const t2=P.importiDaParole(parole("sportbet-685766-telefono-sparso.tsv"),false);
+  // Qui Tesseract legge "10.2": la quota si ricava da (21,58 - 1,02) / 2,00.
+  assert.deepEqual([t2.stake,t2.bonus,t2.quota,t2.vincita,t2.coerente,t2.quotaRicavata],[2,1.02,10.28,21.58,true,true],"685766: "+JSON.stringify(t2));
+  // Sistema: niente quota, anche se i numeri ci sono.
+  assert.equal(P.importiDaParole(parole("sportbet-685766-telefono-sparso.tsv"),true).quota,null);
+  // Numeri che non tornano: nessuna sostituzione decisa da qui.
+  const W=(t,x,y)=>({t,x0:x,y0:y,x1:x+60,y1:y+20});
+  const storti=P.importiDaParole([W("Importo",100,100),W("Bonus",200,100),W("Quota",300,80),W("totale",300,104),W("Vincita",400,110),
+    W("2,00",100,130),W("1,00",200,130),W("3.50",300,135),W("21,13",540,110)],false);
+  assert.equal(storti.coerente,false,"3.50 contro una vincita di 21,13: non torna");
+  assert.equal(storti.stake,2,"la puntata letta sotto la sua etichetta resta");
+}
+// "U/O 2,5" letto "u/o0 2,5" (685766, Rodez-Montpellier).
+assert.equal(storpia("u/o0 2,5"),"OVER 2.5");
+assert.equal(storpia("U/O 0,5"),"OVER 0.5");
+console.log("receipt-parser posizione: ok");
