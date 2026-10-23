@@ -89,6 +89,11 @@ const localStorage={
 const document=new Document();
 const calls=[];
 const session={user:{id:"user-test",email:"test@example.com"}};
+// Il cloud finto ricorda le righe inviate, come quello vero: dal 23/10/2026
+// l'app sincronizza anche all'apertura e una seconda sync deve ritrovarle.
+const cloudFinto={};
+function salvaNelCloud(table,rows){ if(!Array.isArray(rows)) return; const m=cloudFinto[table]||(cloudFinto[table]=new Map()); rows.forEach(r=>m.set(r.legacy_id,JSON.parse(JSON.stringify(r)))); }
+function righeCloud(table){ return cloudFinto[table]?[...cloudFinto[table].values()].map(r=>JSON.parse(JSON.stringify(r))):[]; }
 const db={
   auth:{
     getSession:async()=>({data:{session}}),
@@ -106,9 +111,9 @@ const db={
     ]};
   },
   from:table=>({
-    upsert:async(rows,options)=>{calls.push({azione:"upsert",table,rows,options});return {error:null};},
+    upsert:async(rows,options)=>{calls.push({azione:"upsert",table,rows,options});salvaNelCloud(table,rows);return {error:null};},
     select:()=>{
-      const result={error:null,data:table==="impostazioni"?null:[],count:0};
+      const result={error:null,data:table==="impostazioni"?null:righeCloud(table),count:0};
       const chain={eq:()=>chain,order:async()=>result,maybeSingle:async()=>({error:null,data:null}),
         then:(resolve,reject)=>Promise.resolve(result).then(resolve,reject)};
       return chain;
@@ -146,6 +151,14 @@ const html=fs.readFileSync(require.resolve("../index.html"),"utf8");
 const inline=html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("</script>"));
 vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
 
+function ultimeInviate(calls,table){
+  // Dal 23/10/2026 l'app sincronizza anche all'apertura: le righe possono
+  // partire in piu' invii. Conta l'ultima versione inviata di ogni riga.
+  const per=new Map();
+  calls.filter(x=>x.azione==="upsert"&&x.table===table).forEach(c=>c.rows.forEach(r=>per.set(r.legacy_id,r)));
+  const tutte=calls.filter(x=>x.azione==="upsert"&&x.table===table);
+  return tutte.length?{options:tutte[tutte.length-1].options,rows:[...per.values()]}:null;
+}
 (async()=>{
   await new Promise(resolve=>setTimeout(resolve,5));
   const app=document.getElementById("app");
@@ -297,10 +310,10 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
-  assert.ok(app.textContent.includes("BET Core versione 4.50"),"la versione si vede in fondo a Dati");
+  assert.ok(app.textContent.includes("BET Core versione 4.51"),"la versione si vede in fondo a Dati");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
-  const up=calls.filter(x=>x.azione==="upsert"&&x.table==="picks").pop();
+  const up=ultimeInviate(calls,"picks");
   const rigaCodice=up.rows.find(r=>r.codice_schedina==="521267");
   assert.ok(rigaCodice,"il codice va al cloud");
   // Dopo il primo invio l'identita' nel cloud e' fissata sulla giocata: un
@@ -309,7 +322,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(dopoInvio.length&&dopoInvio.every(g=>g.cloudLegacyId===String(g.id)),"identita' cloud fissata al primo invio: "+JSON.stringify(dopoInvio.map(g=>g.cloudLegacyId)));
   assert.equal(rigaCodice.origine,"CODICI");
   assert.equal(rigaCodice.nota,"bonus 4,20 incluso nella quota","la nota va al cloud");
-  const upV=calls.filter(x=>x.azione==="upsert"&&x.table==="versamenti").pop();
+  const upV=ultimeInviate(calls,"versamenti");
   assert.ok(upV.rows.some(r=>r.cassa==="CODICI"&&r.importo===20),"il movimento della cassa codici va al cloud con la sua cassa");
   assert.ok(upV.rows.some(r=>r.cassa==="PRINCIPALE"&&r.importo===50),"i movimenti vecchi restano della principale");
 
