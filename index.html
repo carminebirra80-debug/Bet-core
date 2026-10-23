@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.50</title>
+<title>Registro BET Core v4.51</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -302,7 +302,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.50";
+  var VERSIONE = "4.51";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -452,7 +452,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var es=String(x&&x.esito||"").toLowerCase();
       return {evento:String(x&&x.evento||""),mercato:String(x&&x.mercato||""),
         quota:isFinite(q)&&q>1?q:null,
-        esito:(es==="vinta"||es==="persa"||es==="rimborsata")?es:null};
+        esito:(es==="vinta"||es==="persa"||es==="rimborsata")?es:null,
+        // Giorno della partita (AAAA-MM-GG), scritto quando la schedina ha
+        // partite in giorni diversi: serve al Live per cercarle (23/10/2026).
+        ...(/^\d{4}-\d\d-\d\d$/.test(String(x&&x.data||""))?{data:String(x.data)}:{})};
     });
   }
 
@@ -1373,6 +1376,17 @@ textarea{width:100%;min-height:78px;resize:vertical}
     CLOUD.busy=false; disegna();
   }
   async function logoutCloud(){ if(DB) await DB.auth.signOut(); CLOUD.user=null; CLOUD.syncEnabled=false; localStorage.removeItem("registro-tipster-cloud-sync"); CLOUD.stato="Disconnesso"; disegna(); }
+  // Sincronizzazione silenziosa, al massimo una ogni "minimoMs".
+  var ultimaSyncAuto=0;
+  function sincronizzaSeVecchio(minimoMs){
+    if(!CLOUD.user || !CLOUD.syncEnabled || CLOUD.busy) return;
+    if(Date.now()-ultimaSyncAuto<minimoMs) return;
+    ultimaSyncAuto=Date.now();
+    inviaCloud(true);
+  }
+  if(typeof document!=="undefined" && document.addEventListener) document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState==="visible") sincronizzaSeVecchio(60000);
+  });
   async function initCloud(){
     if(!DB) return;
     try{
@@ -1394,6 +1408,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
           localStorage.removeItem("registro-tipster-cloud-sync");
         }
       }
+      // All'apertura si sincronizza: le schedine scritte nel cloud da un altro
+      // dispositivo (o da Claude) compaiono senza dover modificare nulla
+      // (23/10/2026: quattro codici registrati nel cloud invisibili in Codici).
+      if(CLOUD.user && CLOUD.syncEnabled) sincronizzaSeVecchio(0);
       DB.auth.onAuthStateChange(function(evt,session){CLOUD.user=session?session.user:null;CLOUD.email=CLOUD.user?CLOUD.user.email:"";setTimeout(disegna,0);});
     }catch(e){}
   }

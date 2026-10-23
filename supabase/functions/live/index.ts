@@ -355,7 +355,11 @@ Deno.serve(async (req) => {
 
     // 4. Calendario ESPN dei giorni coinvolti: dalla cache se ha meno di 6
     //    ore, altrimenti scaricato ora.
-    const giorni = [...new Set(picks.flatMap((p: any) => giorniEspn(p.data)))] as string[];
+    // Anche i giorni delle singole partite: una multipla giocata il 23 con
+    // partite il 24 e il 25 altrimenti restava "partita non trovata" (23/10/2026).
+    const giorniPick = (p: any) => [p.data, ...(Array.isArray(p.gambe) ? p.gambe : [])
+      .map((g: any) => g && g.data).filter((d: any) => /^\d{4}-\d\d-\d\d$/.test(String(d || "")))];
+    const giorni = [...new Set(picks.flatMap((p: any) => [...new Set(giorniPick(p))].flatMap((d: any) => giorniEspn(d))))] as string[];
     const perGiorno: Record<string, any[]> = {};
     const eta: Record<string, number> = {};
     let errori = 0;

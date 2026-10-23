@@ -65,7 +65,12 @@ const picks=[
   // Variante vera: "1" a 1.49 contro "1 + Over 2.5" a 1.95 della proposta.
   {id:"h",legacy_id:"8",data:"2026-10-18",evento:"Multipla · 1 gambe",mercato:"MULTIPLA",nota:"",
     gambe:[{evento:"Milan vs Atalanta",mercato:"1",quota:1.49}],
-    quota:1.49,stake:5,bookmaker:"Sportbet",origine:"VEGGENTE",tipo_schedina:"MULTIPLA"}
+    quota:1.49,stake:5,bookmaker:"Sportbet",origine:"VEGGENTE",tipo_schedina:"MULTIPLA"},
+  // Codice giocato il 18 con partite anche il 20 (23/10/2026: 512302 e
+  // 282731 con partite di sabato e domenica): il Live cerca anche quel giorno.
+  {id:"i",legacy_id:"9",data:"2026-10-18",evento:"Codice 999999",mercato:"MULTIPLA",nota:"",
+    gambe:[{evento:"Fiorentina vs Como",mercato:"GG",data:"2026-10-18"},{evento:"Udinese vs Lecce",mercato:"1",data:"2026-10-20"}],
+    quota:2,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"999999",tipo_schedina:"MULTIPLA"}
 ];
 
 const chiamate=[];
@@ -142,6 +147,11 @@ assert.ok(gestore,"Deno.serve non chiamato");
   assert.equal(tronc.proposta,null);
   const variante=per["8"];
   assert.equal(variante.gambe[0].mercato,"1","quota molto diversa: e' una variante, vale la ricevuta");
+
+  const espnGiorni=chiamate.filter(u=>u.startsWith("https://site.api.espn.com/")).map(u=>u.match(/dates=(\d+)/)[1]).sort();
+  assert.ok(espnGiorni.includes("20261020"),"partita del 20 in un codice del 18: ESPN va letto anche il 20 ("+espnGiorni.join(",")+")");
+  assert.ok(espnGiorni.includes("20261017")&&espnGiorni.includes("20261018"),"restano i giorni della giocata");
+  assert.equal(per["9"].gambe.length,2);
 
   // Orari in ora italiana (ESPN li da' in UTC).
   assert.equal(sis.gambe[0].ora,"2026-10-18T15:00:00+02:00");

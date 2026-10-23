@@ -92,6 +92,11 @@ const localStorage={
 const document=new Document();
 const calls=[];
 const session={user:{id:"user-test",email:"test@example.com"}};
+// Il cloud finto ricorda le righe inviate, come quello vero: dal 23/10/2026
+// l'app sincronizza anche all'apertura e una seconda sync deve ritrovarle.
+const cloudFinto={};
+function salvaNelCloud(table,rows){ if(!Array.isArray(rows)) return; const m=cloudFinto[table]||(cloudFinto[table]=new Map()); rows.forEach(r=>m.set(r.legacy_id,JSON.parse(JSON.stringify(r)))); }
+function righeCloud(table){ return cloudFinto[table]?[...cloudFinto[table].values()].map(r=>JSON.parse(JSON.stringify(r))):[]; }
 const db={
   auth:{
     getSession:async()=>({data:{session}}),
@@ -109,9 +114,9 @@ const db={
     ]};
   },
   from:table=>({
-    upsert:async(rows,options)=>{calls.push({azione:"upsert",table,rows,options});return {error:null};},
+    upsert:async(rows,options)=>{calls.push({azione:"upsert",table,rows,options});salvaNelCloud(table,rows);return {error:null};},
     select:()=>{
-      const result={error:null,data:table==="impostazioni"?null:[],count:0};
+      const result={error:null,data:table==="impostazioni"?null:righeCloud(table),count:0};
       const chain={eq:()=>chain,order:async()=>result,maybeSingle:async()=>result,
         then:(resolve,reject)=>Promise.resolve(result).then(resolve,reject)};
       return chain;
@@ -136,6 +141,14 @@ const html=fs.readFileSync(require.resolve("../index.html"),"utf8");
 const inline=html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("</script>"));
 vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
 
+function ultimeInviate(calls,table){
+  // Dal 23/10/2026 l'app sincronizza anche all'apertura: le righe possono
+  // partire in piu' invii. Conta l'ultima versione inviata di ogni riga.
+  const per=new Map();
+  calls.filter(x=>x.azione==="upsert"&&x.table===table).forEach(c=>c.rows.forEach(r=>per.set(r.legacy_id,r)));
+  const tutte=calls.filter(x=>x.azione==="upsert"&&x.table===table);
+  return tutte.length?{options:tutte[tutte.length-1].options,rows:[...per.values()]}:null;
+}
 (async()=>{
   await new Promise(resolve=>setTimeout(resolve,5));
   const app=document.getElementById("app");
@@ -287,7 +300,7 @@ vm.runInNewContext(inline,sandbox,{filename:"index-inline.js"});
   assert.ok(invia,"Pulsante Invia ora non trovato");
   invia.listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
-  const up=calls.find(x=>x.azione==="upsert"&&x.table==="picks");
+  const up=ultimeInviate(calls,"picks");
   assert.ok(up,"upsert picks non eseguito");
   assert.ok(!up.rows.some(r=>r.tipster==="rubino"||r.tipster==="mercante"),"inviate al cloud righe dei tipster eliminati");
   const origineInviata=ev=>(up.rows.find(r=>r.evento===ev)||{}).origine;
