@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.51</title>
+<title>Registro BET Core v4.52</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -137,6 +137,14 @@ li.vers{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:ba
 .mese-top{display:flex;justify-content:space-between;font-size:14px}
 .mese-riga{display:flex;justify-content:space-between;font-size:11px;color:var(--tenue);margin-top:3px}
 .mese-corrente .mese-top span:first-child{color:var(--oro)}
+.gruppo-mese{border-top:1px solid var(--bordo)}
+.gruppo-mese:last-child{border-bottom:1px solid var(--bordo);margin-bottom:24px}
+.gruppo-testa{display:block;width:100%;background:none;border:0;color:var(--testo);font:inherit;
+  text-align:left;padding:14px 0;cursor:pointer}
+.gruppo-testa .mese-top{align-items:baseline}
+.gruppo-testa .freccia{display:inline-block;width:14px;color:var(--tenue);font-size:11px}
+.gruppo-corpo{padding:0 0 6px 14px}
+.gruppo-corpo .mese:first-child{border-top:1px solid var(--bordo2)}
 
 .promemoria{margin:16px 20px 0;padding:10px 0 10px 14px;border:none;
   border-left:2px solid var(--oro);background:none;display:flex;justify-content:space-between;
@@ -302,7 +310,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.51";
+  var VERSIONE = "4.52";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -2483,6 +2491,19 @@ textarea{width:100%;min-height:78px;resize:vertical}
   function riepilogoGiornalieroDueCasse(){ return dueCasse(riepilogoGiornaliero,"giorno",10); }
   function riepilogoMensileDueCasse(){ return dueCasse(riepilogoMensile,"mese",7); }
 
+  // Mesi aperti o chiusi nel riepilogo giornaliero della Cassa: comodita' di
+  // questo telefono, non va al cloud. Senza memoria disponibile (finestra
+  // privata, dati cancellati) si torna al comportamento di serie.
+  var CHIAVE_MESI_APERTI = "registro-tipster-cassa-mesi-aperti";
+  function mesiAperti(){
+    try{ var v = JSON.parse(localStorage.getItem(CHIAVE_MESI_APERTI)||"{}"); return v && typeof v==="object" ? v : {}; }
+    catch(e){ return {}; }
+  }
+  function ricordaMeseAperto(mese, aperto){
+    try{ var v = mesiAperti(); v[mese] = !!aperto; localStorage.setItem(CHIAVE_MESI_APERTI, JSON.stringify(v)); }
+    catch(e){}
+  }
+
   function testoMovimenti(x){
     var parti=[];
     if(x.versato>0) parti.push("versati "+euro(x.versato));
@@ -2640,15 +2661,57 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(giorni.length){
       pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
         "text":codiciAttivi ? "Riepilogo giornaliero \u00B7 Sportium + Sportbet" : "Riepilogo giornaliero"}));
+      // Giorni raggruppati per mese (25/10/2026, chiesto da Carmine: la
+      // pagina si allungava troppo). Ogni mese e' una riga che si apre e si
+      // chiude con un tocco; in testa i totali del mese, presi dal riepilogo
+      // mensile qui sopra cosi' i numeri sono gli stessi. Il mese piu'
+      // recente e' aperto di serie, gli altri chiusi; la scelta si ricorda
+      // su questo telefono.
+      var totaliMese = {};
+      mesi.forEach(function(m){ totaliMese[m.mese]=m; });
+      var gruppi = [], perMese = {};
+      giorni.forEach(function(g){
+        var k = String(g.giorno).slice(0,7);
+        if(!perMese[k]){ perMese[k]=[]; gruppi.push(k); }
+        perMese[k].push(g);
+      });
+      var aperti = mesiAperti();
       var listaGiorni = el("div");
-      giorni.forEach(function(g, idx){
+      gruppi.forEach(function(k, gIdx){
+        var tot = totaliMese[k] || {n:0,profitto:0,giocato:0};
+        var aperto = Object.prototype.hasOwnProperty.call(aperti,k) ? !!aperti[k] : gIdx===0;
+        var nGiorni = perMese[k].filter(function(g){ return g.n>0; }).length;
+        var corpo = el("div",{"class":"gruppo-corpo","style":{display: aperto ? "" : "none"}});
+        var freccia = el("span",{"class":"freccia","text": aperto ? "\u25BE" : "\u25B8"});
+        var testa = el("button",{"type":"button","class":"gruppo-testa","aria-expanded": aperto ? "true" : "false",
+          "onclick":function(){
+            aperto = !aperto;
+            corpo.style.display = aperto ? "" : "none";
+            freccia.textContent = aperto ? "\u25BE" : "\u25B8";
+            testa.setAttribute("aria-expanded", aperto ? "true" : "false");
+            ricordaMeseAperto(k, aperto);
+          }},[
+          el("div",{"class":"mese-top"},[
+            el("span",{"style":{color: gIdx===0 ? "var(--oro)" : ""}},[freccia, el("span",{"text":nomeMese(k)})]),
+            el("span",{"class":"tab","style":{fontWeight:"600",
+              color: tot.n===0 ? "#4A5A68" : tot.profitto>=0 ? "#4FB286" : "#D4635F"},
+              "text": tot.n===0 ? "\u2014" : segnato(tot.profitto)})
+          ]),
+          el("div",{"class":"mese-riga","style":{paddingLeft:"14px"}},[
+            el("span",{"text": tot.n
+              ? nGiorni+(nGiorni===1?" giorno":" giorni")+" di gioco \u00B7 "+tot.n+(tot.n===1?" ticket":" ticket")+" \u00B7 giocati "+euro(tot.giocato)
+              : "nessuna giocata"}),
+            el("span")
+          ])
+        ]);
+        perMese[k].forEach(function(g, idx){
         var dettaglio = g.n
           ? [g.vinte&&(g.vinte+(g.vinte===1?" vinta":" vinte")),
              g.perse&&(g.perse+(g.perse===1?" persa":" perse")),
              g.rimborsate&&(g.rimborsate+" rimb.")]
             .filter(Boolean).join(", ")
           : "nessuna giocata";
-        listaGiorni.appendChild(el("div",{"class":"mese"+(idx===0?" mese-corrente":"")},[
+        corpo.appendChild(el("div",{"class":"mese"+(gIdx===0&&idx===0?" mese-corrente":"")},[
           el("div",{"class":"mese-top"},[
             el("span",{"class":"tab","text":breve(g.giorno)}),
             el("span",{"class":"tab","style":{fontWeight:"600",
@@ -2666,6 +2729,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
             el("span")
           ]) : null
         ]));
+        });
+        listaGiorni.appendChild(el("div",{"class":"gruppo-mese"},[testa, corpo]));
       });
       pag.appendChild(listaGiorni);
     }
