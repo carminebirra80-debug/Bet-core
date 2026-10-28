@@ -145,10 +145,13 @@ vm.runInNewContext(html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("<
   // Movimento nella cassa sbagliata (20/10/2026): un prelievo Sportbet
   // registrato dalla scheda Cassa si sposta con un tasto, senza rifarlo.
   clickNav(app,"Cassa");
-  assert.ok(app.textContent.includes("Per versare o prelevare su Sportbet usa la scheda Codici"),"il riquadro dice di quale cassa e'");
-  const riga=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("prelievo"));
-  assert.ok(riga,"prelievo nello storico");
-  assert.ok(!findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("versamento")&&x.textContent.includes("Sposta in Sportium")),"nella principale il tasto porta verso Sportbet");
+  // Dal 28/10/2026 un solo registro: ogni riga dice di quale book e'.
+  const riga=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("prelievo · Sportium"));
+  assert.ok(riga,"prelievo nel registro, segnato Sportium");
+  const versSportium=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("versamento · Sportium"));
+  assert.ok(findElement(versSportium,x=>x.tagName==="BUTTON"&&x.textContent==="Sposta in Sportbet"),"da Sportium il tasto porta verso Sportbet");
+  const versSportbet=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("versamento · Sportbet"));
+  assert.ok(findElement(versSportbet,x=>x.tagName==="BUTTON"&&x.textContent==="Sposta in Sportium"),"da Sportbet il tasto porta verso Sportium");
   findElement(riga,x=>x.tagName==="BUTTON"&&x.textContent==="Sposta in Sportbet").listeners.click();
   assert.ok(app.children[0].textContent.includes("\u20AC58,00"),"la principale torna a 58: "+app.children[0].textContent.slice(0,60));
   const mov=JSON.parse(storage["registro-tipster-v1"]).versamenti.find(v=>v.tipoMovimento==="prelievo");
@@ -157,7 +160,9 @@ vm.runInNewContext(html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("<
   clickNav(app,"Codici");
   const verd2=findElement(app,x=>x.className==="verdetto").textContent;
   assert.ok(verd2.includes("\u20AC19,50"),"Sportbet: 29,50 - 10: "+verd2);
-  assert.ok(findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("prelievo")&&x.textContent.includes("Sposta in Sportium")),"e da li' si puo' riportare indietro");
+  clickNav(app,"Cassa");
+  const spostato=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("prelievo · Sportbet"));
+  assert.ok(spostato&&findElement(spostato,x=>x.tagName==="BUTTON"&&x.textContent==="Sposta in Sportium"),"e da li' si puo' riportare indietro");
   console.log("cassa-sportbet: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

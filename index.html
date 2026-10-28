@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.52</title>
+<title>Registro BET Core v4.53</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -174,6 +174,48 @@ li.vers{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:ba
   border-radius:4px;color:var(--oro);font-size:12px;font-weight:600}
 .totale-riga{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:6px;padding:9px 16px;border-top:1px solid var(--bordo2);font-size:13px;align-items:center}
 .totale-riga span:not(:first-child){text-align:right}
+.cassa-sez{margin:28px 0 10px}
+.cassa-book{border:1px solid var(--bordo);border-radius:4px;padding:16px;margin-bottom:12px}
+.cassa-book-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.cassa-book-nome{font-size:16px;font-weight:600}
+.cassa-book-cifra{font-size:30px;font-weight:700}
+.cassa-book-sotto{font-size:12px;color:var(--tenue2);margin:4px 0 0}
+.cassa-controllo{display:flex;gap:8px;align-items:flex-end;margin-top:14px}
+.cassa-controllo label,.cassa-allinea label{display:block;font-size:12px;color:var(--tenue2);margin:0 0 4px}
+.gruppo>.cassa-campo{display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tenue2);margin:0 0 8px}
+.cassa-controllo .secondario{width:auto;min-height:46px;padding:12px 14px;color:var(--testo)}
+.cassa-esito{font-size:13px;line-height:1.5;margin:10px 0 0}
+.cassa-esito.ok{color:var(--verde)}
+.cassa-esito.no{color:#E0A35A}
+.cassa-allinea{display:grid;gap:8px;margin-top:10px}
+.cassa-allinea label{margin:0}
+.cassa-totali{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cassa-totali div{border:1px solid var(--bordo);border-radius:4px;padding:10px 12px}
+.cassa-totali span{display:block}
+.cassa-totali .etich{color:var(--tenue2);margin-bottom:4px}
+.cassa-sez.etich,.riep-voce-top{color:var(--tenue2)}
+.cassa-tasti{gap:8px}
+.cassa-tasti .secondario{color:var(--testo);min-height:44px}
+.cassa-registro{margin-top:4px}
+.mov-nota{width:100%;font-size:11px;color:var(--tenue2);line-height:1.4}
+.ris{border:1px solid var(--bordo);border-radius:4px;margin-bottom:16px}
+.ris-riga{padding:14px 16px}
+.ris-riga+.ris-riga{border-top:1px solid var(--bordo)}
+.ris-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:15px;font-weight:600}
+.ris-cifra{font-size:22px;font-weight:400}
+.ris-nota{font-size:12px;color:var(--tenue2);margin:4px 0 0;line-height:1.5}
+.riep-mese{border:1px solid var(--bordo);border-radius:4px;padding:14px 16px;margin-bottom:10px}
+.riep-titolo{margin:0 0 4px;font-size:15px;font-weight:600}
+.riep-corrente .riep-titolo{color:var(--oro)}
+.riep-voce{margin-top:10px}
+.riep-voce-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.riep-voce-top .tab{font-size:15px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--testo)}
+.riep-voce-nota{font-size:12px;color:var(--tenue2);margin:2px 0 0;line-height:1.5}
+.riep-saldi{margin-top:12px;padding-top:10px;border-top:1px solid var(--bordo2)}
+.riep-saldi-griglia{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:6px;font-size:13px}
+.riep-saldi-griglia>span{display:flex;flex-direction:column}
+.riep-saldo-nome{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:11px;color:var(--tenue2)}
+.riep-nota{font-size:12px;color:var(--tenue2);margin:12px 0 0;padding-top:10px;border-top:1px solid var(--bordo2);line-height:1.5}
 .totale-testa{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tenue2)}
 .codici-riga{display:grid;grid-template-columns:1.3fr 1fr .8fr auto;gap:8px;margin-top:16px}
 .codici-riga input{min-width:0}
@@ -310,7 +352,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.52";
+  var VERSIONE = "4.53";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -1466,8 +1508,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
   }
 
   // Solo i depositi reali consumano il budget mensile.
+  // Dal 28/10/2026 conta i versamenti su tutti e due i book: il tetto e'
+  // uno solo, e i 20 euro versati su Sportbet restavano fuori.
   function versatoQuestoMese(){
-    var mese = oggi().slice(0,7), t = 0, mov = movimentiCassa();
+    var mese = oggi().slice(0,7), t = 0, mov = S.versamenti;
     for(var i=0;i<mov.length;i++){
       if(String(mov[i].data).slice(0,7) === mese &&
           tipoMovimento(mov[i]) === "versamento"){
@@ -2088,7 +2132,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       ]),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Codici"}),
-        el("p",{"class":"guida-p","text":"I codici schedina del Veggente, giocati su Sportbet, si registrano dalla scheda Codici: codice, quota, puntata e +. Hanno una cassa propria: per iniziare usa \"Sposta dalla principale\". Vinta o Persa si toccano direttamente nella lista; nel Registro compaiono solo col filtro Codici."})
+        el("p",{"class":"guida-p","text":"I codici schedina del Veggente, giocati su Sportbet, si registrano dalla scheda Codici: codice, quota, puntata e +. Hanno una cassa propria: per iniziare, nella scheda Cassa scegli Sportium e usa \"Sposta su Sportbet\". Vinta o Persa si toccano direttamente nella lista; nel Registro compaiono solo col filtro Codici."})
       ]),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Ricevuta Sportbet o Sportium"}),
@@ -2545,79 +2589,182 @@ textarea{width:100%;min-height:78px;resize:vertical}
     disegna();
   }
 
+  // Cassa riorganizzata (28/10/2026, chiesto da Carmine dopo una sera passata
+  // a capire perche' i conti "non tornavano" mentre tornavano): in cima
+  // quanto c'e' su ogni book, con il confronto contro il saldo del sito; poi
+  // il risultato diviso fra giocate e soldi veri; un solo registro dei
+  // movimenti per i due book; il mese per mese con giocate, movimenti e saldo
+  // a fine mese tenuti separati, perche' il risultato del mese non e' un saldo.
+  var CASSA_UI = { book:"PRINCIPALE", tutti:false,
+    sito:{PRINCIPALE:"",CODICI:""}, motivo:{PRINCIPALE:"Bonus scaduto",CODICI:"Bonus scaduto"} };
+  var MOTIVI_RETTIFICA = ["Bonus scaduto","Arrotondamento","Movimento dimenticato","Altro"];
+  var NOMI_BOOK = { PRINCIPALE:"Sportium", CODICI:"Sportbet" };
+  var MOVIMENTI_IN_VISTA = 10;
+  function altroBook(cassa){ return cassa==="CODICI" ? "PRINCIPALE" : "CODICI"; }
+  function leggiImporto(v){
+    var s=String(v==null?"":v).replace(/\s|€/g,"").replace(",",".");
+    if(s==="") return null;
+    var n=Number(s); return isFinite(n) ? n : null;
+  }
+  function cent(n){ return Math.round(Number(n||0)*100)/100; }
+
+  function etichettaMovimento(v){
+    if(eSpostamento(v)) return "spostamento";
+    var t=tipoMovimento(v);
+    if(t==="rettifica" && /^bonus/i.test(String(v&&v.nota||""))) return "bonus";
+    return t;
+  }
+
+  // Saldo di una cassa alla fine di un giorno: movimenti e giocate chiuse
+  // fino a quella data, con la stessa regola di "In cassa".
+  function saldoAl(cassa, data){
+    return conCassa(cassa,function(){
+      var t=0;
+      movimentiCassa().forEach(function(v){ if(String(v.data||"")<=data) t+=importoCassa(v); });
+      chiuseTutte().filter(rigaRealeCore).forEach(function(g){ if(String(g.data||"")<=data) t+=Number(g.profitto||0); });
+      return t;
+    });
+  }
+  function ultimoGiornoMese(m){
+    var p=String(m).split("-"), d=new Date(Date.UTC(Number(p[0]),Number(p[1]),0));
+    return m+"-"+String(d.getUTCDate()).padStart(2,"0");
+  }
+
+  function nuovoMovimento(cassa, tipo, importo, data, nota, id){
+    S.versamenti.push({ id:id||Date.now(), data:data||oggi(), importo:importo,
+      tipoMovimento:tipo, cassa:cassa, nota:nota||null, cloudDirty:true });
+  }
+
+  // Il sito mostra i soldi liberi: le puntate delle giocate aperte sono gia'
+  // uscite dal saldo. La rettifica porta i liberi dell'app a quelli del sito.
+  function allineaSaldo(cassa, sito, liberi){
+    var d=cent(sito-liberi);
+    if(!d) return;
+    var motivo=String(CASSA_UI.motivo[cassa]||"Altro").toLowerCase();
+    nuovoMovimento(cassa,"rettifica",d,oggi(),
+      "Rettifica: "+motivo+" (sul sito "+euro(sito)+", in app "+euro(liberi)+")");
+    CASSA_UI.sito[cassa]="";
+    salva(); disegna();
+  }
+
+  function schedaBook(cassa, k){
+    var nome=NOMI_BOOK[cassa], liberi=cent(k.bankroll-k.impegnato);
+    var idCampo="saldo-sito-"+cassa.toLowerCase();
+    var inSito=el("input",{"type":"text","inputmode":"decimal","class":"tab","id":idCampo,
+      "placeholder":euro(liberi).replace("€",""),"autocomplete":"off"});
+    inSito.value=CASSA_UI.sito[cassa]||"";
+    // Una sola ridisegnata: Invio fa solo uscire dal campo, e il "change"
+    // che segue ridisegna (ridisegnare due volte di fila, da Invio e poi
+    // dall'uscita dal campo, faceva staccare due volte lo stesso campo).
+    function controlla(){
+      var v=String(inSito.value||"").trim();
+      if(v===CASSA_UI.sito[cassa]) return;
+      CASSA_UI.sito[cassa]=v; disegna();
+    }
+    inSito.addEventListener("change",controlla);
+    inSito.addEventListener("keydown",function(e){ if(e && e.key==="Enter"){ e.preventDefault(); inSito.blur(); } });
+
+    var figli=[
+      el("div",{"class":"cassa-book-top"},[
+        el("span",{"class":"cassa-book-nome","text":nome}),
+        el("span",{"class":"serif tab cassa-book-cifra","text":euro(k.bankroll)})
+      ]),
+      k.impegnato>0
+        ? el("p",{"class":"cassa-book-sotto","text":"di cui "+euro(k.impegnato)+" in gioco · liberi "+euro(liberi)})
+        : null,
+      el("div",{"class":"cassa-controllo"},[
+        el("div",{"style":{flex:"1"}},[
+          el("label",{"for":idCampo,"text":"Saldo che vedi sul sito"}), inSito
+        ]),
+        el("button",{"type":"button","class":"secondario","text":"Controlla","onclick":controlla})
+      ])
+    ];
+
+    var sito=leggiImporto(CASSA_UI.sito[cassa]);
+    if(sito!==null){
+      var diff=cent(sito-liberi);
+      if(Math.abs(diff)<0.05){
+        figli.push(el("p",{"class":"cassa-esito ok","text":"Torna"+(diff?" (differenza "+euro(Math.abs(diff))+", arrotondamento)":"")+"."}));
+      }else{
+        var sel=el("select",{"id":"motivo-"+cassa.toLowerCase(),"aria-label":"Motivo della rettifica"});
+        MOTIVI_RETTIFICA.forEach(function(m){
+          var o=el("option",{"value":m,"text":m}); if(m===CASSA_UI.motivo[cassa]) o.selected=true; sel.appendChild(o);
+        });
+        sel.value=CASSA_UI.motivo[cassa];
+        sel.addEventListener("change",function(){ CASSA_UI.motivo[cassa]=this.value; });
+        figli.push(el("p",{"class":"cassa-esito no","text":
+          "Sul sito hai "+euro(Math.abs(diff))+(diff<0?" in meno":" in più")+" rispetto all'app"+
+          (k.impegnato>0?" (confronto con i soldi liberi: "+euro(k.impegnato)+" in gioco non sono nel saldo del sito)":"")+"."}));
+        figli.push(el("div",{"class":"cassa-allinea"},[
+          el("label",{"for":"motivo-"+cassa.toLowerCase(),"text":"Motivo"}), sel,
+          el("button",{"type":"button","class":"principale","text":"Allinea l'app al sito (rettifica "+segnato(diff)+")",
+            "onclick":function(){ allineaSaldo(cassa,sito,liberi); }})
+        ]));
+      }
+    }else if(CASSA_UI.sito[cassa]){
+      figli.push(el("p",{"class":"cassa-esito no","text":"Scrivi solo la cifra, per esempio 56,81."}));
+    }
+    return el("div",{"class":"cassa-book","data-book":cassa},figli);
+  }
+
   function vistaCassa(c){
     var pag = el("div",{"class":"pag"});
-    var mese = versatoQuestoMese();
-    var restaMese = Math.max(0, S.budgetMese - mese);
-
-    // Il verdetto: cosa hai messo, cosa hai adesso
-    pag.appendChild(el("div",{"class":"verdetto"},[
-      el("p",{"class":"etich","text":"Risultato reale"}),
-      el("p",{"class":"serif tab verdetto-cifra",
-        "text": segnato(c.reale),
-        "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}}),
-      el("p",{"class":"verdetto-nota",
-        "text": c.versato > 0
-          ? "Hai versato "+euro(c.versato)+
-            (c.prelevato ? ", prelevato "+euro(c.prelevato) : "")+
-            (c.rettifiche ? " e registrato rettifiche "+segnato(c.rettifiche) : "")+
-            (c.spostati ? ", spostato "+euro(Math.abs(c.spostati))+" alla cassa codici" : "")+
-            "; in cassa hai "+euro(c.bankroll)+"."
-          : "Registra il primo versamento per iniziare."}),
-      c.versato > 0
-        ? el("p",{"class":"verdetto-nota","style":{marginTop:"4px"},
-            "text":"Rendimento sul versato: "+
-              (c.reale>=0?"+":"")+((c.reale/c.versato)*100).toFixed(1)+"%"})
-        : null,
-      // Le sole giocate, separate dalle rettifiche: dicono come va il metodo,
-      // mentre il risultato reale dice come vanno i soldi.
-      c.chiuse.length
-        ? el("p",{"class":"verdetto-nota","style":{marginTop:"4px"},
-            "text":"Dalle giocate: "+segnato(c.profitto)+" · ROI "+
-              (riassumi(c.chiuse).roi>=0?"+":"")+riassumi(c.chiuse).roi.toFixed(1)+"% su "+
-              euro(riassumi(c.chiuse).giocato)+" puntati"})
-        : null
-    ]));
-
-    // Totale delle due casse (17/10/2026): principale e codici restano
-    // separate, ma qui si vedono insieme tutti i soldi e il risultato
-    // complessivo, per confrontarli con i saldi veri dei due siti.
     var cc = conCassa("CODICI",conti);
     var codiciAttivi = conCassa("CODICI",movimentiCassa).length || cc.chiuse.length || cc.aperte.length;
+    if(!codiciAttivi) CASSA_UI.book="PRINCIPALE";
+
+    // 1. Quanto hai sui book: la cifra da confrontare con i siti.
+    pag.appendChild(el("p",{"class":"etich cassa-sez","style":{marginTop:"0"},"text":codiciAttivi?"Quanto hai sui book":"Quanto hai in cassa"}));
+    pag.appendChild(schedaBook("PRINCIPALE",c));
     if(codiciAttivi){
-      var righeTot = [
-        ["In cassa", c.bankroll, cc.bankroll, euro],
-        ["In gioco", c.impegnato, cc.impegnato, euro],
-        ["Versato", c.versato, cc.versato, euro],
-        ["Prelevato", c.prelevato, cc.prelevato, euro],
-        ["Risultato reale", c.reale, cc.reale, segnato]
-      ];
-      pag.appendChild(el("div",{"class":"scheda totale-casse"},[
-        el("div",{"class":"scheda-top"},[el("span",{"class":"serif scheda-nome","text":"Totale delle due casse"})]),
-        el("div",{"class":"totale-riga totale-testa"},[el("span"),el("span",{"text":"Principale"}),el("span",{"text":"Codici"}),el("span",{"text":"Totale"})]),
-        el("div",null,righeTot.map(function(r){
-          var tot=r[1]+r[2], ultimo=r[0]==="Risultato reale";
-          return el("div",{"class":"totale-riga"},[
-            el("span",{"text":r[0]}),
-            el("span",{"class":"tab","text":r[3](r[1])}),
-            el("span",{"class":"tab","text":r[3](r[2])}),
-            el("span",{"class":"tab","style":{fontWeight:"600",color:ultimo?(tot>=0?"#4FB286":"#D4635F"):""},"text":r[3](tot)})
-          ]);
-        })),
-        el("p",{"class":"campione","text":"Principale = Sportium, Codici = Sportbet. Confronta \"In cassa\" con i saldi dei due siti: se non tornano, manca un movimento."})
+      pag.appendChild(schedaBook("CODICI",cc));
+      var totale=c.bankroll+cc.bankroll, inGioco=c.impegnato+cc.impegnato;
+      pag.appendChild(el("div",{"class":"cassa-totali"},[
+        el("div",null,[el("span",{"class":"etich","text":"Totale"}),el("span",{"class":"tab","style":{fontWeight:"600"},"text":euro(totale)})]),
+        el("div",null,[el("span",{"class":"etich","text":"In gioco"}),el("span",{"class":"tab","text":euro(inGioco)})]),
+        el("div",null,[el("span",{"class":"etich","text":"Liberi"}),el("span",{"class":"tab","text":euro(totale-inGioco)})])
       ]));
     }
 
-    // Budget del mese
+    // 2. Come stai andando: il metodo (giocate) e i soldi (risultato reale).
+    var r = riassumi(c.chiuse.concat(cc.chiuse));
+    var versT=c.versato+cc.versato, prelT=c.prelevato+cc.prelevato, rettT=c.rettifiche+cc.rettifiche;
+    var inCassaT=c.bankroll+cc.bankroll, realeT=c.reale+cc.reale;
+    pag.appendChild(el("p",{"class":"etich cassa-sez","text":"Come stai andando"}));
+    pag.appendChild(el("div",{"class":"ris verdetto-soldi"},[
+      el("div",{"class":"ris-riga"},[
+        el("div",{"class":"ris-top"},[
+          el("span",{"text":"Dalle giocate"}),
+          el("span",{"class":"serif tab ris-cifra","style":{color:r.profitto>=0?"#4FB286":"#D4635F"},"text":r.n?segnato(r.profitto):"—"})
+        ]),
+        el("p",{"class":"ris-nota","text": r.n
+          ? r.n+(r.n===1?" ticket":" ticket")+" · "+euro(r.giocato)+" puntati · ROI "+(r.roi>=0?"+":"")+r.roi.toFixed(1)+"%. Dice come va il metodo."
+          : "Nessuna giocata chiusa."})
+      ]),
+      el("div",{"class":"ris-riga"},[
+        el("div",{"class":"ris-top"},[
+          el("span",{"text":"Soldi veri"}),
+          el("span",{"class":"serif tab ris-cifra","style":{color:realeT>=0?"#4FB286":"#D4635F"},"text":versT>0?segnato(realeT):"—"})
+        ]),
+        el("p",{"class":"ris-nota","text": versT>0
+          ? euro(inCassaT)+" in cassa + "+euro(prelT)+" prelevati − "+euro(versT)+" versati"+
+            (Math.abs(rettT)>=0.005?". Comprende "+segnato(rettT)+" di rettifiche e bonus":"")+
+            ". Dice come vanno i soldi: rendimento sul versato "+(realeT>=0?"+":"")+((realeT/versT)*100).toFixed(1)+"%."
+          : "Registra il primo versamento per iniziare."})
+      ])
+    ]));
+
+    // Budget del mese: conta i versamenti su tutti e due i book.
+    var mese = versatoQuestoMese();
+    var restaMese = Math.max(0, S.budgetMese - mese);
     var barraM = el("div",{"class":"barra"});
     barraM.appendChild(el("div",{"class":"barra-piena","style":{
       width: Math.min(100, S.budgetMese>0 ? (mese/S.budgetMese)*100 : 0)+"%",
       background: mese >= S.budgetMese ? "#D4635F" : "#C8873A"
     }}));
-
     pag.appendChild(el("div",{"class":"tetto"},[
       el("div",{"class":"tetto-riga"},[
-        el("span",{"class":"etich","text":"Versato questo mese"}),
+        el("span",{"class":"etich","text":codiciAttivi?"Versato questo mese · Sportium + Sportbet":"Versato questo mese"}),
         el("span",{"class":"tab","style":{fontSize:"12px",
           color: mese >= S.budgetMese ? "#D4635F" : "#8C9BA8"},
           "text": euro(mese)+" di "+euro(S.budgetMese)})
@@ -2628,30 +2775,110 @@ textarea{width:100%;min-height:78px;resize:vertical}
         : "Restano "+euro(restaMese)+" di budget questo mese."})
     ]));
 
-    // Riepilogo mese per mese
-    var mesi = codiciAttivi ? riepilogoMensileDueCasse() : riepilogoMensile();
-    if(mesi.length){
-      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px","marginBottom":"10px"},
-        "text":codiciAttivi ? "Riepilogo mensile \u00B7 Sportium + Sportbet" : "Riepilogo mensile"}));
-      var listaMesi = el("div");
-      mesi.forEach(function(m, idx){
-        listaMesi.appendChild(el("div",{"class":"mese"+(idx===0?" mese-corrente":"")},[
-          el("div",{"class":"mese-top"},[
-            el("span",{"text":nomeMese(m.mese)}),
-            el("span",{"class":"tab","style":{fontWeight:"600",
-              color: m.n===0 ? "#4A5A68" : m.profitto>=0 ? "#4FB286" : "#D4635F"},
-              "text": m.n===0 ? "\u2014" : segnato(m.profitto)})
-          ]),
-          el("div",{"class":"mese-riga"},[
-            el("span",{"text": m.n
-              ? m.n+(m.n===1?" ticket reale":" ticket reali")+" \u00B7 ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"
-              : "nessuna giocata"}),
-            el("span",{"class":"tab","text":testoMovimenti(m)})
-          ]),
-          codiciAttivi && m.n ? el("div",{"class":"mese-riga"},[el("span",{"class":"tab","text":m.perBook}),el("span")]) : null
+    // 3. Movimenti: un solo registro per i due book.
+    pag.appendChild(el("p",{"class":"etich cassa-sez","text":"Movimenti"}));
+    var inImporto = el("input",{"type":"number","inputmode":"decimal","step":"10","class":"tab","placeholder":"10.00","id":"movimento-importo"});
+    var inDataV = el("input",{"type":"date","value":oggi(),"aria-label":"Data del movimento"});
+    var book = CASSA_UI.book;
+    function registraMovimento(tipo){
+      var v = parseFloat(inImporto.value);
+      if(!v || v<=0) return;
+      var data = inDataV.value||oggi();
+      if(tipo==="sposta"){
+        var base=Date.now(), verso=altroBook(book);
+        nuovoMovimento(book,"rettifica",-v,data,NOTA_SPOSTAMENTO+": verso "+NOMI_BOOK[verso],base);
+        nuovoMovimento(verso,"rettifica",v,data,NOTA_SPOSTAMENTO+": da "+NOMI_BOOK[book],base+1);
+      }else if(tipo==="bonus"){
+        nuovoMovimento(book,"rettifica",v,data,"Bonus "+NOMI_BOOK[book]);
+      }else{
+        nuovoMovimento(book,tipo,v,data);
+      }
+      salva(); disegna();
+    }
+    function sceltaBook(cassa){
+      return el("button",{"type":"button","class":"scelta"+(book===cassa?" on":""),"aria-pressed":book===cassa?"true":"false",
+        "text":NOMI_BOOK[cassa],"onclick":function(){ CASSA_UI.book=cassa; disegna(); }});
+    }
+    pag.appendChild(el("div",{"class":"gruppo cassa-movimento"},[
+      el("p",{"class":"cassa-campo","text":"Book"}),
+      el("div",{"class":"due","style":{marginBottom:"12px"}},[sceltaBook("PRINCIPALE"),sceltaBook("CODICI")]),
+      el("label",{"for":"movimento-importo","text":"Importo e data"}),
+      el("div",{"class":"due","style":{marginBottom:"12px"}},[ inImporto, inDataV ]),
+      el("div",{"class":"due cassa-tasti"},[
+        el("button",{"type":"button","class":"secondario","text":"Versamento","onclick":function(){ registraMovimento("versamento"); }}),
+        el("button",{"type":"button","class":"secondario","text":"Prelievo","onclick":function(){ registraMovimento("prelievo"); }}),
+        el("button",{"type":"button","class":"secondario","text":"Sposta su "+NOMI_BOOK[altroBook(book)],"onclick":function(){ registraMovimento("sposta"); }}),
+        el("button",{"type":"button","class":"secondario","text":"Bonus","onclick":function(){ registraMovimento("bonus"); }})
+      ])
+    ]));
+
+    var tuttiMov = S.versamenti.slice().sort(function(a,b){
+      if(a.data!==b.data) return a.data < b.data ? 1 : -1;
+      return (Number(b.id)||0)-(Number(a.id)||0);
+    });
+    if(tuttiMov.length){
+      var mostrati = CASSA_UI.tutti ? tuttiMov : tuttiMov.slice(0,MOVIMENTI_IN_VISTA);
+      var lista = el("ul",{"class":"cassa-registro"});
+      mostrati.forEach(function(v){
+        var et=etichettaMovimento(v), importo=importoCassa(v), nota=String(v.nota||"");
+        lista.appendChild(el("li",{"class":"vers"},[
+          el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},
+            "text":breve(v.data)+" · "+et+(codiciAttivi?" · "+NOMI_BOOK[cassaDiMovimento(v)]:"")}),
+          el("span",{"class":"tab","style":{fontSize:"14px",color:importo>=0?"#E8EDF2":"#E07A75"},"text":segnato(importo)}),
+          (et==="rettifica"||et==="bonus") && nota
+            ? el("span",{"class":"mov-nota","text":nota.length>90?nota.slice(0,88)+"…":nota})
+            : null,
+          el("span",{"class":"vers-azioni"},[codiciAttivi?tastoCambiaCassa(v):null,
+            el("button",{"type":"button","text":"Elimina","style":{fontSize:"11px","color":"#8C9BA8",
+              "textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})])
         ]));
       });
-      pag.appendChild(listaMesi);
+      pag.appendChild(lista);
+      if(tuttiMov.length>MOVIMENTI_IN_VISTA){
+        pag.appendChild(el("button",{"type":"button","class":"secondario","style":{marginTop:"8px"},
+          "text":CASSA_UI.tutti?"Mostra solo gli ultimi "+MOVIMENTI_IN_VISTA:"Mostra tutti i movimenti ("+tuttiMov.length+")",
+          "onclick":function(){ CASSA_UI.tutti=!CASSA_UI.tutti; disegna(); }}));
+      }
+    }
+
+    // 4. Mese per mese: giocate, movimenti e saldo a fine mese separati.
+    var mesi = codiciAttivi ? riepilogoMensileDueCasse() : riepilogoMensile();
+    if(mesi.length){
+      pag.appendChild(el("p",{"class":"etich cassa-sez","text":codiciAttivi ? "Mese per mese · Sportium + Sportbet" : "Mese per mese"}));
+      var oggiIso = oggi();
+      mesi.forEach(function(m, idx){
+        var mov = cent(m.versato - m.prelevato + m.rettifica);
+        var fine = ultimoGiornoMese(m.mese), finora = fine >= oggiIso, dataSaldo = finora ? oggiIso : fine;
+        function voce(titolo, cifra, colore, nota){
+          return el("div",{"class":"riep-voce"},[
+            el("div",{"class":"riep-voce-top"},[el("span",{"text":titolo}),
+              el("span",{"class":"tab","style":{color:colore||""},"text":cifra})]),
+            el("p",{"class":"riep-voce-nota","text":nota})
+          ]);
+        }
+        var saldi = null;
+        if(!codiciAttivi) saldi = [["Saldo",saldoAl("PRINCIPALE",dataSaldo)]];
+        else if(fine >= INIZIO_CASSA_SPORTBET){
+          var sp=saldoAl("PRINCIPALE",dataSaldo), sb=saldoAl("CODICI",dataSaldo);
+          saldi = [["Sportium",sp],["Sportbet",sb],["Totale",sp+sb]];
+        }
+        pag.appendChild(el("div",{"class":"riep-mese"+(idx===0?" riep-corrente":""),"data-mese":m.mese},[
+          el("p",{"class":"riep-titolo","text":nomeMese(m.mese)}),
+          voce("Giocate", m.n ? segnato(m.profitto) : "—", m.n ? (m.profitto>=0?"#4FB286":"#D4635F") : "",
+            m.n ? m.n+(m.n===1?" ticket reale":" ticket reali")+" · ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"+(codiciAttivi&&m.perBook?" · "+m.perBook:"")
+                : "nessuna giocata"),
+          voce("Movimenti", (m.versato||m.prelevato||m.rettifica) ? segnato(mov) : "—", "",
+            testoMovimenti(m) || "nessun movimento"),
+          saldi
+            ? el("div",{"class":"riep-saldi"},[
+                el("p",{"class":"riep-voce-top","style":{margin:"0"}},[el("span",{"text":"Saldo a fine mese"+(finora?" (finora)":"")})]),
+                el("div",{"class":"riep-saldi-griglia"},saldi.map(function(s){
+                  return el("span",{"class":"tab"},[el("span",{"class":"riep-saldo-nome","text":s[0]}),el("span",{"text":euro(s[1])})]);
+                }))
+              ])
+            : el("p",{"class":"riep-nota","text":"Saldo a fine mese non disponibile: fino al 16/10/2026 Sportium e Sportbet erano un'unica cassa."})
+        ]));
+      });
     }
 
     // Riepilogo giorno per giorno: stesso schema del mensile, ma con vinte/
@@ -2733,49 +2960,6 @@ textarea{width:100%;min-height:78px;resize:vertical}
         listaGiorni.appendChild(el("div",{"class":"gruppo-mese"},[testa, corpo]));
       });
       pag.appendChild(listaGiorni);
-    }
-
-    // Nuovo versamento
-    var inImporto = el("input",{"type":"number","inputmode":"decimal","step":"10",
-      "class":"tab","placeholder":"100.00"});
-    var inDataV = el("input",{"type":"date","value":oggi()});
-
-    function registraMovimento(tipo){
-      var v = parseFloat(inImporto.value);
-      if(!v || v<=0) return;
-      S.versamenti.push({ id:Date.now(), data:inDataV.value||oggi(),
-        importo:v, tipoMovimento:tipo, cloudDirty:true });
-      salva(); disegna();
-    }
-    pag.appendChild(el("div",{"class":"gruppo"},[
-      el("label",{"text":"Nuovo movimento \u00B7 cassa Sportium"}),
-      el("p",{"class":"avviso","style":{margin:"0 0 10px"},"text":"Per versare o prelevare su Sportbet usa la scheda Codici."}),
-      el("div",{"class":"due","style":{marginBottom:"12px"}},[ inImporto, inDataV ]),
-      el("div",{"class":"due"},[
-        el("button",{"class":"principale","text":"Registra versamento","onclick":function(){ registraMovimento("versamento"); }}),
-        el("button",{"class":"secondario","text":"Registra prelievo","onclick":function(){ registraMovimento("prelievo"); }})
-      ])
-    ]));
-
-    // Storico versamenti
-    var movPrincipali = movimentiCassa();
-    if(movPrincipali.length){
-      var lista = el("ul",{"style":{marginTop:"8px"}});
-      movPrincipali.slice().sort(function(a,b){
-        return a.data < b.data ? 1 : -1;
-      }).forEach(function(v){
-        lista.appendChild(el("li",{"class":"vers"},[
-          el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},
-            "text":breve(v.data)+" · "+tipoMovimento(v)}),
-          el("span",{"class":"tab","style":{fontSize:"14px"},
-            "text":tipoMovimento(v)==="versamento" ? euro(v.importo) : segnato(importoCassa(v))}),
-          el("span",{"class":"vers-azioni"},[tastoCambiaCassa(v),
-            el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E",
-              "textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})])
-        ]));
-      });
-      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"24px"},"text":"Storico movimenti"}));
-      pag.appendChild(lista);
     }
 
     // Tetto ai versamenti del mese
@@ -3041,7 +3225,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         (cc.versato||cc.prelevato||cc.spostati
           ? "Versati "+euro(cc.versato)+(cc.prelevato?" · prelevati "+euro(cc.prelevato):"")+
             (cc.spostati?" · arrivati dalla principale "+euro(cc.spostati):"")+" · risultato "+segnato(cc.reale)
-          : "Sposta o versa i primi soldi per i codici qui sotto.")+
+          : "Sposta o versa i primi soldi per i codici dalla scheda Cassa.")+
         (cc.impegnato>0?" · "+euro(cc.impegnato)+" in gioco":"")})
     ]));
 
@@ -3162,42 +3346,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
       pag.appendChild(el("p",{"class":"avviso","text":"Nessun codice registrato oggi."}));
     }
 
-    // Movimenti della cassa codici. "Sposta dalla principale" scrive due
-    // rettifiche: i soldi escono da una cassa ed entrano nell'altra, senza
-    // contare come versamenti nuovi.
-    var inImporto=el("input",{"type":"number","inputmode":"decimal","step":"5","class":"tab","placeholder":"20.00"});
-    function movimento(tipo){
-      var v=parseFloat(inImporto.value);
-      if(!v || v<=0) return;
-      var base=Date.now();
-      if(tipo==="sposta"){
-        S.versamenti.push({id:base,data:oggi(),importo:-v,tipoMovimento:"rettifica",cassa:"PRINCIPALE",nota:NOTA_SPOSTAMENTO+": verso la cassa codici",cloudDirty:true});
-        S.versamenti.push({id:base+1,data:oggi(),importo:v,tipoMovimento:"rettifica",cassa:"CODICI",nota:NOTA_SPOSTAMENTO+": dalla cassa principale",cloudDirty:true});
-      }else{
-        S.versamenti.push({id:base,data:oggi(),importo:v,tipoMovimento:tipo,cassa:"CODICI",cloudDirty:true});
-      }
-      salva(); disegna();
-    }
+    // Dal 28/10/2026 versamenti, prelievi e spostamenti Sportbet stanno nel
+    // registro unico della scheda Cassa, insieme a quelli Sportium.
     pag.appendChild(el("div",{"class":"gruppo","style":{marginTop:"28px"}},[
-      el("label",{"text":"Soldi della cassa Sportbet"}),
-      el("div",{"style":{marginBottom:"10px"}},[inImporto]),
-      el("div",{"class":"tre"},[
-        el("button",{"class":"secondario","text":"Sposta dalla principale","onclick":function(){ movimento("sposta"); }}),
-        el("button",{"class":"secondario","text":"Versamento","onclick":function(){ movimento("versamento"); }}),
-        el("button",{"class":"secondario","text":"Prelievo","onclick":function(){ movimento("prelievo"); }})
-      ])
+      el("p",{"class":"avviso","style":{margin:"0 0 10px"},"text":"Versamenti, prelievi, spostamenti e bonus Sportbet si registrano nella scheda Cassa, sezione Movimenti."}),
+      el("button",{"type":"button","class":"secondario","text":"Vai ai movimenti Sportbet","onclick":function(){
+        CASSA_UI.book="CODICI"; S.vista="cassa"; disegna(); window.scrollTo(0,0); }})
     ]));
-    var movCodici=conCassa("CODICI",movimentiCassa);
-    if(movCodici.length){
-      pag.appendChild(el("ul",{"style":{marginTop:"8px"}},movCodici.slice().sort(function(a,b){return a.data<b.data?1:-1;}).map(function(v){
-        return el("li",{"class":"vers"},[
-          el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},"text":breve(v.data)+" · "+(tipoMovimento(v)==="rettifica"?"spostamento":tipoMovimento(v))}),
-          el("span",{"class":"tab","style":{fontSize:"14px"},"text":segnato(importoCassa(v))}),
-          el("span",{"class":"vers-azioni"},[tastoCambiaCassa(v),
-            el("button",{"text":"Elimina","style":{fontSize:"11px","color":"#6D7F8E","textDecoration":"underline"},"onclick":function(){void eliminaVersamento(v);}})])
-        ]);
-      })));
-    }
     return pag;
   }
 
