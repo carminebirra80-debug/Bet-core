@@ -184,16 +184,19 @@ function ultimeInviate(calls,table){
   // 5 (settembre) + 2 + 8 - 3 = 7. Le perdite di Rubino (-5) e Mercante (-4)
   // non ci sono piu': con loro sarebbe -2.
   clickNav(app,"Cassa");
-  assert.ok(app.textContent.includes("Hai versato €30,00, prelevato €15,00 e registrato rettifiche -€20,00; in cassa hai €7,00."),
-    "cassa attesa €7,00: "+app.textContent.match(/(Hai versato|Registra)[^.]*\./));
+  assert.ok(app.textContent.includes("€7,00 in cassa + €15,00 prelevati − €30,00 versati. Comprende -€20,00 di rettifiche e bonus."),
+    "cassa attesa €7,00: "+app.textContent.match(/[^.]*in cassa \+[^.]*\./));
+  assert.ok(findElement(app,x=>x.className==="cassa-book").textContent.startsWith("Sportium€7,00"),"una sola scheda, Sportium");
+  assert.ok(!findElement(app,x=>x.className==="cassa-totali"),"senza Sportbet niente totali dei due book");
   // Risultato reale = cassa + prelevato - versato = 7 + 15 - 30 = -8, anche
   // se le giocate fanno +12: prima l'app mostrava +12 come "Risultato reale".
-  let verdetto=findElement(app,x=>x.className==="verdetto");
+  let verdetto=findElement(app,x=>String(x.className).indexOf("verdetto-soldi")>=0);
   assert.ok(verdetto,"riquadro del risultato non trovato");
   let tv=verdetto.textContent;
-  assert.ok(tv.includes("Risultato reale-€8,00"),"risultato reale atteso -€8,00: "+tv);
-  assert.ok(tv.includes("Rendimento sul versato: -26.7%"),"rendimento atteso -26.7%: "+tv);
-  assert.ok(tv.includes("Dalle giocate: +€12,00 · ROI +85.7% su €14,00 puntati"),"riga giocate attesa: "+tv);
+  assert.ok(tv.includes("Soldi veri-€8,00"),"risultato reale atteso -€8,00: "+tv);
+  assert.ok(tv.includes("rendimento sul versato -26.7%"),"rendimento atteso -26.7%: "+tv);
+  assert.ok(tv.includes("Dalle giocate+€12,00"),"riga giocate attesa: "+tv);
+  assert.ok(tv.includes("€14,00 puntati · ROI +85.7%"),"puntato e ROI delle giocate: "+tv);
   let intest=app.children[0].textContent;
   assert.ok(intest.includes("€7,00-€8,00"),"in alto accanto alla cassa va il risultato reale: "+intest.slice(0,60));
   assert.ok(app.textContent.includes("versati €30,00 · prelevati €15,00"),"il riepilogo deve mostrare il prelievo di settembre");
@@ -201,15 +204,15 @@ function ultimeInviate(calls,table){
 
   // Un nuovo prelievo dal modulo toglie soldi dalla cassa ma non cambia il
   // risultato reale: sono soldi incassati, non persi.
-  const inImporto=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="100.00");
-  const bPrelievo=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra prelievo");
+  const inImporto=findElement(app,x=>x.tagName==="INPUT"&&x.id==="movimento-importo");
+  const bPrelievo=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Prelievo");
   assert.ok(inImporto&&bPrelievo,"modulo prelievo non trovato");
   inImporto.value="5"; bPrelievo.listeners.click();
   intest=app.children[0].textContent;
   assert.ok(intest.includes("€2,00-€8,00"),"dopo il prelievo cassa €2,00 e risultato ancora -€8,00: "+intest.slice(0,60));
   const mov=JSON.parse(storage["registro-tipster-v1"]).versamenti;
   assert.ok(mov.some(v=>v.tipoMovimento==="prelievo"&&v.importo===5&&v.cloudDirty),"prelievo da salvare e mandare al cloud");
-  assert.ok(app.textContent.includes("Settembre 2026+€5,00"),"settembre deve restare nel riepilogo mensile con il suo risultato");
+  assert.ok(app.textContent.includes("Settembre 2026Giocate+€5,00"),"settembre deve restare nel riepilogo mensile con il suo risultato");
 
   // Rendimento: scheda unica e riepilogo per tipo di mercato, ordinato per profitto.
   clickNav(app,"Rendimento");

@@ -183,8 +183,9 @@ function ultimeInviate(calls,table){
   assert.ok(app.textContent.includes("BET Core")&&app.textContent.includes("Libera"),"schede per origine attese");
   assert.ok(app.textContent.includes("Per tipo di mercato"));
   clickNav(app,"Cassa");
-  assert.ok(app.textContent.includes("Riepilogo mensile"));
-  assert.ok(app.textContent.includes("Hai versato €10,00 e registrato rettifiche +€3,50; in cassa hai €30,33."),
+  // Cassa riorganizzata (28/10/2026): mese per mese e risultato in due righe.
+  assert.ok(app.textContent.includes("Mese per mese"));
+  assert.ok(app.textContent.includes("€30,33 in cassa + €0,00 prelevati − €10,00 versati. Comprende +€3,50 di rettifiche e bonus"),
     "La rettifica deve aumentare la cassa senza essere mostrata come versamento");
   assert.ok(app.textContent.includes("rettifica +€3,50"),
     "La rettifica deve essere riconoscibile nei riepiloghi");

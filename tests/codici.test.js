@@ -197,26 +197,31 @@ function ultimeInviate(calls,table){
   assert.ok(cassaInAlto().includes("Inserisci la quota del codice"));
   assert.equal(JSON.parse(storage["registro-tipster-v1"]).giocate.filter(g=>g.origine==="CODICI").length,4);
 
-  // Cassa codici: si parte spostando 20 € dalla principale.
+  // Cassa codici: si parte spostando 20 € dalla principale. Dal 28/10/2026
+  // i movimenti dei due book si registrano tutti dalla scheda Cassa.
   clickNav(app,"Codici");
-  const importo=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="20.00");
+  assert.ok(findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Vai ai movimenti Sportbet"),"dai Codici si arriva ai movimenti");
+  clickNav(app,"Cassa");
+  const importo=findElement(app,x=>x.tagName==="INPUT"&&x.id==="movimento-importo");
   importo.value="20";
-  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Sposta dalla principale").listeners.click();
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Sposta su Sportbet").listeners.click();
   // Principale: 55 - 20 = 35. Codici: 20 versati, nessuna giocata chiusa.
   assert.ok(!cassaInAlto().includes("dal massimo documentato"),"spostare soldi non e' un calo della cassa: "+cassaInAlto());
   assert.ok(cassaInAlto().includes("€35,00+€5,00"),"la principale scende di 20, il risultato reale resta +5: "+cassaInAlto().slice(0,40));
-  let verd=findElement(app,x=>x.className==="verdetto").textContent;
-  assert.ok(verd.includes("€20,00"),"la cassa codici sale a 20: "+verd);
-  assert.ok(verd.includes("€6,00 in gioco"),"1+3+1+1 in gioco: "+verd);
-  assert.ok(verd.includes("risultato +€0,00"),"spostare soldi non e' un risultato: "+verd);
   const mov=JSON.parse(storage["registro-tipster-v1"]).versamenti;
   assert.ok(mov.some(v=>v.cassa==="CODICI"&&v.importo===20&&v.tipoMovimento==="rettifica"));
   // Lo spostamento fra casse e' una coppia di righe: niente tasto per
   // spostarne una sola nell'altra cassa (20/10/2026).
-  const rigaSpost=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("spostamento"));
-  assert.ok(rigaSpost,"spostamento nella lista dei movimenti codici");
+  const rigaSpost=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("spostamento · Sportbet"));
+  assert.ok(rigaSpost,"spostamento nel registro dei movimenti");
   assert.ok(!findElement(rigaSpost,x=>x.tagName==="BUTTON"&&/^Sposta in/.test(x.textContent)),"niente tasto Sposta sullo spostamento");
+  assert.ok(findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes("spostamento · Sportium-€20,00")),"l'altra meta' dello spostamento");
   assert.ok(mov.some(v=>v.cassa==="PRINCIPALE"&&v.importo===-20&&v.tipoMovimento==="rettifica"));
+  clickNav(app,"Codici");
+  let verd=findElement(app,x=>x.className==="verdetto").textContent;
+  assert.ok(verd.includes("€20,00"),"la cassa codici sale a 20: "+verd);
+  assert.ok(verd.includes("€6,00 in gioco"),"1+3+1+1 in gioco: "+verd);
+  assert.ok(verd.includes("risultato +€0,00"),"spostare soldi non e' un risultato: "+verd);
 
   // Chiusura direttamente dalla lista: 521267 vinto (3 x 7.85 - 3 = 20.55).
   const rigaVinta=findElement(app,x=>x.tagName==="LI"&&x.className==="codici-voce"&&x.textContent.includes("521267"));
@@ -238,13 +243,18 @@ function ultimeInviate(calls,table){
 
   // Cassa: il totale delle due casse. Principale 35, codici 39,55.
   clickNav(app,"Cassa");
-  const tot=findElement(app,x=>String(x.className).indexOf("totale-casse")>=0);
-  assert.ok(tot,"riquadro del totale mancante");
-  const tt=tot.textContent;
-  assert.ok(tt.includes("In cassa€35,00€39,55€74,55"),"totale in cassa: "+tt);
-  assert.ok(tt.includes("Versato€50,00€0,00€50,00"),"totale versato: "+tt);
+  // Dal 28/10/2026: una scheda per book, poi i totali.
+  const scheda=b=>findElement(app,x=>x.className==="cassa-book"&&x.attributes["data-book"]===b);
+  assert.ok(scheda("PRINCIPALE").textContent.startsWith("Sportium€35,00"),"Sportium: "+scheda("PRINCIPALE").textContent.slice(0,40));
+  const sb=scheda("CODICI").textContent;
+  assert.ok(sb.startsWith("Sportbet€39,55"),"Sportbet: "+sb.slice(0,40));
+  assert.ok(sb.includes("di cui €2,00 in gioco · liberi €37,55"),"in gioco e liberi: "+sb);
+  const tt=findElement(app,x=>x.className==="cassa-totali").textContent;
+  assert.ok(tt.includes("Totale€74,55")&&tt.includes("In gioco€2,00")&&tt.includes("Liberi€72,55"),"totali: "+tt);
   // Risultato: principale +5, codici +19,55 (lo spostamento non conta).
-  assert.ok(tt.includes("Risultato reale+€5,00+€19,55+€24,55"),"risultato totale: "+tt);
+  const ris=findElement(app,x=>String(x.className).indexOf("verdetto-soldi")>=0).textContent;
+  assert.ok(ris.includes("Soldi veri+€24,55"),"risultato totale: "+ris);
+  assert.ok(ris.includes("€74,55 in cassa + €0,00 prelevati − €50,00 versati"),"la formula si legge: "+ris);
 
   // Riepilogo giornaliero delle due casse (v4.38). Il 16/10: principale +5
   // (Inter - Roma, Sportium) e codici -1 (111111, Sportbet) = +4. Oggi solo
@@ -265,13 +275,16 @@ function ultimeInviate(calls,table){
 
   // Riepilogo mensile delle due casse: ottobre 2026 = Sportium +5 e
   // Sportbet -1, piu' il codice vinto di oggi se il test gira in ottobre.
-  assert.ok(app.textContent.includes("Riepilogo mensile · Sportium + Sportbet"),"titolo del mensile a due casse");
-  const ottobre=findElement(app,x=>x.className&&String(x.className).indexOf("mese")===0&&x.children.length>=3&&
-    x.children[0].textContent.indexOf("Ottobre 2026")===0);
+  assert.ok(app.textContent.includes("Mese per mese · Sportium + Sportbet"),"titolo del mensile a due casse");
+  const ottobre=findElement(app,x=>String(x.className).indexOf("riep-mese")===0&&x.attributes["data-mese"]==="2026-10");
   assert.ok(ottobre,"riga di ottobre 2026 mancante");
   const inOttobre=oggiIso.slice(0,7)==="2026-10";
-  assert.equal(ottobre.children[0].textContent,"Ottobre 2026"+(inOttobre?"+€24,55":"+€4,00"),"totale del mese: "+ottobre.textContent);
-  assert.equal(ottobre.children[2].textContent,"Sportium +€5,00 · Sportbet "+(inOttobre?"+€19,55":"-€1,00"),"mese per bookmaker: "+ottobre.textContent);
+  assert.equal(ottobre.children[0].textContent,"Ottobre 2026");
+  const giocate=ottobre.children[1].textContent;
+  assert.ok(giocate.startsWith("Giocate"+(inOttobre?"+€24,55":"+€4,00")),"totale del mese: "+giocate);
+  assert.ok(giocate.endsWith("Sportium +€5,00 · Sportbet "+(inOttobre?"+€19,55":"-€1,00")),"mese per bookmaker: "+giocate);
+  // Lo spostamento di oggi si annulla nei movimenti del mese.
+  assert.ok(ottobre.children[2].textContent.startsWith("Movimenti"),"movimenti del mese: "+ottobre.children[2].textContent);
 
   // Registro: i codici non lo intasano, compaiono solo col loro filtro.
   clickNav(app,"Registro");
@@ -310,7 +323,7 @@ function ultimeInviate(calls,table){
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
-  assert.ok(app.textContent.includes("BET Core versione 4.52"),"la versione si vede in fondo a Dati");
+  assert.ok(app.textContent.includes("BET Core versione 4.53"),"la versione si vede in fondo a Dati");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
   const up=ultimeInviate(calls,"picks");
