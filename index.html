@@ -3292,7 +3292,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       var g=giorno(String(v.data||"")), nota=String(v.nota||"");
       g.netto+=importoCassa(v);
       somma(g,"schedine",numeroNota(nota,/(\d+)\s+schedin/i));
-      somma(g,"vinte",numeroNota(nota,/(\d+)\s+vint[ei]\b/i));
+      somma(g,"vinte",numeroNota(nota,/(\d+)\s+vint[aei]\b/i));
       somma(g,"giocati",numeroNota(nota,/giocati\s+\u20AC?\s*([\d.,]+)/i));
       somma(g,"vinti",numeroNota(nota,/vinti\s+\u20AC?\s*([\d.,]+)/i));
     });
