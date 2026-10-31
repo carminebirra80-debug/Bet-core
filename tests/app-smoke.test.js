@@ -194,14 +194,20 @@ function ultimeInviate(calls,table){
   // raggrupparli come una sola ipotesi e' corretto solo nelle metriche Core.
   assert.ok(app.textContent.includes("3 ticket reali · ROI +259%"),
     "Il riepilogo mensile deve contare i ticket reali, non i gruppi analitici");
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Giorni").listeners.click();
   assert.ok(app.textContent.includes("2 vinte · ROI +58%"),
     "Il riepilogo giornaliero deve contare entrambi i ticket dello stesso mercato");
 
   // I limiti di gioco servivano alla puntata consigliata, tolta dal modulo
   // Nuova: dal 17/10/2026 in Cassa resta solo il tetto ai versamenti.
   const testoCassa=app.textContent;
-  assert.ok(testoCassa.includes("Tetto ai versamenti del mese"),
+  // Dal 31/10/2026 il tetto si imposta in Dati; in Cassa resta la barra.
+  assert.ok(!testoCassa.includes("Tetto ai versamenti del mese")&&testoCassa.includes("Versato questo mese"),
+    "in Cassa la barra del budget, non il campo del tetto");
+  clickNav(app,"Dati");
+  assert.ok(app.textContent.includes("Tetto ai versamenti del mese"),
     "Il budget mensile deve dichiarare che riguarda i versamenti, non le giocate");
+  clickNav(app,"Cassa");
   assert.ok(!testoCassa.includes("Limiti di gioco")&&!findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="% della cassa"),
     "i limiti di gioco non hanno piu' effetto e non vanno mostrati");
 

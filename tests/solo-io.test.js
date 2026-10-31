@@ -195,8 +195,8 @@ function ultimeInviate(calls,table){
   let tv=verdetto.textContent;
   assert.ok(tv.includes("Soldi veri-€8,00"),"risultato reale atteso -€8,00: "+tv);
   assert.ok(tv.includes("rendimento sul versato -26.7%"),"rendimento atteso -26.7%: "+tv);
-  assert.ok(tv.includes("Dalle giocate+€12,00"),"riga giocate attesa: "+tv);
-  assert.ok(tv.includes("€14,00 puntati · ROI +85.7%"),"puntato e ROI delle giocate: "+tv);
+  // Dal 31/10/2026 il risultato delle giocate sta nello storico mese per mese.
+  assert.ok(!tv.includes("Dalle giocate"),"in cima solo i soldi veri: "+tv);
   let intest=app.children[0].textContent;
   assert.ok(intest.includes("€7,00-€8,00"),"in alto accanto alla cassa va il risultato reale: "+intest.slice(0,60));
   assert.ok(app.textContent.includes("versati €30,00 · prelevati €15,00"),"il riepilogo deve mostrare il prelievo di settembre");
@@ -204,6 +204,7 @@ function ultimeInviate(calls,table){
 
   // Un nuovo prelievo dal modulo toglie soldi dalla cassa ma non cambia il
   // risultato reale: sono soldi incassati, non persi.
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra movimento").listeners.click();
   const inImporto=findElement(app,x=>x.tagName==="INPUT"&&x.id==="movimento-importo");
   const bPrelievo=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Prelievo");
   assert.ok(inImporto&&bPrelievo,"modulo prelievo non trovato");

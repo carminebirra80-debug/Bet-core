@@ -102,6 +102,7 @@ function gruppi(app){
   await new Promise(r=>setTimeout(r,5));
   const app=document.getElementById("app");
   clickNav(app,"Cassa");
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Giorni").listeners.click();
   let g=gruppi(app);
   assert.equal(g.length,2,"un gruppo per mese");
   const [ott,set]=g;
