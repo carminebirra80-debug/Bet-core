@@ -202,6 +202,9 @@ function ultimeInviate(calls,table){
   clickNav(app,"Codici");
   assert.ok(findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Vai ai movimenti Sportbet"),"dai Codici si arriva ai movimenti");
   clickNav(app,"Cassa");
+  // Dal 31/10/2026 il modulo dei movimenti si apre con un tasto.
+  assert.ok(!findElement(app,x=>x.tagName==="INPUT"&&x.id==="movimento-importo"),"modulo chiuso di serie");
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra movimento").listeners.click();
   const importo=findElement(app,x=>x.tagName==="INPUT"&&x.id==="movimento-importo");
   importo.value="20";
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Sposta su Sportbet").listeners.click();
@@ -260,7 +263,11 @@ function ultimeInviate(calls,table){
   // (Inter - Roma, Sportium) e codici -1 (111111, Sportbet) = +4. Oggi solo
   // il codice vinto,
   // +20,55; lo spostamento di 20 fra le casse si annulla e non compare.
+  // Storico: di serie i mesi; i giorni con un tocco (31/10/2026).
+  assert.ok(!app.textContent.includes("Riepilogo giornaliero"),"di serie lo storico mostra i mesi");
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Giorni").listeners.click();
   assert.ok(app.textContent.includes("Riepilogo giornaliero · Sportium + Sportbet"),"titolo del riepilogo a due casse");
+  assert.ok(!app.textContent.includes("Mese per mese"),"un elenco solo alla volta");
   const giorno=d=>findElement(app,x=>x.className&&String(x.className).indexOf("mese")===0&&x.children.length>=3&&
     x.children[0].textContent.indexOf(d)===0);
   const ieri=giorno("16/10");
@@ -275,6 +282,7 @@ function ultimeInviate(calls,table){
 
   // Riepilogo mensile delle due casse: ottobre 2026 = Sportium +5 e
   // Sportbet -1, piu' il codice vinto di oggi se il test gira in ottobre.
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Mesi").listeners.click();
   assert.ok(app.textContent.includes("Mese per mese · Sportium + Sportbet"),"titolo del mensile a due casse");
   const ottobre=findElement(app,x=>String(x.className).indexOf("riep-mese")===0&&x.attributes["data-mese"]==="2026-10");
   assert.ok(ottobre,"riga di ottobre 2026 mancante");
@@ -323,7 +331,7 @@ function ultimeInviate(calls,table){
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
-  assert.ok(app.textContent.includes("BET Core versione 4.55"),"la versione si vede in fondo a Dati");
+  assert.ok(app.textContent.includes("BET Core versione 4.56"),"la versione si vede in fondo a Dati");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
   const up=ultimeInviate(calls,"picks");

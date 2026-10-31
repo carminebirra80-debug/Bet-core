@@ -107,6 +107,9 @@ vm.runInNewContext(html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("<
 const scheda=(app,b)=>findElement(app,x=>x.className==="cassa-book"&&x.attributes["data-book"]===b);
 const salvati=()=>JSON.parse(storage["registro-tipster-v1"]).versamenti;
 function scriviSaldo(app,b,valore){
+  // Dal 31/10/2026 il confronto col sito si apre con un tocco.
+  const apri=findElement(scheda(app,b),x=>x.tagName==="BUTTON"&&x.textContent==="Confronta col saldo del sito");
+  if(apri) apri.listeners.click();
   const campo=findElement(scheda(app,b),x=>x.tagName==="INPUT");
   campo.value=valore; campo.listeners.change();
 }
@@ -126,6 +129,9 @@ function scriviSaldo(app,b,valore){
   const tetto=findElement(app,x=>x.className==="tetto").textContent;
   assert.ok(tetto.includes("Versato questo mese · Sportium + Sportbet€30,00 di €50,00"),tetto);
 
+  // Di serie il confronto col sito e' chiuso: solo il tasto per aprirlo.
+  assert.equal(findElement(scheda(app,"CODICI"),x=>x.tagName==="INPUT"),null,"campo del sito chiuso di serie");
+  assert.ok(findElement(scheda(app,"CODICI"),x=>x.tagName==="BUTTON"&&x.textContent==="Confronta col saldo del sito"),"tasto per aprirlo");
   // Confronto col sito: il sito di Sportbet mostra 22,70 liberi, l'app 23,00.
   scriviSaldo(app,"CODICI","22,70");
   let testo=scheda(app,"CODICI").textContent;
@@ -145,7 +151,7 @@ function scriviSaldo(app,b,valore){
   assert.equal(rett.nota,"Rettifica: arrotondamento (sul sito €22,70, in app €23,00)","il motivo scelto resta nella nota");
   assert.equal(rett.cloudDirty,true,"la rettifica va al cloud");
   assert.ok(scheda(app,"CODICI").textContent.startsWith("Sportbet€24,70"),"dopo la rettifica: "+scheda(app,"CODICI").textContent.slice(0,40));
-  assert.equal(findElement(scheda(app,"CODICI"),x=>x.tagName==="INPUT").value,"","il campo si svuota");
+  assert.equal(findElement(scheda(app,"CODICI"),x=>x.tagName==="INPUT"),null,"dopo la rettifica il confronto si richiude");
 
   // Un centesimo di differenza torna; una scritta non numerica no.
   scriviSaldo(app,"PRINCIPALE","65,01");
@@ -157,11 +163,14 @@ function scriviSaldo(app,b,valore){
 
   // Risultato: giocate +15 (10 + 5); soldi veri 89,70 + 8 prelevati - 83 versati = +14,70.
   const ris=findElement(app,x=>String(x.className).indexOf("verdetto-soldi")>=0).textContent;
-  assert.ok(ris.includes("Dalle giocate+€15,00"),ris);
+  assert.ok(!ris.includes("Dalle giocate"),"il risultato delle giocate sta nello storico: "+ris);
   assert.ok(ris.includes("Soldi veri+€14,70"),ris);
   assert.ok(ris.includes("€89,70 in cassa + €8,00 prelevati − €83,00 versati. Comprende -€0,30 di rettifiche e bonus."),ris);
 
-  // Movimenti: si sceglie il book, il bonus e' una rettifica con nota.
+  // Movimenti: il modulo e' chiuso finche' non serve (31/10/2026).
+  assert.equal(findElement(app,x=>x.tagName==="INPUT"&&x.id==="movimento-importo"),null,"modulo chiuso di serie");
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra movimento").listeners.click();
+  // Si sceglie il book, il bonus e' una rettifica con nota.
   findElement(app,x=>x.tagName==="BUTTON"&&x.className.indexOf("scelta")===0&&x.textContent==="Sportbet").listeners.click();
   const importo=findElement(app,x=>x.tagName==="INPUT"&&x.id==="movimento-importo");
   importo.value="1";
@@ -171,9 +180,9 @@ function scriviSaldo(app,b,valore){
   assert.ok(bonus&&bonus.cassa==="CODICI"&&bonus.importo===1&&bonus.tipoMovimento==="rettifica","bonus salvato: "+JSON.stringify(bonus));
   assert.ok(findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.startsWith(oggiIso.slice(8,10)+"/"+oggiIso.slice(5,7)+" · bonus · Sportbet+€1,00")),"il bonus si riconosce nel registro");
 
-  // Registro: 12 movimenti, se ne vedono 10; un tasto mostra tutto.
+  // Registro: 12 movimenti, se ne vedono 5; un tasto mostra tutto.
   const righe=()=>findElement(app,x=>x.className==="cassa-registro").children.length;
-  assert.equal(righe(),10,"di serie gli ultimi 10");
+  assert.equal(righe(),5,"di serie gli ultimi 5");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Mostra tutti i movimenti (12)").listeners.click();
   assert.equal(righe(),12,"poi tutti");
   assert.equal(findElement(app,x=>x.className==="cassa-registro").children[0].textContent.slice(0,5),
