@@ -2535,10 +2535,22 @@ textarea{width:100%;min-height:78px;resize:vertical}
         t.book[b]=(t.book[b]||0)+Number(g.profitto||0);
       });
     });
-    var ORDINE=["Sportium","Sportbet"];
+    // 31/10/2026: il riepilogo serale dei codici (rettifica "codici" sulla
+    // cassa Sportbet) e' un risultato di gioco, non un movimento: entra nel
+    // risultato del giorno e del mese e si toglie dalle rettifiche.
+    conCassa("CODICI",movimentiCassa).forEach(function(v){
+      if(etichettaMovimento(v)!=="codici") return;
+      var t=per[String(v.data||"").slice(0,lunghezza)]; if(!t) return;
+      var imp=importoCassa(v);
+      t.codici=(t.codici||0)+imp; t.rettifica-=imp;
+      t.book["Sportbet codici"]=(t.book["Sportbet codici"]||0)+imp;
+    });
+    var ORDINE=["Sportium","Sportbet","Sportbet codici"];
     return Object.keys(per).sort().reverse().map(function(d){
       var t=per[d];
       t.roi=t.giocato?(t.profitto/t.giocato)*100:0;
+      t.codici=cent(t.codici||0);
+      t.risultato=cent(t.profitto+t.codici);
       if(Math.abs(t.rettifica)<0.005) t.rettifica=0;
       t.perBook=Object.keys(t.book).sort(function(a,b){
         var ia=ORDINE.indexOf(a), ib=ORDINE.indexOf(b);
@@ -2919,6 +2931,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
         voce("Giocate", m.n ? segnato(m.profitto) : "—", m.n ? (m.profitto>=0?"#4FB286":"#D4635F") : "",
           m.n ? m.n+(m.n===1?" ticket reale":" ticket reali")+" · ROI "+(m.roi>=0?"+":"")+m.roi.toFixed(0)+"%"+(codiciAttivi&&m.perBook?" · "+m.perBook:"")
               : "nessuna giocata"),
+        m.codici ? voce("Codici Sportbet", segnato(m.codici), m.codici>=0?"#4FB286":"#D4635F",
+          "riepiloghi serali delle schedine codici") : null,
+        m.codici ? voce("Risultato del mese", segnato(m.risultato), m.risultato>=0?"#4FB286":"#D4635F",
+          "giocate + codici, tutti e due i book") : null,
         voce("Movimenti", (m.versato||m.prelevato||m.rettifica) ? segnato(mov) : "—", "",
           testoMovimenti(m) || "nessun movimento"),
         saldi
@@ -2950,8 +2966,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var listaGiorni = el("div");
     gruppi.forEach(function(k, gIdx){
       var tot = totaliMese[k] || {n:0,profitto:0,giocato:0};
+      var totRis = tot.risultato!=null ? tot.risultato : tot.profitto, totC = tot.codici||0;
       var aperto = Object.prototype.hasOwnProperty.call(aperti,k) ? !!aperti[k] : gIdx===0;
-      var nGiorni = perMese[k].filter(function(g){ return g.n>0; }).length;
+      var nGiorni = perMese[k].filter(function(g){ return g.n>0 || g.codici; }).length;
       var corpo = el("div",{"class":"gruppo-corpo","style":{display: aperto ? "" : "none"}});
       var freccia = el("span",{"class":"freccia","text": aperto ? "▾" : "▸"});
       var testa = el("button",{"type":"button","class":"gruppo-testa","aria-expanded": aperto ? "true" : "false",
@@ -2965,29 +2982,31 @@ textarea{width:100%;min-height:78px;resize:vertical}
         el("div",{"class":"mese-top"},[
           el("span",{"style":{color: gIdx===0 ? "var(--oro)" : ""}},[freccia, el("span",{"text":nomeMese(k)})]),
           el("span",{"class":"tab","style":{fontWeight:"600",
-            color: tot.n===0 ? "#4A5A68" : tot.profitto>=0 ? "#4FB286" : "#D4635F"},
-            "text": tot.n===0 ? "—" : segnato(tot.profitto)})
+            color: tot.n===0&&!totC ? "#4A5A68" : totRis>=0 ? "#4FB286" : "#D4635F"},
+            "text": tot.n===0&&!totC ? "—" : segnato(totRis)})
         ]),
         el("div",{"class":"mese-riga","style":{paddingLeft:"14px"}},[
-          el("span",{"text": tot.n
-            ? nGiorni+(nGiorni===1?" giorno":" giorni")+" di gioco · "+tot.n+(tot.n===1?" ticket":" ticket")+" · giocati "+euro(tot.giocato)
+          el("span",{"text": tot.n||totC
+            ? nGiorni+(nGiorni===1?" giorno":" giorni")+" di gioco · "+tot.n+(tot.n===1?" ticket":" ticket")+" · giocati "+euro(tot.giocato)+
+              (totC?" · codici "+segnato(totC):"")
             : "nessuna giocata"}),
           el("span")
         ])
       ]);
       perMese[k].forEach(function(g, idx){
+        var ris = g.risultato!=null ? g.risultato : g.profitto, haGioco = g.n>0 || !!g.codici;
         var dettaglio = g.n
           ? [g.vinte&&(g.vinte+(g.vinte===1?" vinta":" vinte")),
              g.perse&&(g.perse+(g.perse===1?" persa":" perse")),
              g.rimborsate&&(g.rimborsate+" rimb.")]
             .filter(Boolean).join(", ")
-          : "nessuna giocata";
+          : g.codici ? "solo codici" : "nessuna giocata";
         corpo.appendChild(el("div",{"class":"mese"+(gIdx===0&&idx===0?" mese-corrente":"")},[
           el("div",{"class":"mese-top"},[
             el("span",{"class":"tab","text":breve(g.giorno)}),
             el("span",{"class":"tab","style":{fontWeight:"600",
-              color: g.n===0 ? "#4A5A68" : g.profitto>=0 ? "#4FB286" : "#D4635F"},
-              "text": g.n===0 ? "—" : segnato(g.profitto)})
+              color: !haGioco ? "#4A5A68" : ris>=0 ? "#4FB286" : "#D4635F"},
+              "text": !haGioco ? "—" : segnato(ris)})
           ]),
           el("div",{"class":"mese-riga"},[
             el("span",{"text": g.n
@@ -2995,7 +3014,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
               : dettaglio}),
             el("span",{"class":"tab","text":testoMovimenti(g)})
           ]),
-          codiciAttivi && g.n ? el("div",{"class":"mese-riga"},[
+          codiciAttivi && haGioco ? el("div",{"class":"mese-riga"},[
             el("span",{"class":"tab","text":g.perBook}),
             el("span")
           ]) : null
