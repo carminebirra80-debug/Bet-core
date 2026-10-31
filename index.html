@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.53</title>
+<title>Registro BET Core v4.54</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -352,7 +352,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.53";
+  var VERSIONE = "4.54";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -2596,8 +2596,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // movimenti per i due book; il mese per mese con giocate, movimenti e saldo
   // a fine mese tenuti separati, perche' il risultato del mese non e' un saldo.
   var CASSA_UI = { book:"PRINCIPALE", tutti:false,
-    sito:{PRINCIPALE:"",CODICI:""}, motivo:{PRINCIPALE:"Bonus scaduto",CODICI:"Bonus scaduto"} };
-  var MOTIVI_RETTIFICA = ["Bonus scaduto","Arrotondamento","Movimento dimenticato","Altro"];
+    sito:{PRINCIPALE:"",CODICI:""}, motivo:{PRINCIPALE:"Bonus scaduto",CODICI:"Codici"} };
+  // 31/10/2026: "Codici" e' il risultato delle schedine codici del Veggente
+  // giocate su Sportbet senza registrarle una per una: a fine giornata si
+  // allinea l'app al saldo del sito e la differenza resta riconoscibile.
+  var MOTIVI_RETTIFICA = ["Codici","Bonus scaduto","Arrotondamento","Movimento dimenticato","Altro"];
   var NOMI_BOOK = { PRINCIPALE:"Sportium", CODICI:"Sportbet" };
   var MOVIMENTI_IN_VISTA = 10;
   function altroBook(cassa){ return cassa==="CODICI" ? "PRINCIPALE" : "CODICI"; }
@@ -2612,6 +2615,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(eSpostamento(v)) return "spostamento";
     var t=tipoMovimento(v);
     if(t==="rettifica" && /^bonus/i.test(String(v&&v.nota||""))) return "bonus";
+    if(t==="rettifica" && /^rettifica: codici/i.test(String(v&&v.nota||""))) return "codici";
     return t;
   }
 
@@ -2825,7 +2829,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           el("span",{"class":"tab","style":{fontSize:"13px","color":"#8C9BA8"},
             "text":breve(v.data)+" · "+et+(codiciAttivi?" · "+NOMI_BOOK[cassaDiMovimento(v)]:"")}),
           el("span",{"class":"tab","style":{fontSize:"14px",color:importo>=0?"#E8EDF2":"#E07A75"},"text":segnato(importo)}),
-          (et==="rettifica"||et==="bonus") && nota
+          (et==="rettifica"||et==="bonus"||et==="codici") && nota
             ? el("span",{"class":"mov-nota","text":nota.length>90?nota.slice(0,88)+"…":nota})
             : null,
           el("span",{"class":"vers-azioni"},[codiciAttivi?tastoCambiaCassa(v):null,

@@ -131,6 +131,11 @@ function scriviSaldo(app,b,valore){
   let testo=scheda(app,"CODICI").textContent;
   assert.ok(testo.includes("Sul sito hai €0,30 in meno rispetto all'app (confronto con i soldi liberi: €2,00 in gioco non sono nel saldo del sito)."),testo);
   const motivo=findElement(scheda(app,"CODICI"),x=>x.tagName==="SELECT");
+  // 31/10/2026: su Sportbet il motivo proposto e' "Codici" (risultato delle
+  // schedine codici non registrate una per una).
+  assert.equal(motivo.value,"Codici","su Sportbet il motivo di serie e' Codici");
+  assert.equal(motivo.children[0].textContent,"Codici","Codici e' fra i motivi");
+  assert.equal(findElement(scheda(app,"PRINCIPALE"),x=>x.tagName==="SELECT"),null,"su Sportium nessuna differenza, nessun motivo");
   motivo.value="Arrotondamento"; motivo.listeners.change.call(motivo);
   findElement(scheda(app,"CODICI"),x=>x.tagName==="BUTTON"&&x.textContent==="Allinea l'app al sito (rettifica -€0,30)").listeners.click();
   const rett=salvati().find(v=>v.tipoMovimento==="rettifica");
@@ -189,6 +194,18 @@ function scriviSaldo(app,b,valore){
   clickNav(app,"Codici");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Vai ai movimenti Sportbet").listeners.click();
   assert.ok(findElement(app,x=>x.tagName==="BUTTON"&&x.className==="scelta on"&&x.textContent==="Sportbet"),"Sportbet scelto");
+
+  // Fine giornata dei codici: Sportbet sul sito 30,00, in app 25,70 liberi -2 in gioco.
+  clickNav(app,"Cassa");
+  scriviSaldo(app,"CODICI","30");
+  const sel=findElement(scheda(app,"CODICI"),x=>x.tagName==="SELECT");
+  sel.value="Codici"; sel.listeners.change.call(sel);
+  findElement(scheda(app,"CODICI"),x=>x.tagName==="BUTTON"&&x.textContent.startsWith("Allinea l'app al sito")).listeners.click();
+  const cod=salvati().find(v=>String(v.nota).startsWith("Rettifica: codici"));
+  assert.ok(cod&&cod.cassa==="CODICI"&&cod.importo===6.3,"rettifica codici: "+JSON.stringify(cod));
+  const riga=findElement(app,x=>x.tagName==="LI"&&x.className==="vers"&&x.textContent.includes(" · codici · Sportbet"));
+  assert.ok(riga,"nel registro la rettifica si legge come codici");
+  assert.ok(riga.textContent.includes("Rettifica: codici (sul sito €30,00"),"con la nota: "+riga.textContent);
   console.log("cassa-chiara: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});
 
