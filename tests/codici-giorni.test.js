@@ -115,6 +115,33 @@ vm.runInNewContext(html.slice(html.lastIndexOf("<script>")+8,html.lastIndexOf("<
   assert.equal(righe[3],"Totalegiorni con e senza dettagli: conta solo il risultato+€33,00");
   assert.equal(box.children[0].children[1].style.color,"#4FB286","giorno in attivo in verde");
   assert.equal(box.children[1].children[1].style.color,"#D4635F","giorno in perdita in rosso");
+
+  // Cassa (31/10/2026): il riepilogo serale dei codici entra nel risultato
+  // del giorno e del mese delle due casse, non fra i movimenti.
+  clickNav(app,"Cassa");
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Giorni").listeners.click();
+  const giorno=d=>findElement(app,x=>x.className&&String(x.className).indexOf("mese")===0&&x.children.length>=2&&
+    x.children[0].textContent.indexOf(d)===0);
+  const g31=giorno("31/10");
+  assert.equal(g31.children[0].textContent,"31/10+€19,00","i codici sono il risultato del 31/10: "+g31.textContent);
+  assert.equal(g31.children[1].textContent,"solo codici","nessuna rettifica fra i movimenti: "+g31.textContent);
+  assert.equal(g31.children[2].textContent,"Sportbet codici +€19,00");
+  assert.equal(giorno("30/10").children[0].textContent,"30/10-€3,00");
+  const g29=giorno("29/10");
+  assert.equal(g29.children[0].textContent,"29/10\u2014","il bonus non e' un risultato: "+g29.textContent);
+  assert.ok(g29.children[1].textContent.includes("rettifica +€1,00"),"il bonus resta fra i movimenti: "+g29.textContent);
+  const g25=giorno("25/10");
+  assert.equal(g25.children[0].textContent,"25/10+€27,00");
+  assert.equal(g25.children[2].textContent,"Sportium +€10,00 · Sportbet +€17,00");
+  const testaOtt=findElement(app,x=>x.className==="gruppo-testa").textContent;
+  assert.ok(testaOtt.includes("+€43,00"),"ottobre = giocate 27 + codici 16: "+testaOtt);
+  assert.ok(testaOtt.includes("3 giorni di gioco · 3 ticket · giocati €13,00 · codici +€16,00"),testaOtt);
+  findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Mesi").listeners.click();
+  const ott=findElement(app,x=>String(x.className).indexOf("riep-mese")===0&&x.attributes["data-mese"]==="2026-10").textContent;
+  assert.ok(ott.includes("Giocate+€27,00"),ott);
+  assert.ok(ott.includes("Codici Sportbet+€16,00"),ott);
+  assert.ok(ott.includes("Risultato del mese+€43,00"),ott);
+  assert.ok(ott.includes("Movimenti+€21,00"),"movimenti senza codici: 20 versati + 1 bonus: "+ott);
   console.log("codici-giorni: ok");
 })().catch(e=>{console.error(e);process.exitCode=1;});
 
