@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.54</title>
+<title>Registro BET Core v4.55</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -220,6 +220,13 @@ li.vers{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:ba
 .codici-riga{display:grid;grid-template-columns:1.3fr 1fr .8fr auto;gap:8px;margin-top:16px}
 .codici-riga input{min-width:0}
 .codici-piu{width:auto;padding:0 18px;font-size:20px}
+.cod-giorni{border:1px solid var(--bordo);border-radius:4px;margin:20px 0 4px}
+.cod-giorno{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 16px;border-top:1px solid var(--bordo2)}
+.cod-giorno:first-child{border-top:0}
+.cod-giorno .cg-data{font-size:14px;font-weight:600;margin:0}
+.cod-giorno .cg-dett{font-size:12px;color:var(--tenue2);margin:2px 0 0}
+.cod-giorno .cg-netto{font-size:15px;font-weight:600;white-space:nowrap}
+.cod-giorno.cg-totale{background:var(--bordo2)}
 .codici-voce{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bordo2)}
 .codici-codice{display:block;font-size:15px;color:var(--testo)}
 .codici-dett{display:block;font-size:12px;color:var(--tenue2);margin-top:2px}
@@ -352,7 +359,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.54";
+  var VERSIONE = "4.55";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -3218,6 +3225,36 @@ textarea{width:100%;min-height:78px;resize:vertical}
     S.errore=null; salva(); return true;
   }
 
+  // Legge "Rettifica: codici · 22 schedine · 2 vinte · giocati €25,00 · vinti €44,00".
+  function numeroNota(nota,re){
+    var m=String(nota||"").match(re);
+    if(!m) return null;
+    var n=Number(m[1].replace(/\./g,"").replace(",","."));
+    return isFinite(n)?n:null;
+  }
+  function riepilogoCodici(){
+    var perData={};
+    function giorno(d){ return perData[d]||(perData[d]={data:d,schedine:null,vinte:null,giocati:null,vinti:null,netto:0}); }
+    function somma(g,campo,v){ if(v==null) return; g[campo]=(g[campo]||0)+v; }
+    conCassa("CODICI",movimentiCassa).forEach(function(v){
+      if(etichettaMovimento(v)!=="codici") return;
+      var g=giorno(String(v.data||"")), nota=String(v.nota||"");
+      g.netto+=importoCassa(v);
+      somma(g,"schedine",numeroNota(nota,/(\d+)\s+schedin/i));
+      somma(g,"vinte",numeroNota(nota,/(\d+)\s+vint[ei]\b/i));
+      somma(g,"giocati",numeroNota(nota,/giocati\s+\u20AC?\s*([\d.,]+)/i));
+      somma(g,"vinti",numeroNota(nota,/vinti\s+\u20AC?\s*([\d.,]+)/i));
+    });
+    S.giocate.forEach(function(x){
+      if(origineDi(x)!=="CODICI" || x.esito==="aperta" || !rigaRealeCore(x)) return;
+      var g=giorno(String(x.data||"")), stake=Number(x.stake||0), prof=Number(x.profitto||0);
+      g.netto+=prof;
+      g.schedine=(g.schedine||0)+1; g.vinte=(g.vinte||0)+(x.esito==="vinta"?1:0);
+      g.giocati=(g.giocati||0)+stake; g.vinti=(g.vinti||0)+Math.max(0,stake+prof);
+    });
+    return Object.keys(perData).sort().reverse().map(function(k){ var g=perData[k]; g.netto=cent(g.netto); return g; });
+  }
+
   function vistaCodici(){
     var pag=el("div",{"class":"pag"});
     var cc=conCassa("CODICI",conti);
@@ -3232,6 +3269,35 @@ textarea{width:100%;min-height:78px;resize:vertical}
           : "Sposta o versa i primi soldi per i codici dalla scheda Cassa.")+
         (cc.impegnato>0?" · "+euro(cc.impegnato)+" in gioco":"")})
     ]));
+
+    // Giorno per giorno (31/10/2026): dal 31/10 i codici non si registrano
+    // uno per uno; a fine giornata una rettifica "codici" porta il riepilogo
+    // (schedine, vinte, giocati, vinti). I giorni prima si ricavano dai codici
+    // registrati singolarmente.
+    var giorni=riepilogoCodici();
+    if(giorni.length){
+      var tot={schedine:0,vinte:0,giocati:0,vinti:0,netto:0,conteggi:true};
+      giorni.forEach(function(d){
+        tot.netto+=d.netto;
+        if(d.schedine==null){ tot.conteggi=false; return; }
+        tot.schedine+=d.schedine; tot.vinte+=d.vinte||0; tot.giocati+=d.giocati||0; tot.vinti+=d.vinti||0;
+      });
+      function rigaGiorno(titolo,d,cls,forzato){
+        var dett = forzato ? forzato : d.schedine==null
+          ? "solo il risultato (rettifica senza dettagli)"
+          : d.schedine+(d.schedine===1?" schedina":" schedine")+(d.vinte!=null?" · "+d.vinte+(d.vinte===1?" vinta, ":" vinte, ")+(d.schedine-d.vinte)+(d.schedine-d.vinte===1?" persa":" perse"):"")+
+            (d.giocati!=null?" · giocati "+euro(d.giocati):"")+(d.vinti!=null?" · vinti "+euro(d.vinti):"");
+        return el("div",{"class":"cod-giorno"+(cls?" "+cls:"")},[
+          el("div",null,[el("p",{"class":"cg-data","text":titolo}),el("p",{"class":"cg-dett tab","text":dett})]),
+          el("span",{"class":"tab cg-netto","style":{color:d.netto>=0?"#4FB286":"#D4635F"},"text":segnato(d.netto)})
+        ]);
+      }
+      pag.appendChild(el("p",{"class":"etich","style":{marginTop:"20px","marginBottom":"0"},"text":"Giorno per giorno"}));
+      var righeG=giorni.map(function(d){ return rigaGiorno(breve(d.data),d); });
+      righeG.push(rigaGiorno("Totale",{schedine:tot.schedine,vinte:tot.vinte,giocati:tot.giocati,vinti:tot.vinti,netto:tot.netto},"cg-totale",
+        tot.conteggi?null:"giorni con e senza dettagli: conta solo il risultato"));
+      pag.appendChild(el("div",{"class":"cod-giorni"},righeG));
+    }
 
     // Riga di inserimento: codice, quota, puntata, +.
     var inCodice=el("input",{"type":"text","inputmode":"numeric","placeholder":"Codice","autocomplete":"off","class":"tab"});
