@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.57</title>
+<title>Registro BET Core v4.58</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -313,6 +313,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
 .live-conf span{font-size:13px;font-weight:600}
 .live-conf-btn{width:auto;padding:8px 14px;border:1px solid;border-radius:4px;font-size:13px;font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* Aggiornamento e notifiche (v4.58) */
+.aggiorna-barra{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:50;
+  display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0C1218;border:1px solid var(--oro);border-radius:4px}
+.aggiorna-barra span{flex:1;font-size:13px;color:var(--testo)}
+.aggiorna-barra button{flex:0 0 auto;padding:10px 14px;border-radius:4px;background:var(--oro);color:#111820;font-size:13px;font-weight:600}
+.aggiorna-barra .chiudi{background:none;color:var(--tenue2);padding:10px 4px;font-weight:400}
+.notifiche-stato{font-size:12px;color:var(--tenue2);margin:10px 0 0;line-height:1.5}
 </style>
 </head>
 <body>
@@ -367,7 +374,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.57";
+  var VERSIONE = "4.58";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -3131,6 +3138,134 @@ textarea{width:100%;min-height:78px;resize:vertical}
     };
     lettore.readAsText(file,"utf-8");
   }
+  // ---------- Notifiche sul telefono (v4.58, 07/11/2026) ----------
+  // Il telefono si iscrive una volta (scheda Notifiche in Dati); da li' in
+  // poi ogni riga scritta nella tabella "notifiche" (dalle attivita' di
+  // Claude o da una prova) arriva come notifica di Android, anche ad app
+  // chiusa. La chiave pubblica la da' la funzione "notifiche": la privata
+  // resta nel database, mai nella pagina.
+  var VISTE = ["registro","live","nuova","codici","tipster","cassa","dati","guida"];
+  var NOTIF = { attive:null, busy:false, stato:"", letto:false };
+  function vistaDaIndirizzo(url){
+    try{
+      var qui=location.href;
+      var v=new URL(url||qui,qui).searchParams.get("vista");
+      if(v && VISTE.indexOf(v)>=0){ S.vista=v; return true; }
+    }catch(_){}
+    return false;
+  }
+  function notificheSupportate(){
+    return ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window);
+  }
+  function b64uInByte(t){
+    var b=atob(String(t).replace(/-/g,"+").replace(/_/g,"/")+"===".slice((String(t).length+3)%4));
+    var out=new Uint8Array(b.length); for(var i=0;i<b.length;i++) out[i]=b.charCodeAt(i); return out;
+  }
+  function stessaChiave(sub, pubblica){
+    try{
+      var k=sub.options && sub.options.applicationServerKey; if(!k) return true;
+      var a=new Uint8Array(k), b=b64uInByte(pubblica);
+      if(a.length!==b.length) return false;
+      for(var i=0;i<a.length;i++) if(a[i]!==b[i]) return false;
+      return true;
+    }catch(_){ return true; }
+  }
+  async function chiamaNotifiche(azione, corpo){
+    var sess=(await DB.auth.getSession()).data.session;
+    if(!sess) throw new Error("serve l'accesso al cloud");
+    var r=await fetch(SUPABASE_URL+"/functions/v1/notifiche?azione="+azione,{method:corpo?"POST":"GET",headers:{
+      "Authorization":"Bearer "+sess.access_token, "apikey":SUPABASE_KEY, "Content-Type":"application/json"},
+      body:corpo?JSON.stringify(corpo):undefined});
+    var j={}; try{ j=await r.json(); }catch(_){}
+    if(!r.ok || j.errore) throw new Error(j.errore||("errore "+r.status));
+    return j;
+  }
+  async function leggiStatoNotifiche(){
+    if(!notificheSupportate()){ NOTIF.attive=false; NOTIF.letto=true; return; }
+    try{
+      var reg=await navigator.serviceWorker.ready;
+      var sub=await reg.pushManager.getSubscription();
+      NOTIF.attive=!!sub && Notification.permission==="granted";
+    }catch(_){ NOTIF.attive=false; }
+    NOTIF.letto=true;
+    if(S.vista==="dati") disegna();
+  }
+  async function attivaNotifiche(){
+    if(NOTIF.busy) return;
+    NOTIF.busy=true; NOTIF.stato="Attivazione in corso…"; disegna();
+    try{
+      if(!DB || !CLOUD.user) throw new Error("prima entra nel cloud qui sopra");
+      var perm=await Notification.requestPermission();
+      if(perm!=="granted") throw new Error(perm==="denied"
+        ? "le notifiche sono bloccate: sbloccale da Impostazioni di Android › App › BET Core (o Chrome) › Notifiche"
+        : "permesso non dato");
+      var k=await chiamaNotifiche("chiave");
+      var reg=await navigator.serviceWorker.ready;
+      var sub=await reg.pushManager.getSubscription();
+      if(sub && !stessaChiave(sub,k.pubblica)){ await sub.unsubscribe(); sub=null; }
+      if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64uInByte(k.pubblica)});
+      await chiamaNotifiche("iscrivi",{iscrizione:sub.toJSON(), dispositivo:(navigator.userAgentData&&navigator.userAgentData.platform)||"telefono"});
+      NOTIF.attive=true; NOTIF.stato="Notifiche attive su questo telefono.";
+    }catch(e){ NOTIF.stato="Non attivate: "+(e&&e.message?e.message:e); }
+    NOTIF.busy=false; disegna();
+  }
+  async function disattivaNotifiche(){
+    if(NOTIF.busy) return;
+    NOTIF.busy=true; disegna();
+    try{
+      var reg=await navigator.serviceWorker.ready;
+      var sub=await reg.pushManager.getSubscription();
+      if(sub){
+        try{ await chiamaNotifiche("togli",{endpoint:sub.endpoint}); }catch(_){}
+        await sub.unsubscribe();
+      }
+      NOTIF.attive=false; NOTIF.stato="Notifiche spente su questo telefono.";
+    }catch(e){ NOTIF.stato="Errore: "+(e&&e.message?e.message:e); }
+    NOTIF.busy=false; disegna();
+  }
+  async function provaNotifiche(){
+    if(NOTIF.busy) return;
+    NOTIF.busy=true; NOTIF.stato="Invio della prova…"; disegna();
+    try{
+      var j=await chiamaNotifiche("prova",{});
+      NOTIF.stato = j.inviate>0
+        ? "Prova partita: deve arrivare fra pochi secondi."
+        : "Prova non consegnata"+(j.dettaglio?": "+j.dettaglio:"")+". Prova a spegnere e riattivare.";
+    }catch(e){ NOTIF.stato="Prova non riuscita: "+(e&&e.message?e.message:e); }
+    NOTIF.busy=false; disegna();
+  }
+  function schedaNotifiche(){
+    if(!NOTIF.letto) void leggiStatoNotifiche();
+    var stato = !notificheSupportate() ? "NON DISPONIBILI" : (NOTIF.attive ? "ATTIVE" : "SPENTE");
+    var corpo=el("div",{"style":{padding:"16px"}});
+    corpo.appendChild(el("p",{"class":"guida-p","text":"Avvisi sul telefono anche ad app chiusa: controlli T-60, raddoppio pronto, debrief. Si attivano una volta su ogni telefono."}));
+    if(!notificheSupportate()){
+      corpo.appendChild(el("p",{"class":"notifiche-stato","text":"Questo browser non gestisce le notifiche. Apri BET Core dall'icona sulla schermata Home, con Chrome."}));
+    } else if(!CLOUD.user){
+      corpo.appendChild(el("p",{"class":"notifiche-stato","text":"Per attivarle serve l'accesso al cloud (scheda qui sopra)."}));
+    } else if(NOTIF.attive){
+      corpo.appendChild(el("div",{"class":"due"},[
+        el("button",{"class":"secondario","text":NOTIF.busy?"…":"Manda una prova","onclick":provaNotifiche}),
+        el("button",{"class":"secondario","text":"Spegni","onclick":disattivaNotifiche})
+      ]));
+    } else {
+      corpo.appendChild(el("button",{"class":"principale","text":NOTIF.busy?"Attivazione…":"Attiva le notifiche","onclick":attivaNotifiche}));
+    }
+    if(NOTIF.stato) corpo.appendChild(el("p",{"class":"notifiche-stato","text":NOTIF.stato}));
+    return el("div",{"class":"scheda","style":{marginTop:"16px"}},[
+      el("div",{"class":"scheda-top"},[
+        el("span",{"class":"serif scheda-nome","text":"Notifiche"}),
+        el("span",{"class":"tab","style":{fontSize:"11px",color:NOTIF.attive?"#4FB286":"#8C9BA8"},"text":stato})
+      ]),
+      corpo
+    ]);
+  }
+  if("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message",function(e){
+    if(e.data && e.data.tipo==="apri" && vistaDaIndirizzo(e.data.url)){
+      disegna(); window.scrollTo(0,0); if(S.vista==="live") liveSeVecchio(60000);
+    }
+  });
+
   function vistaDati(){
     var pag=el("div",{"class":"pag"});
     pag.appendChild(el("div",{"class":"scheda"},[
@@ -3178,7 +3313,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ]));
     pag.appendChild(input);
     pag.appendChild(el("p",{"class":"avviso","text":"L'importazione aggiunge i dati e salta i doppioni banali; non cancella lo storico gia presente."}));
-    pag.appendChild(el("p",{"class":"avviso versione-app","text":"BET Core versione "+VERSIONE+" · se dopo un aggiornamento vedi ancora la vecchia, chiudi e riapri l'app due volte."}));
+    pag.appendChild(el("p",{"class":"avviso versione-app","text":"BET Core versione "+VERSIONE+" · quando ne esce una nuova compare in basso \u00ABNuova versione \u00B7 Aggiorna\u00BB."}));
+    pag.appendChild(schedaNotifiche());
     pag.appendChild(schedaTetto());
     return pag;
   }
@@ -3674,6 +3810,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
   try{
     carica();
+    vistaDaIndirizzo();
     disegna();
     void initCloud();
   }catch(err){
@@ -3684,10 +3821,55 @@ textarea{width:100%;min-height:78px;resize:vertical}
 })();
 
 // Rende BET Core installabile come PWA autonoma, senza barra del browser.
+// Aggiornamento (v4.58): quando su GitHub c'e' una versione nuova, il
+// telefono la scarica in silenzio e qui compare "Nuova versione · Aggiorna".
+// Il controllo si ripete ogni volta che l'app torna in primo piano e ogni
+// 30 minuti, cosi' non serve piu' chiudere e riaprire.
 if("serviceWorker" in navigator){
-  window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js").catch(function(){});
-  });
+  (function(){
+    // Alla prima installazione la versione prende il controllo da sola: li'
+    // non serve ricaricare, solo quando sostituisce una versione gia' attiva.
+    var ricaricata=false, chiesto=false, barra=null, attuale=navigator.serviceWorker.controller;
+    function versioneNuova(){
+      return fetch("./index.html",{cache:"no-store"}).then(function(r){ return r.text(); })
+        .then(function(t){ var m=t.match(/<title>Registro BET Core v([\d.]+)<\/title>/); return m?m[1]:""; })
+        .catch(function(){ return ""; });
+    }
+    function mostraBarra(reg){
+      if(barra || !reg.waiting) return;
+      barra=document.createElement("div"); barra.className="aggiorna-barra"; barra.setAttribute("role","status");
+      var testo=document.createElement("span"); testo.textContent="Nuova versione di BET Core pronta";
+      var vai=document.createElement("button"); vai.textContent="Aggiorna";
+      var dopo=document.createElement("button"); dopo.className="chiudi"; dopo.textContent="Dopo"; dopo.setAttribute("aria-label","Aggiorna dopo");
+      vai.addEventListener("click",function(){
+        vai.disabled=true; vai.textContent="…"; chiesto=true;
+        if(reg.waiting) reg.waiting.postMessage({tipo:"aggiorna"}); else location.reload();
+      });
+      dopo.addEventListener("click",function(){ barra.remove(); barra=null; });
+      barra.appendChild(testo); barra.appendChild(vai); barra.appendChild(dopo);
+      document.body.appendChild(barra);
+      versioneNuova().then(function(v){ if(v && barra) testo.textContent="Nuova versione "+v+" pronta"; });
+    }
+    function segui(reg){
+      if(reg.waiting && navigator.serviceWorker.controller) mostraBarra(reg);
+      reg.addEventListener("updatefound",function(){
+        var nuovo=reg.installing; if(!nuovo) return;
+        nuovo.addEventListener("statechange",function(){
+          if(nuovo.state==="installed" && navigator.serviceWorker.controller) mostraBarra(reg);
+        });
+      });
+      function controlla(){ reg.update().catch(function(){}); }
+      document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") controlla(); });
+      setInterval(controlla, 30*60*1000);
+    }
+    navigator.serviceWorker.addEventListener("controllerchange",function(){
+      var prima=attuale; attuale=navigator.serviceWorker.controller;
+      if(ricaricata || !(prima || chiesto)) return; ricaricata=true; location.reload();
+    });
+    window.addEventListener("load",function(){
+      navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(segui).catch(function(){});
+    });
+  })();
 }
 </script>
 </body>

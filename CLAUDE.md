@@ -44,6 +44,21 @@ carmine.birra80@gmail.com, oggetto `Bet Core …` e corpo breve in testo
 semplice, oltre che scritto in chat. Nel prompt di ogni promemoria va scritto
 di mandare l'email.
 
+**Notifiche di BET CORE (dalla v4.58, 07/11/2026).** Se Carmine le ha attivate
+in Dati › Notifiche, basta scrivere una riga nella tabella `notifiche` e il
+telefono suona anche ad app chiusa (il trigger chiama la funzione Edge
+`notifiche`, che la cifra e la manda):
+
+```sql
+insert into public.notifiche (titolo, testo, vista, tag, origine)
+values ('Veggente · T-60 Valencia–Real', 'Courtois fuori, quota del 2 da 1.16 a 1.25', 'live', 't60-valencia', 'T-60');
+```
+
+`vista` è la scheda che si apre al tocco (registro, live, codici, cassa,
+dati); stesso `tag` = la nuova sostituisce la vecchia. L'esito si legge nella
+colonna `esito` ("inviata a 1 su 1"). Finché Carmine non conferma che arrivano,
+la mail resta il canale principale.
+
 ## Metodo: cosa regge e cosa no
 
 - Il modello Poisson interno è stato validato e **bocciato**: log-loss
