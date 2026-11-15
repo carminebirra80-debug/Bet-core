@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.59</title>
+<title>Registro BET Core v4.60</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -31,19 +31,45 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--oro)}
 input::placeholder{color:var(--spento)}
 select{appearance:auto}
 
-header{padding:32px 20px 24px;border-bottom:1px solid var(--bordo)}
+/* Intestazione compatta e schede in basso (v4.60, 15/11/2026). L'ordine
+   dei nodi resta quello di prima (cassa, Sportbet, dettagli): cambia solo la
+   disposizione, su due colonne. */
+header{padding:14px 20px 0;border-bottom:1px solid var(--bordo);
+  display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px}
 .etich{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tenue);margin:0}
-.cassa{font-size:44px;font-weight:700;line-height:1.1}
-.riga-cassa{display:flex;align-items:baseline;gap:12px;margin-top:4px}
-.delta{font-size:14px;font-weight:600}
+header .etich{color:var(--tenue2)}
+.testa-etich{grid-column:1;grid-row:1}
+.cassa{font-size:28px;font-weight:700;line-height:1.15}
+.riga-cassa{grid-column:1;grid-row:2;display:flex;align-items:baseline;gap:10px}
+.delta{font-size:13px;font-weight:600}
 .delta-box{display:flex;flex-direction:column;line-height:1.25}
-.delta-etich{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tenue2)}
-.sotto{font-size:12px;color:var(--tenue);margin:8px 0 0}
+.delta-etich{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--tenue2);white-space:nowrap}
+.netto{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+.netto-val{display:flex;flex-direction:column;align-items:flex-end}
+.netto-cifra{font-size:22px;font-weight:700;line-height:1.45}
+.netto-gioco{font-size:11px;color:var(--tenue2);margin-top:-2px}
+.netto-sep{display:none}
+.testa-fondo{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px}
+.sotto{font-size:12px;color:var(--tenue2);margin:0;min-width:0}
+.testa-link{display:flex;gap:4px;flex:0 0 auto;margin-right:-10px}
+.testa-voce{min-height:44px;padding:0 10px;font-size:12px;color:var(--tenue2);text-decoration:underline;text-underline-offset:3px}
+.testa-voce.on{color:var(--oro)}
+.testa-massimo{grid-column:1 / -1;padding-bottom:12px}
+header .errore{grid-column:1 / -1;margin:0;padding-bottom:12px}
 
-nav{display:flex;border-bottom:1px solid var(--bordo);position:sticky;top:0;background:#111820;z-index:5}
-nav button{flex:1;padding:14px 4px;font-size:12px;color:var(--tenue);border-bottom:2px solid transparent}
-nav button.on{color:var(--testo);border-bottom-color:var(--oro)}
-nav button.nav-aiuto{flex:0 0 44px;font-size:14px}
+@media (max-width:380px){
+  header{column-gap:10px}
+  header .etich{letter-spacing:.08em}
+  .cassa{font-size:26px}
+  .sotto{font-size:11px}
+}
+body{padding-bottom:calc(57px + env(safe-area-inset-bottom))}
+nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;background:#111820;
+  border-top:1px solid var(--bordo);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1 1 auto;height:56px;padding:0 6px;font-size:12px;color:var(--tenue2);border-top:2px solid transparent}
+nav button.on{color:var(--testo);border-top-color:var(--oro)}
+nav button.nav-nuova{color:var(--oro);font-weight:600}
+nav button.nav-nuova.on{color:var(--oro)}
 
 .guida-intro{font-size:14px;color:var(--tenue2);line-height:1.6;margin:0 0 28px;
   padding-bottom:20px;border-bottom:1px solid var(--bordo2)}
@@ -65,6 +91,20 @@ nav button.nav-aiuto{flex:0 0 44px;font-size:14px}
    nell'accento gia in uso lo rende evidente restando dentro la palette. */
 .scelta.on{color:var(--testo);border-color:var(--oro)}
 .scelta.pic{font-size:11px;padding:9px 2px}
+/* Scelte a bottoni del modulo Nuova (v4.60) */
+.scelte{display:grid;gap:6px}
+.scelte+.scelte{margin-top:6px}
+.scelte .scelta{min-height:44px;padding:0 4px;white-space:nowrap}
+.scelte .scelta.on{color:var(--oro);background:rgba(200,135,58,.12);font-weight:600}
+.scelte select{min-height:44px;padding:0 8px;font-size:14px;color:var(--tenue2)}
+.scelte select.on{color:var(--oro);border-color:var(--oro)}
+.guidato.mercato-rapido{border-left:none;padding:0}
+.dettagli-apri{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:44px;
+  border-top:1px solid var(--bordo2);font-size:13px;color:var(--tenue2);text-align:left;margin-bottom:8px}
+.dettagli-voce{color:var(--oro);white-space:nowrap}
+.dettagli-corpo{padding-top:8px}
+.registra-fisso{position:sticky;bottom:calc(57px + env(safe-area-inset-bottom));z-index:4;
+  margin:8px -20px -24px;padding:12px 20px;background:#111820;border-top:1px solid var(--bordo)}
 
 .riquadro{border:1px solid var(--bordo);border-radius:4px;overflow:hidden;margin-bottom:20px}
 .riq-top{display:flex;justify-content:space-between;align-items:baseline;
@@ -78,26 +118,44 @@ nav button.nav-aiuto{flex:0 0 44px;font-size:14px}
   font-weight:600;background:var(--oro);color:#111820}
 .principale:disabled{background:var(--bordo2);color:var(--spento)}
 
-.filtri{display:flex;flex-wrap:wrap;gap:8px;padding:16px 20px}
-.chip{padding:6px 12px;border:1px solid var(--bordo);border-radius:99px;
-  font-size:12px;color:var(--tenue);white-space:nowrap}
+.filtri{display:flex;gap:6px;padding:10px 20px;overflow-x:auto;scrollbar-width:none}
+.filtri::-webkit-scrollbar{display:none}
+.pag>.filtri{padding:0 0 14px}
+.chip{padding:9px 12px;border:1px solid var(--bordo);border-radius:99px;
+  font-size:12px;color:var(--tenue2);white-space:nowrap;flex:0 0 auto}
 .chip.on{border-color:var(--oro);color:var(--oro)}
 
 ul{list-style:none;margin:0;padding:0}
-li.voce{padding:16px 20px;border-top:1px solid var(--bordo2);display:flex;gap:12px}
+li.voce{padding:8px 20px;border-top:1px solid var(--bordo2);display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px}
+li.voce .corpo{display:contents}
+li.voce .sigla{margin-top:13px}
+.da-chiudere li.voce .sigla{margin-top:5px}
+/* Registro per giornata (v4.60) */
+.da-chiudere{margin:4px 20px 0;padding:12px 14px 4px;border:1px solid var(--bordo);border-radius:4px;background:var(--campo)}
+.da-chiudere>.etich{color:var(--oro);margin-bottom:4px}
+.da-chiudere li.voce{padding:10px 0 12px}
+.da-chiudere li.voce:first-child{border-top:none}
+.giorno-testa{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:18px 20px 8px}
+.giorno-testa .etich{color:var(--tenue2)}
+.giorno-tot{font-size:12px}
+.voce-testa{grid-column:2;display:flex;flex-direction:column;justify-content:center;width:100%;min-width:0;min-height:44px;padding:0;text-align:left}
+.voce-testa .meta{display:block}
+.saltata{font-family:inherit}
+.voce-dett{grid-column:1 / -1;padding:2px 0 4px}
+.voce-dett .riga-azioni{margin-top:8px}
 li.voce-oss .nota{color:var(--tenue2)}
 li.voce-oss{background:rgba(255,255,255,.012)}
 .sigla{font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;margin-top:2px;flex:0 0 auto;height:18px}
 .corpo{flex:1;min-width:0}
 .titolo-riga{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
-.nota{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nota{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .esito{font-size:14px;font-weight:600;flex:0 0 auto}
-.meta{font-size:12px;color:var(--tenue);margin:4px 0 0}
+.meta{font-size:12px;color:var(--tenue2);margin:2px 0 0}
 .azioni{display:flex;gap:8px;margin-top:12px}
 .riga-azioni{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
-.riga-esito{width:auto;padding:7px 10px;border:1px solid var(--bordo);border-radius:4px;font-size:12px;background:none}
+.riga-esito{width:auto;min-height:40px;padding:7px 9px;border:1px solid var(--bordo);border-radius:4px;font-size:12px;background:none}
 .riga-spazio{flex:1}
-.riga-link{width:auto;font-size:11px;color:var(--tenue);text-decoration:underline;background:none;border:none;padding:4px}
+.riga-link{width:auto;font-size:12px;color:var(--tenue2);text-decoration:underline;background:none;border:none;padding:10px 4px}
 .azioni button{flex:1;padding:9px 2px;border:1px solid var(--bordo);border-radius:4px;font-size:12px}
 .minori{display:flex;gap:16px;margin-top:8px}
 .minori button{font-size:11px;color:var(--tenue);text-decoration:underline}
@@ -124,8 +182,6 @@ li.voce-oss{background:rgba(255,255,255,.012)}
   padding:10px 16px;border-top:1px solid var(--bordo2)}
 .recente .k{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--tenue)}
 
-.netto{display:flex;justify-content:space-between;align-items:baseline;
-  margin-top:12px;padding-top:12px;border-top:1px solid var(--bordo2)}
 .verdetto{border:1px solid var(--bordo);border-radius:4px;padding:20px 16px;margin-bottom:20px;text-align:center}
 .verdetto-cifra{font-size:38px;font-weight:700;margin:8px 0 10px;line-height:1}
 .verdetto-nota{font-size:12px;color:var(--tenue);margin:0;line-height:1.5}
@@ -175,10 +231,31 @@ li.vers{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:ba
 .totale-riga{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:6px;padding:9px 16px;border-top:1px solid var(--bordo2);font-size:13px;align-items:center}
 .totale-riga span:not(:first-child){text-align:right}
 .cassa-sez{margin:28px 0 10px}
-.cassa-book{border:1px solid var(--bordo);border-radius:4px;padding:16px;margin-bottom:12px}
+.cassa-book{border:1px solid var(--bordo);border-radius:4px;padding:12px 14px;margin-bottom:8px}
 .cassa-book-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .cassa-book-nome{font-size:16px;font-weight:600}
-.cassa-book-cifra{font-size:30px;font-weight:700}
+.cassa-book-cifra{font-size:24px;font-weight:700}
+/* Grafico del risultato nel tempo (v4.60) */
+.grafico{border:1px solid var(--bordo);border-radius:4px;padding:12px 14px;margin:12px 0}
+.grafico-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+.grafico-top .etich{color:var(--tenue2)}
+.grafico-calo{font-size:12px;white-space:nowrap}
+.grafico-disegno svg{display:block;width:100%;height:88px}
+.grafico-piede{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:11px;color:var(--tenue2)}
+/* Rendimento a confronto (v4.60) */
+.confronto{border:1px solid var(--bordo);border-radius:4px;margin-bottom:20px}
+.confronto-testa,.confronto-valori{display:grid;grid-template-columns:1.5fr .7fr .8fr .9fr 1.2fr;align-items:baseline}
+.confronto-testa{padding:8px 14px;background:var(--campo);border-bottom:1px solid var(--bordo2);border-radius:4px 4px 0 0;
+  font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--tenue2)}
+.confronto-testa span:not(:first-child),.confronto-valori span:not(:first-child){text-align:right}
+.confronto-riga{display:flex;flex-direction:column;gap:7px;width:100%;min-height:44px;padding:10px 14px;
+  border-bottom:1px solid var(--bordo2);text-align:left}
+.confronto-riga.on{background:var(--campo)}
+.confronto-valori{font-size:13px}
+.confronto-nome{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.confronto-campione{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--tenue2)}
+.confronto-campione .barra{display:block;flex:1}
+.confronto-nota{font-size:12px;color:var(--tenue2);margin:0;padding:10px 14px}
 .cassa-book-sotto{font-size:12px;color:var(--tenue2);margin:4px 0 0}
 .cassa-controllo{display:flex;gap:8px;align-items:flex-end;margin-top:14px}
 .cassa-controllo label,.cassa-allinea label{display:block;font-size:12px;color:var(--tenue2);margin:0 0 4px}
@@ -314,7 +391,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 .live-conf-btn{width:auto;padding:8px 14px;border:1px solid;border-radius:4px;font-size:13px;font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* Aggiornamento e notifiche (v4.58) */
-.aggiorna-barra{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:50;
+.aggiorna-barra{position:fixed;left:12px;right:12px;bottom:calc(69px + env(safe-area-inset-bottom));z-index:50;
   display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0C1218;border:1px solid var(--oro);border-radius:4px}
 .aggiorna-barra span{flex:1;font-size:13px;color:var(--testo)}
 .aggiorna-barra button{flex:0 0 auto;padding:10px 14px;border-radius:4px;background:var(--oro);color:#111820;font-size:13px;font-weight:600}
@@ -374,7 +451,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.59";
+  var VERSIONE = "4.60";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -1078,6 +1155,41 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return s;
   }
 
+  // Scelta a bottoni (v4.60, 15/11/2026): per le poche opzioni di tutti i
+  // giorni un tocco invece di aprire una tendina.
+  function gruppoScelte(opzioni,valore,cambia,colonne){
+    return el("div",{"class":"scelte","role":"group","style":{gridTemplateColumns:"repeat("+(colonne||opzioni.length)+",minmax(0,1fr))"}},
+      opzioni.map(function(o){
+        var on=String(valore||"")===String(o[0]);
+        return el("button",{"type":"button","class":"scelta"+(on?" on":""),"aria-pressed":on?"true":"false","text":o[1],
+          "onclick":function(){ cambia(o[0]); }});
+      }));
+  }
+  // Mercato della singola: i piu' usati a bottoni, gli altri nella tendina.
+  var MERCATI_RAPIDI = [["1","1"],["X","X"],["2","2"],["1X","1X"],["X2","X2"],["Over 2.5","Over 2,5"],["Goal","Goal"],["No Goal","No Goal"]];
+  function campoMercatoRapido(valore,cambia){
+    var box=el("div",{"class":"guidato mercato-rapido"});
+    var preset=presetMercato(valore);
+    var rapido=MERCATI_RAPIDI.some(function(x){ return x[0]===preset; });
+    box.appendChild(gruppoScelte(MERCATI_RAPIDI.slice(0,5),rapido?preset:"",function(v){ cambia(v); disegna(); }));
+    var altri=MERCATI.filter(function(x){ return !MERCATI_RAPIDI.some(function(r){ return r[0]===x[0]; }); });
+    var riga=gruppoScelte(MERCATI_RAPIDI.slice(5),rapido?preset:"",function(v){ cambia(v); disegna(); },4);
+    var sel=selectGuidato([["","Altro\u2026"]].concat(altri),rapido?"":preset,function(v){
+      cambia(v==="ALTRO" ? "Altro" : v);
+      disegna();
+    });
+    sel.setAttribute("aria-label","Altri mercati");
+    if(!rapido && preset) sel.className="on";
+    riga.appendChild(sel);
+    box.appendChild(riga);
+    if(preset==="ALTRO"){
+      var custom=el("input",{"type":"text","placeholder":"Scrivi il mercato esatto","value":valore==="Altro"?"":valore});
+      custom.addEventListener("input",function(){ cambia(this.value); });
+      box.appendChild(custom);
+    }
+    return box;
+  }
+
   function presetMercato(v){
     var trovato=false;
     MERCATI.forEach(function(x){ if(x[0]!=="ALTRO" && x[0]===v) trovato=true; });
@@ -1105,6 +1217,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
   }
   function breve(iso){ var p = String(iso).split("-"); return p[2]+"/"+p[1]; }
+  // "Dom 08/11": il giorno della settimana davanti alla data (v4.60).
+  function giornoBreve(iso){
+    var p = String(iso||"").split("-");
+    if(p.length!==3) return String(iso||"");
+    var d = new Date(Number(p[0]),Number(p[1])-1,Number(p[2]),12);
+    var nomi = ["Dom","Lun","Mar","Mer","Gio","Ven","Sab"];
+    return (isNaN(d.getTime()) ? "" : nomi[d.getDay()]+" ")+p[2]+"/"+p[1];
+  }
   function annoData(iso){ var p=String(iso||"").split("-"); return p.length===3 ? parseInt(p[0],10) : null; }
   function meseData(iso){ var p=String(iso||"").split("-"); return p.length===3 ? parseInt(p[1],10) : null; }
   function stagioneData(iso){
@@ -1675,10 +1795,63 @@ textarea{width:100%;min-height:78px;resize:vertical}
     return {picco:picco,drawdown:giu,pct:picco>0?(giu/picco)*100:0,dataPicco:dataPicco};
   }
 
+  // Risultato nel tempo (v4.60, 15/11/2026). Somma giorno per giorno il
+  // risultato delle giocate chiuse: versamenti e prelievi non c'entrano,
+  // quindi la linea dice solo come vanno le giocate.
+  function serieRisultato(chiuse){
+    var perGiorno={};
+    (chiuse||[]).forEach(function(g){
+      var d=String(g.data||""); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      perGiorno[d]=(perGiorno[d]||0)+(Number(g.profitto)||0);
+    });
+    var tot=0;
+    return Object.keys(perGiorno).sort().map(function(d){
+      tot+=perGiorno[d];
+      return {data:d,valore:Math.round(tot*100)/100};
+    });
+  }
+  function graficoRisultato(chiuse){
+    var serie=serieRisultato(chiuse);
+    if(serie.length<2) return null;
+    function giorno(iso){ var p=iso.split("-"); return Date.UTC(Number(p[0]),Number(p[1])-1,Number(p[2]))/86400000; }
+    var x0=giorno(serie[0].data), x1=Math.max(giorno(oggi()),giorno(serie[serie.length-1].data));
+    var L=318, A=80, alto=4;
+    var min=0,max=0,picco=serie[0],ultimo=serie[serie.length-1];
+    serie.forEach(function(p){ if(p.valore<min) min=p.valore; if(p.valore>max) max=p.valore; if(p.valore>picco.valore) picco=p; });
+    if(max-min<0.005) max=min+1;
+    function px(iso){ return x1>x0 ? Math.round(((giorno(iso)-x0)/(x1-x0))*L*10)/10 : 0; }
+    function py(v){ return Math.round((alto+((max-v)/(max-min))*A)*10)/10; }
+    var d="M0,"+py(0);
+    serie.forEach(function(p){ d+=" H"+px(p.data)+" V"+py(p.valore); });
+    d+=" H"+L;
+    var giu=Math.max(0,picco.valore-ultimo.valore);
+    var colore=ultimo.valore>=0?"#4FB286":"#D4635F";
+    var disegno=el("div",{"class":"grafico-disegno"});
+    disegno.innerHTML='<svg viewBox="0 0 '+L+' '+(A+2*alto)+'" preserveAspectRatio="none" role="img" aria-label="Risultato cumulato delle giocate dal '+
+      breve(serie[0].data)+' a oggi: massimo '+segnato(picco.valore)+' il '+breve(picco.data)+', ora '+segnato(ultimo.valore)+'">'+
+      '<line x1="0" y1="'+py(0)+'" x2="'+L+'" y2="'+py(0)+'" stroke="#22303C" stroke-width="1" vector-effect="non-scaling-stroke"/>'+
+      '<line x1="0" y1="'+py(picco.valore)+'" x2="'+L+'" y2="'+py(picco.valore)+'" stroke="#22303C" stroke-width="1" stroke-dasharray="2 4" vector-effect="non-scaling-stroke"/>'+
+      '<path d="'+d+'" fill="none" stroke="#E8EDF2" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
+    return el("div",{"class":"grafico"},[
+      el("div",{"class":"grafico-top"},[
+        el("span",{"class":"etich","text":"Risultato giocate"}),
+        el("span",{"class":"tab grafico-calo","style":{color:giu>0.004?"#D9A15A":"#8C9BA8"},
+          "text":giu>0.004 ? "\u2193 "+euro(giu)+" dal massimo" : "al massimo"})
+      ]),
+      disegno,
+      el("div",{"class":"grafico-piede tab"},[
+        el("span",{"text":breve(serie[0].data)}),
+        el("span",{"text":"massimo "+segnato(picco.valore)+" \u00B7 "+breve(picco.data)}),
+        el("span",{"style":{color:colore,fontWeight:"600"},"text":segnato(ultimo.valore)})
+      ])
+    ]);
+  }
+
   // Quanto pesa il campione: senza questo un ROI e solo rumore
+  var SOGLIA_CAMPIONE = 20;
   function affidabilita(n){
     if(n === 0) return null;
-    if(n < 20) return "su "+n+(n===1?" giocata":" giocate")+": troppo presto per giudicare";
+    if(n < SOGLIA_CAMPIONE) return "su "+n+(n===1?" giocata":" giocate")+": troppo presto per giudicare";
     if(n < 50) return "su "+n+" giocate: indizio, non ancora una prova";
     if(n < 100) return "su "+n+" giocate: il segnale inizia a contare";
     return "su "+n+" giocate: campione solido";
@@ -1742,7 +1915,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var ccTesta = conCassa("CODICI",conti);
     var codiciInTesta = conCassa("CODICI",movimentiCassa).length || ccTesta.chiuse.length || ccTesta.aperte.length;
     app.appendChild(el("header",null,[
-      el("p",{"class":"etich","text":codiciInTesta ? "Cassa · Sportium (Veggente)" : "Cassa"}),
+      el("p",{"class":"etich testa-etich","text":codiciInTesta ? "Cassa · Sportium (Veggente)" : "Cassa"}),
       el("div",{"class":"riga-cassa"},[
         el("span",{"class":"serif tab cassa","text":euro(c.bankroll)}),
         // Accanto alla cifra, cosa misura: cassa + prelevato - versato.
@@ -1754,26 +1927,40 @@ textarea{width:100%;min-height:78px;resize:vertical}
       ]),
       codiciInTesta ? el("div",{"class":"netto"},[
         el("span",{"class":"etich","text":"Sportbet · codici"}),
-        el("span",{"class":"tab","style":{fontSize:"13px","color":"#DCE4EA"},
-          "text":euro(ccTesta.bankroll)+(ccTesta.impegnato>0?" · "+euro(ccTesta.impegnato)+" in gioco":"")})
+        el("span",{"class":"netto-val"},[
+          el("span",{"class":"serif tab netto-cifra","text":euro(ccTesta.bankroll)}),
+          ccTesta.impegnato>0 ? el("span",{"class":"netto-sep","text":" · "}) : null,
+          ccTesta.impegnato>0 ? el("span",{"class":"tab netto-gioco","text":euro(ccTesta.impegnato)+" in gioco"}) : null
+        ])
       ]) : null,
-      el("p",{"class":"sotto tab","text": c.impegnato>0
-        ? (codiciInTesta?"Sportium: ":"")+euro(c.impegnato)+" in gioco \u00B7 "+euro(c.disponibile)+" liberi"
-        : "\u00A0"}),
-      a.drawdown > 0.004
-        ? el("p",{"class":"sotto tab","style":{color:"#C8873A"},
+      // Intestazione compatta (v4.60, 15/11/2026): occupava un terzo dello
+      // schermo su ogni scheda. In gioco e liberi restano su una riga, con
+      // accanto Dati e Guida; la distanza dal massimo si legge in Cassa.
+      el("div",{"class":"testa-fondo"},[
+        el("p",{"class":"sotto tab","text": c.impegnato>0
+          ? euro(c.impegnato)+" in gioco \u00B7 "+euro(c.disponibile)+" liberi"
+          : "\u00A0"}),
+        el("div",{"class":"testa-link"},[["dati","Dati"],["guida","Guida"]].map(function(v){
+          return el("button",{"type":"button","class":"testa-voce"+(S.vista===v[0]?" on":""),"text":v[1],"data-vista":v[0],
+            "onclick":function(){ S.vista=v[0]; disegna(); window.scrollTo(0,0); }});
+        }))
+      ]),
+      S.vista!=="cassa" ? null : a.drawdown > 0.004
+        ? el("p",{"class":"sotto tab testa-massimo","style":{color:"#C8873A"},
             "text":"\u2193 "+euro(a.drawdown)+" dal massimo documentato di "+euro(a.picco)+
                    " ("+a.pct.toFixed(0)+"%)"})
-        : (c.chiuse.length ? el("p",{"class":"sotto tab","text":"sei al massimo storico"}) : null),
+        : (c.chiuse.length ? el("p",{"class":"sotto tab testa-massimo","text":"sei al massimo storico"}) : null),
       S.errore ? el("p",{"class":"errore","text":S.errore}) : null
     ]));
 
-    var nav = el("nav");
-    [["registro","Registro"],["live","Live"],["nuova","Nuova"],["codici","Codici"],["tipster","Rendimento"],
-     ["cassa","Cassa"],["dati","Dati"],["guida","?"]].forEach(function(v){
+    // Schede in basso (v4.60): sei voci a portata di pollice. Dati e Guida
+    // sono nell'intestazione; "Nuova" sta al centro, nell'accento.
+    var nav = el("nav",{"aria-label":"Schede"});
+    [["registro","Registro"],["live","Live"],["nuova","Nuova"],["codici","Codici"],["cassa","Cassa"],
+     ["tipster","Rendimento"]].forEach(function(v){
       nav.appendChild(el("button",{
-        "class": (S.vista===v[0] ? "on" : "")+(v[0]==="guida" ? " nav-aiuto" : ""),
-        "text":v[1],
+        "class": (S.vista===v[0] ? "on" : "")+(v[0]==="nuova" ? " nav-nuova" : ""),
+        "text":v[1],"data-vista":v[0],
         "onclick": function(){ S.vista=v[0]; disegna(); window.scrollTo(0,0); if(v[0]==="live") liveSeVecchio(60000); if(v[0]==="registro" && CLOUD.user) liveSeVecchio(300000); }
       }));
     });
@@ -1806,11 +1993,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var opzioniOrigine=ORIGINI.map(function(o){return [o.id,o.nome];});
     if(f.origine==="CODICI") opzioniOrigine.push(["CODICI",ORIGINE_CODICI.nome]);
-    var inOrigine=selectGuidato([["","Scegli l'origine…"]].concat(opzioniOrigine),f.origine,function(v){
+    var inOrigine=gruppoScelte(opzioniOrigine,f.origine,function(v){
       f.origine=v; disegna();
     });
     inOrigine.id="campo-origine";
-    var inTipo=selectGuidato([["SINGOLA","Singola"],["MULTIPLA","Multipla"]],f.tipoSchedina,function(v){
+    var inTipo=gruppoScelte([["SINGOLA","Singola"],["MULTIPLA","Multipla"]],f.tipoSchedina,function(v){
       f.tipoSchedina=v;
       if(v==="MULTIPLA" && (!f.gambe || f.gambe.length<2)) f.gambe=normalizzaGambe([{},{}]);
       disegna();
@@ -1822,7 +2009,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       inEvento.addEventListener("input",function(){f.evento=this.value;});
       contenutoSchedina.appendChild(el("div",{"class":"gruppo"},[el("label",{"text":"Partita"}),inEvento]));
       contenutoSchedina.appendChild(el("div",{"class":"gruppo"},[el("label",{"text":"Mercato"}),
-        campoMercato(f.mercato||"",function(v){f.mercato=v;})]));
+        campoMercatoRapido(f.mercato||"",function(v){f.mercato=v;})]));
     }else{
       f.gambe=normalizzaGambe(f.gambe);
       f.gambe.forEach(function(gamba,idx){
@@ -1851,7 +2038,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var libri=["Sportbet","Sportium","Lottomatica","Goldbet","SNAI","Eurobet","Bet365","Altro"];
     if(f.bookmaker && libri.indexOf(f.bookmaker)<0) libri.push(f.bookmaker);
-    var inBook=selectGuidato(libri.map(function(b){return [b,b];}),f.bookmaker,function(v){f.bookmaker=v;});
+    // Sportbet e Sportium a bottoni, gli altri book nella tendina accanto.
+    var libriRapidi=["Sportbet","Sportium"], bookRapido=libriRapidi.indexOf(f.bookmaker)>=0;
+    var inBook=gruppoScelte(libriRapidi.map(function(b){return [b,b];}),bookRapido?f.bookmaker:"",function(v){f.bookmaker=v;disegna();},3);
+    var selBook=selectGuidato([["","Altro\u2026"]].concat(libri.filter(function(b){return libriRapidi.indexOf(b)<0;}).map(function(b){return [b,b];})),
+      bookRapido?"":f.bookmaker,function(v){ if(v){f.bookmaker=v;disegna();} });
+    selBook.setAttribute("aria-label","Altri bookmaker");
+    if(!bookRapido) selBook.className="on";
+    inBook.appendChild(selBook);
     var inData=el("input",{"type":"date","value":f.data});
     inData.addEventListener("change",function(){f.data=this.value;});
     // Nota libera (17/10/2026): il campo esisteva nei dati e nel cloud ma il
@@ -1868,16 +2062,30 @@ textarea{width:100%;min-height:78px;resize:vertical}
     inBonus.id="campo-bonus";
     inBonus.addEventListener("input",function(){f.bonus=this.value;aggiornaCassaForm(c);});
 
+    // Data, bonus, quando e nota servono di rado: restano dietro una riga
+    // che dice gia' cosa c'e' dentro, e si aprono da soli se sono compilati.
+    var dettagliAperti = S.formDettagli || inEdit || f.data!==oggi() || f.faseIngresso==="LIVE" ||
+      !!String(f.bonus||"").trim() || !!String(f.nota||"").trim();
+    var apriDettagli=el("button",{"type":"button","class":"dettagli-apri","aria-expanded":dettagliAperti?"true":"false",
+      "onclick":function(){ S.formDettagli=!dettagliAperti; disegna(); }},[
+      el("span",{"text":(f.data===oggi()?"Oggi ":"")+breve(f.data)+" \u00B7 "+(f.faseIngresso==="LIVE"?"live":"prima della partita")}),
+      el("span",{"class":"dettagli-voce","text":dettagliAperti?"Chiudi":"Data, bonus e nota"})
+    ]);
     var elementi=[vessillo,
       pannelloRicevuta(),
       pannelloProposte(),
-      el("div",{"class":"gruppo due"},[campo("Origine",inOrigine),campo("Tipo",inTipo)]),
+      el("div",{"class":"gruppo"},[campo("Origine",inOrigine)]),
+      el("div",{"class":"gruppo"},[campo("Tipo",inTipo)]),
       contenutoSchedina,
       el("div",{"class":"gruppo due"},[campo(f.tipoSchedina==="MULTIPLA"?"Quota totale":"Quota",inQuota),campo("Puntata",inStake)]),
       el("div",{"class":"gruppo"},[rigaCassa]),
-      el("div",{"class":"gruppo due"},[campo("Bookmaker",inBook),campo("Data",inData)]),
-      el("div",{"class":"gruppo due"},[campo("Bonus \u20AC (se vince)",inBonus),campo("Quando",inFase)]),
-      el("div",{"class":"gruppo"},[campo("Nota",inNota)]),
+      el("div",{"class":"gruppo"},[campo("Bookmaker",inBook)]),
+      apriDettagli,
+      el("div",{"class":"dettagli-corpo","style":{display:dettagliAperti?"":"none"}},[
+        el("div",{"class":"gruppo due"},[campo("Data",inData),campo("Quando",inFase)]),
+        el("div",{"class":"gruppo"},[campo("Bonus \u20AC (se vince)",inBonus)]),
+        el("div",{"class":"gruppo"},[campo("Nota",inNota)])
+      ]),
       f.ticketId ? el("p",{"class":"avviso","text":"Ricevuta "+f.ticketId}) : null
     ];
 
@@ -1899,8 +2107,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var bottone=el("button",{"class":"principale","text":inEdit?"Salva modifica":"Registra giocata","onclick":registraForm});
     bottone.id="bottone-registra";
-    elementi.push(bottone);
-    if(inEdit) elementi.push(el("button",{"class":"secondario","text":"Annulla modifica","style":{marginTop:"10px"},"onclick":function(){S.editingId=null;S.form=formVuoto(oggi(),"io");OCR.stato="idle";OCR.risultato=null;S.vista="registro";disegna();}}));
+    // Il tasto resta agganciato sopra la barra delle schede: su un modulo
+    // lungo non serve scorrere fino in fondo per registrare.
+    elementi.push(el("div",{"class":"registra-fisso"},[bottone,
+      inEdit ? el("button",{"class":"secondario","text":"Annulla modifica","style":{marginTop:"10px"},"onclick":function(){S.editingId=null;S.form=formVuoto(oggi(),"io");OCR.stato="idle";OCR.risultato=null;S.vista="registro";disegna();}}) : null
+    ]));
 
     aggiornaCassaForm(c,rigaCassa);
     return el("div",{"class":"pag"},elementi);
@@ -1988,7 +2199,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       dati.id=Date.now();dati.esito="aperta";dati.profitto=0;dati.cloudDirty=true;S.giocate.unshift(dati);
     }
     S.errore=null;salva();
-    S.form=formVuoto(f.data,"io");OCR.stato="idle";OCR.risultato=null;PROP.suggerita=null;PROP.aperto=false;S.vista="registro";disegna();window.scrollTo(0,0);
+    S.formDettagli=false;S.form=formVuoto(f.data,"io");OCR.stato="idle";OCR.risultato=null;PROP.suggerita=null;PROP.aperto=false;S.vista="registro";disegna();window.scrollTo(0,0);
   }
 
   // ---- Live (17/10/2026, idea di Carmine) ----
@@ -2317,8 +2528,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
       return wrap;
     }
 
-    var lista = el("ul");
-    visibili.forEach(function(g){
+    // Registro per giornata (v4.60, 15/11/2026): le aperte in cima, il resto
+    // raggruppato per giorno col totale. Una giocata chiusa mostra una riga
+    // sola; Modifica, Correggi esito ed Elimina compaiono toccandola.
+    function contaNelGiorno(g){ return g.esito!=="aperta" && !g.osservata && (!g.statoCore || g.statoCore==="ufficiale"); }
+    function voceRegistro(g){
+      var aperta = g.esito==="aperta";
+      var espansa = aperta || String(S.rigaAperta)===String(g.id);
       var t = infoOrigine(origineDi(g));
       var colore = g.esito==="vinta" ? "#4FB286"
         : g.esito==="persa" ? "#D4635F"
@@ -2380,47 +2596,87 @@ textarea{width:100%;min-height:78px;resize:vertical}
         ]);
       }
 
-      lista.appendChild(el("li",{"class":"voce"+(g.osservata?" voce-oss":"")},[
+      var saltate = (!aperta && g.tipoSchedina==="MULTIPLA" && g.gambe) ? g.gambe.filter(function(x){ return x.esito==="persa"; }) : [];
+      var testa = [
+        el("span",{"class":"titolo-riga"},[
+          el("span",{"class":"nota","text":g.evento || g.nota || "Schedina"}),
+          el("span",{"class":"esito tab","style":{color: idScadute[g.id] ? "#C8873A" : colore},
+            "text": aperta
+              ? (idScadute[g.id] ? "da chiudere" : "in corso")
+              : segnato(g.profitto)})
+        ]),
+        el("span",{"class":"meta tab",
+          "text": (aperta ? giornoBreve(g.data)+" \u00B7 " : "")+
+            (g.tipoSchedina==="MULTIPLA" && g.gambe && g.gambe.length ? g.gambe.length+" gambe \u00B7 "
+              : (g.mercato && g.mercato!=="MULTIPLA" ? g.mercato+" \u00B7 " : ""))+
+            "@"+g.quota.toFixed(2)+" \u00B7 "+
+            (g.osservata || (g.statoCore && g.statoCore!=="ufficiale") ? "non impegnata ("+euro(g.stake)+" teorici)" : euro(g.stake))+
+            " \u00B7 "+(g.bookmaker||"Sportium")+
+            (bonusDi(g)?" \u00B7 bonus "+euro(bonusDi(g)):"")}),
+        saltate.length ? el("span",{"class":"meta saltata","text":"Saltata: "+saltate.slice(0,2).map(function(x){
+            return x.evento+(x.mercato?", "+x.mercato:"")+(x.quota?" @"+Number(x.quota).toFixed(2):"");
+          }).join(" \u00B7 ")+(saltate.length>2?" \u00B7 +"+(saltate.length-2):"")}) : null
+      ];
+      var dettagli = el("div",{"class":"voce-dett","style":{display: espansa ? "" : "none"}},[
+        el("div",null,[
+          el("span",{"class":"badge-meta","text":g.tipoSchedina||"SINGOLA"}),
+          el("span",{"class":"badge-meta","text":g.bookmaker||"Sportium"}),
+          g.faseIngresso==="LIVE"?el("span",{"class":"badge-meta","text":"Live"}):null,
+          g.propostaVeggenteId?el("span",{"class":"badge-meta","text":nomeProposta(g.propostaTipo)+(g.propostaVariante?" \u00B7 variante":"")}):null,
+          g.tipoSchedina!=="MULTIPLA"&&g.famigliaMercato!=="NON_CLASSIFICATO"?el("span",{"class":"badge-meta","text":etichettaFamiglia(g)}):null,
+          // Solo per il protocollo: una pick BET Core senza probabilità
+          // congelata esce dal campione statistico, e conviene vederlo
+          // nell'elenco invece che scoprirlo al debrief.
+          (origineDi(g)==="BET_CORE"&&g.probabilitaStimata==null&&!g.osservata)
+            ?el("span",{"class":"badge-meta","text":"SENZA p \u00B7 non misurabile","style":{color:"#C8873A",borderColor:"#C8873A55"}}):null
+        ]),
+        g.tipoSchedina==="MULTIPLA" && g.gambe && g.gambe.length
+          ? el("p",{"class":"core-dett","text":g.gambe.map(function(x,i){
+              return (i+1)+". "+x.evento+" \u2014 "+x.mercato+(x.quota?" @"+Number(x.quota).toFixed(2):"")+
+                (x.esito==="vinta"?" \u2713":x.esito==="persa"?" \u2717":x.esito==="rimborsata"?" \u21BA":"");
+            }).join(" \u00B7 ")}) : null,
+        g.nota && g.evento ? el("p",{"class":"core-dett","text":"Nota: "+g.nota}) : null,
+        g.debrief ? el("p",{"class":"core-dett","text":"Debrief: "+g.debrief}) : null,
+        azioni
+      ]);
+      return el("li",{"class":"voce"+(g.osservata?" voce-oss":"")},[
         el("span",{"class":"sigla","text":t.sigla,
           "style": g.osservata
-            ? {background:"#1B2733",color:"#6D7F8E",border:"1px dashed #33424F"}
+            ? {background:"#1B2733",color:"#8C9BA8",border:"1px dashed #33424F"}
             : {background:t.tinta+"26",color:t.tinta}}),
         el("div",{"class":"corpo"},[
-          el("div",{"class":"titolo-riga"},[
-            el("span",{"class":"nota","text":g.evento || g.nota || "Schedina"}),
-            el("span",{"class":"esito tab","style":{color: idScadute[g.id] ? "#C8873A" : colore},
-              "text": g.esito==="aperta"
-                ? (idScadute[g.id] ? "da chiudere" : "in corso")
-                : segnato(g.profitto)})
-          ]),
-          el("p",{"class":"meta tab",
-            "text": breve(g.data)+(g.mercato && g.mercato!=="MULTIPLA" ? " · "+g.mercato : "")+" · quota "+g.quota.toFixed(2)+" · "+
-              (g.osservata || (g.statoCore && g.statoCore!=="ufficiale") ? "non impegnata ("+euro(g.stake)+" teorici)" : "puntati "+euro(g.stake))+
-              (bonusDi(g)?" · bonus "+euro(bonusDi(g)):"")}),
-          el("div",null,[
-            el("span",{"class":"badge-meta","text":g.tipoSchedina||"SINGOLA"}),
-            el("span",{"class":"badge-meta","text":g.bookmaker||"Sportium"}),
-            g.faseIngresso==="LIVE"?el("span",{"class":"badge-meta","text":"Live"}):null,
-            g.propostaVeggenteId?el("span",{"class":"badge-meta","text":nomeProposta(g.propostaTipo)+(g.propostaVariante?" · variante":"")}):null,
-            g.tipoSchedina!=="MULTIPLA"&&g.famigliaMercato!=="NON_CLASSIFICATO"?el("span",{"class":"badge-meta","text":etichettaFamiglia(g)}):null,
-            // Solo per il protocollo: una pick BET Core senza probabilità
-            // congelata esce dal campione statistico, e conviene vederlo
-            // nell'elenco invece che scoprirlo al debrief.
-            (origineDi(g)==="BET_CORE"&&g.probabilitaStimata==null&&!g.osservata)
-              ?el("span",{"class":"badge-meta","text":"SENZA p · non misurabile","style":{color:"#C8873A",borderColor:"#C8873A55"}}):null
-          ]),
-          g.tipoSchedina==="MULTIPLA" && g.gambe && g.gambe.length
-            ? el("p",{"class":"core-dett","text":g.gambe.map(function(x,i){
-                return (i+1)+". "+x.evento+" — "+x.mercato+(x.quota?" @"+Number(x.quota).toFixed(2):"")+
-                  (x.esito==="vinta"?" ✓":x.esito==="persa"?" ✗":x.esito==="rimborsata"?" ↺":"");
-              }).join(" · ")}) : null,
-          g.nota && g.evento ? el("p",{"class":"core-dett","text":"Nota: "+g.nota}) : null,
-          g.debrief ? el("p",{"class":"core-dett","text":"Debrief: "+g.debrief}) : null,
-          azioni
+          aperta ? el("div",{"class":"voce-testa"},testa)
+            : el("button",{"type":"button","class":"voce-testa","aria-expanded":espansa?"true":"false",
+                "onclick":function(){ S.rigaAperta = espansa ? null : g.id; var y=window.scrollY; disegna(); window.scrollTo(0,y||0); }},testa),
+          dettagli
         ])
+      ]);
+    }
+
+    var daChiudere = visibili.filter(function(g){ return g.esito==="aperta"; });
+    if(daChiudere.length){
+      wrap.appendChild(el("section",{"class":"da-chiudere"},[
+        el("p",{"class":"etich","text":"Da chiudere \u00B7 "+daChiudere.length}),
+        el("ul",null,daChiudere.map(voceRegistro))
       ]));
+    }
+    var giorni = [], perGiorno = {};
+    visibili.forEach(function(g){
+      if(g.esito==="aperta") return;
+      var d = String(g.data||"");
+      if(!perGiorno[d]){ perGiorno[d] = []; giorni.push(d); }
+      perGiorno[d].push(g);
     });
-    wrap.appendChild(lista);
+    giorni.forEach(function(d){
+      var contano = perGiorno[d].filter(contaNelGiorno);
+      var tot = contano.reduce(function(a,g){ return a+(Number(g.profitto)||0); },0);
+      wrap.appendChild(el("div",{"class":"giorno-testa"},[
+        el("span",{"class":"etich","text":giornoBreve(d)}),
+        contano.length ? el("span",{"class":"tab giorno-tot","style":{color: tot>0.004 ? "#4FB286" : tot<-0.004 ? "#D4635F" : "#8C9BA8"},
+          "text":"giornata "+segnato(tot)}) : null
+      ]));
+      wrap.appendChild(el("ul",null,perGiorno[d].map(voceRegistro)));
+    });
     return wrap;
   }
 
@@ -2851,6 +3107,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
         el("div",null,[el("span",{"class":"etich","text":"Liberi"}),el("span",{"class":"tab","text":euro(totale-inGioco)})])
       ]));
     }
+
+    var graf = graficoRisultato(c.chiuse.concat(cc.chiuse));
+    if(graf) pag.appendChild(graf);
 
     // Soldi veri e budget del mese in una sola scheda. Il risultato delle
     // giocate (il metodo) resta nello storico, mese per mese.
@@ -3706,6 +3965,17 @@ textarea{width:100%;min-height:78px;resize:vertical}
         "style":{fontSize:"14px",color:"#6D7F8E",textAlign:"center",padding:"32px 0"}}));
     }
 
+    // A confronto (v4.60, 15/11/2026): le origini in una tabella sola, con
+    // quanto manca alle 20 giocate sotto cui i numeri sono indicativi. Il
+    // dettaglio di ciascuna si apre toccando la riga.
+    var confronto = [];
+    var tabella = el("div",{"class":"confronto","style":{display:"none"}});
+    pag.appendChild(tabella);
+    function rigaConfronto(id,nome,tinta,r){
+      confronto.push({id:id,nome:nome,tinta:tinta,r:r});
+      return String(S.rendAperta||"")===id;
+    }
+
     // Il Veggente diviso per proposta giocata: raddoppi, multiple quota 5,
     // personali e giocate senza proposta collegata (tutte quelle registrate
     // prima del collegamento del 14/10/2026).
@@ -3765,7 +4035,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
           })
         : [null,null];
 
-      pag.appendChild(el("div",{"class":"scheda"},[
+      var apertaO = rigaConfronto(o.id,o.nome,o.tinta,tot);
+      pag.appendChild(el("div",{"class":"scheda","style":{display:apertaO?"":"none"}},[
         el("div",{"class":"scheda-top"},[
           el("span",{"class":"serif scheda-nome","text":o.nome,"style":{color:o.tinta}}),
           el("span",{"class":"scheda-tot tab",
@@ -3791,7 +4062,11 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     // Codici Veggente: cassa e numeri a parte, divisi per fascia di quota
     // per capire quali codici convengono.
-    var codiciChiusi = conCassa("CODICI",function(){ return conti().chiuse; }).filter(nelPeriodo);
+    // Solo i codici (v4.60): dal 17/10 nella cassa Sportbet ci sono anche
+    // libere e Veggente, che hanno gia' la loro riga qui sopra e finivano
+    // contate due volte.
+    var codiciChiusi = conCassa("CODICI",function(){ return conti().chiuse; })
+      .filter(function(g){ return origineDi(g)==="CODICI"; }).filter(nelPeriodo);
     if(codiciChiusi.length){
       var tc = riassumi(codiciChiusi);
       var fasce = [["fino a 3",0,3],["3 – 6",3,6],["6 – 10",6,10],["oltre 10",10,Infinity]].map(function(f){
@@ -3802,7 +4077,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
             "text":segnato(r.profitto)+"  ·  "+r.vinte+"/"+r.n+" vinti  ·  ROI "+(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%"})
         ]) : null;
       });
-      pag.appendChild(el("div",{"class":"scheda"},[
+      var apertaC = rigaConfronto("CODICI","Codici",ORIGINE_CODICI.tinta,tc);
+      pag.appendChild(el("div",{"class":"scheda","style":{display:apertaC?"":"none"}},[
         el("div",{"class":"scheda-top"},[
           el("span",{"class":"serif scheda-nome","text":ORIGINE_CODICI.nome,"style":{color:ORIGINE_CODICI.tinta}}),
           el("span",{"class":"scheda-tot tab","text":segnato(tc.profitto),"style":{color:tc.profitto>=0?"#4FB286":"#D4635F"}})
@@ -3812,6 +4088,32 @@ textarea{width:100%;min-height:78px;resize:vertical}
           return el("div",{"class":"cella"},[el("p",{"class":"k","text":x[0]}),el("p",{"class":"v tab","text":x[1]})]);
         }))
       ].concat(fasce,[el("p",{"class":"campione","text":affidabilita(tc.n)})])));
+    }
+
+    if(confronto.length){
+      tabella.style.display="";
+      tabella.appendChild(el("div",{"class":"confronto-testa"},[
+        el("span",{"text":"Origine"}),el("span",{"text":"Gioc."}),el("span",{"text":"Vinte"}),el("span",{"text":"ROI"}),el("span",{"text":"Risultato"})
+      ]));
+      confronto.forEach(function(x){
+        var r=x.r, n=r.n, aperta=String(S.rendAperta||"")===x.id;
+        var colore = !n ? "#8C9BA8" : r.profitto>=0 ? "#4FB286" : "#D4635F";
+        tabella.appendChild(el("button",{"type":"button","class":"confronto-riga"+(aperta?" on":""),"aria-expanded":aperta?"true":"false",
+          "onclick":function(){ S.rendAperta = aperta ? null : x.id; var y=window.scrollY; disegna(); window.scrollTo(0,y||0); }},[
+          el("span",{"class":"confronto-valori tab"},[
+            el("span",{"class":"serif confronto-nome","text":x.nome,"style":{color:x.tinta}}),
+            el("span",{"text":n?String(n):"\u2014"}),
+            el("span",{"text":n?r.vinte+"/"+n:"\u2014"}),
+            el("span",{"style":{color:colore},"text":n?(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%":"\u2014"}),
+            el("span",{"style":{color:colore,fontWeight:"700"},"text":n?segnato(r.profitto):"\u2014"})
+          ]),
+          n<SOGLIA_CAMPIONE ? el("span",{"class":"confronto-campione"},[
+            el("span",{"class":"barra"},[el("span",{"class":"barra-piena","style":{display:"block",width:Math.round((n/SOGLIA_CAMPIONE)*100)+"%",background:"#C8873A"}})]),
+            el("span",{"text":n+" di "+SOGLIA_CAMPIONE+" per giudicare"})
+          ]) : null
+        ]));
+      });
+      tabella.appendChild(el("p",{"class":"confronto-nota","text":"Tocca un'origine per singole, multiple e ultimi 30 giorni."}));
     }
 
     function righeOrdinate(gruppi){

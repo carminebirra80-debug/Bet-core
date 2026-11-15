@@ -331,7 +331,7 @@ function ultimeInviate(calls,table){
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
-  assert.ok(app.textContent.includes("BET Core versione 4.59"),"la versione si vede in fondo a Dati");
+  assert.ok(app.textContent.includes("BET Core versione 4.60"),"la versione si vede in fondo a Dati");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
   const up=ultimeInviate(calls,"picks");
@@ -451,7 +451,9 @@ function findElement(root,predicate){
 }
 
 function clickNav(app,label){
-  const button=app.children[1].children.find(x=>x.textContent===label);
+  // Dalla v4.60 le schede sono nella barra in basso; Dati e Guida nell'intestazione.
+  const button=app.children[1].children.find(x=>x.textContent===label)
+    ||findElement(app.children[0],x=>x.tagName==="BUTTON"&&x.textContent===label);
   assert.ok(button,"Pulsante di navigazione non trovato: "+label);
   button.listeners.click();
 }
