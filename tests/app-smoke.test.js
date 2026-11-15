@@ -100,7 +100,7 @@ const db={
       const result={error:null,data:table==="impostazioni"?null:righeCloud(table),count:table==="picks"?picks.length:0};
       const chain={
         eq:()=>chain,
-        order:async()=>result,
+        order:()=>chain,range:async(a,b)=>{const t=Array.isArray(result.data)?result.data:[];return {error:null,data:t.slice(a,b+1),count:t.length};},
         maybeSingle:async()=>result,
         then:(resolve,reject)=>Promise.resolve(result).then(resolve,reject)
       };

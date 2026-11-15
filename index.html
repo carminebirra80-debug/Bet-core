@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.58</title>
+<title>Registro BET Core v4.59</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -374,7 +374,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.58";
+  var VERSIONE = "4.59";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -1241,6 +1241,55 @@ textarea{width:100%;min-height:78px;resize:vertical}
     CLOUD.user=u.data.user; CLOUD.email=CLOUD.user.email||"";
     return CLOUD.user;
   }
+  // Lettura a pagine (v4.59, 15/11/2026). Il cloud restituisce al massimo
+  // 1000 righe per richiesta: oltre quel numero la lettura arrivava troncata
+  // e le giocate mancanti venivano prese per cancellate. Si legge finche' le
+  // righe non sono tutte (conteggio esatto) o la pagina torna vuota.
+  async function leggiTutteCloud(tabella){
+    var tutte=[];
+    for(;;){
+      var r=await DB.from(tabella).select("*",{count:"exact"}).eq("user_id",CLOUD.user.id)
+        .order("id",{ascending:true}).range(tutte.length,tutte.length+999);
+      if(r.error) throw r.error;
+      var righe=r.data||[];
+      tutte=tutte.concat(righe);
+      if(!righe.length || (r.count!=null && tutte.length>=Number(r.count))) return tutte;
+    }
+  }
+  // La copia che arriva dal cloud tiene l'id che la giocata aveva gia' su
+  // questo telefono (v4.59): prima prendeva quello del cloud ("ticket:..."),
+  // e una modifica aperta in quel momento non trovava piu' la sua giocata.
+  function conservaId(locali,uniti,chiave){
+    var ids={};
+    (locali||[]).forEach(function(l){ ids[String(chiave(l))]=l.id; });
+    (uniti||[]).forEach(function(u){
+      var k=String(chiave(u));
+      if(Object.prototype.hasOwnProperty.call(ids,k) && ids[k]!=null) u.id=ids[k];
+    });
+    return uniti;
+  }
+  // Unione dopo l'invio (v4.59). Mentre l'invio e' in viaggio l'utente puo'
+  // aggiungere o modificare: il piano fatto prima non lo sa. Si rifa' sullo
+  // stato di adesso, dando per "nel cloud" le righe appena inviate.
+  function unisciDopoInvio(attuali,remoti,inviati,chiave){
+    var presenti={},mandati={};
+    (attuali||[]).forEach(function(l){ presenti[String(chiave(l))]=1; });
+    (inviati||[]).forEach(function(g){ mandati[String(chiave(g))]=1; });
+    var remotiOra=(remoti||[]).filter(function(r){ return !mandati[String(chiave(r))]; })
+      .concat((inviati||[]).filter(function(g){ return presenti[String(chiave(g))]; }));
+    return conservaId(attuali,window.BetCoreSyncMerge.pianifica(attuali,remotiOra,chiave).uniti,chiave);
+  }
+  // La giocata com'e' adesso nel registro: dopo una sincronizzazione
+  // l'oggetto puo' essere stato sostituito dalla copia del cloud.
+  function giocataViva(g){
+    if(!g) return null;
+    var k=legacyCloud(g);
+    for(var i=0;i<S.giocate.length;i++){
+      var x=S.giocate[i];
+      if(x===g || String(x.id)===String(g.id) || legacyCloud(x)===k) return x;
+    }
+    return null;
+  }
   async function inviaCloud(silenzioso){
     if(!DB || !CLOUD.user || CLOUD.busy) return false;
     CLOUD.busy=true; CLOUD.stato="Sincronizzazione…"; if(!silenzioso)disegna();
@@ -1250,9 +1299,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       // Prima si legge il cloud. Una sync generica non deve piu riscrivere
       // tutte le righe locali: i record remoti prevalgono, salvo quelli che
       // l'utente ha appena modificato su questo dispositivo.
-      var lettura=await DB.from("picks").select("*").eq("user_id",CLOUD.user.id);
-      if(lettura.error) throw lettura.error;
-      var remote=(lettura.data||[]).map(daCloudPick);
+      var remote=(await leggiTutteCloud("picks")).map(daCloudPick);
       riconosciNelCloud(S.giocate,remote);
       var piano=window.BetCoreSyncMerge.pianifica(S.giocate,remote,legacyCloud);
       var invio=piano.invio,unite=piano.uniti;
@@ -1263,22 +1310,37 @@ textarea{width:100%;min-height:78px;resize:vertical}
         // Dal primo invio l'identita' nel cloud resta quella: un ticket
         // aggiunto dopo, da qualunque strada, non deve creare una seconda riga
         // (19/10/2026: codice 685766 finito due volte nel cloud).
-        invio.forEach(function(g,i){if(!g.cloudLegacyId)g.cloudLegacyId=righeInviate[i].legacy_id;g.cloudDirty=false;g.cloudSynced=true;});
+        // Una giocata ritoccata mentre l'invio era in viaggio resta "da
+        // inviare": nel cloud e' arrivata la versione di prima.
+        invio.forEach(function(g,i){
+          if(!g.cloudLegacyId)g.cloudLegacyId=righeInviate[i].legacy_id;
+          g.cloudSynced=true;
+          if(JSON.stringify(pickCloud(g))===JSON.stringify(righeInviate[i])) g.cloudDirty=false;
+        });
+        unite=unisciDopoInvio(S.giocate,remote,invio,legacyCloud);
+      }else{
+        conservaId(S.giocate,unite,legacyCloud);
       }
       S.giocate=deduplicaGiocate(unite);
 
-      var letturaV=await DB.from("versamenti").select("*").eq("user_id",CLOUD.user.id);
-      if(letturaV.error) throw letturaV.error;
-      var remotiV=(letturaV.data||[]).map(function(r){return {
+      var remotiV=(await leggiTutteCloud("versamenti")).map(function(r){return {
         id:r.legacy_id||r.id,cloudLegacyId:r.legacy_id||null,data:r.data,
         importo:Number(r.importo),nota:r.nota||"",tipoMovimento:r.tipo_movimento||"versamento",cassa:r.cassa==="CODICI"?"CODICI":"PRINCIPALE",cloudSynced:true};
       });
-      var pianoV=window.BetCoreSyncMerge.pianifica(S.versamenti,remotiV,function(v){return String(v.cloudLegacyId||v.id);});
+      var chiaveV=function(v){return String(v.cloudLegacyId||v.id);};
+      var pianoV=window.BetCoreSyncMerge.pianifica(S.versamenti,remotiV,chiaveV);
       var invioV=pianoV.invio,unitiV=pianoV.uniti;
       if(invioV.length){
-        var r4=await DB.from("versamenti").upsert(invioV.map(versaCloud),{onConflict:"user_id,legacy_id"});
+        var righeV=invioV.map(versaCloud);
+        var r4=await DB.from("versamenti").upsert(righeV,{onConflict:"user_id,legacy_id"});
         if(r4.error) throw r4.error;
-        invioV.forEach(function(v){v.cloudDirty=false;v.cloudSynced=true;});
+        invioV.forEach(function(v,i){
+          v.cloudSynced=true;
+          if(JSON.stringify(versaCloud(v))===JSON.stringify(righeV[i])) v.cloudDirty=false;
+        });
+        unitiV=unisciDopoInvio(S.versamenti,remotiV,invioV,chiaveV);
+      }else{
+        conservaId(S.versamenti,unitiV,chiaveV);
       }
       S.versamenti=unitiV;
       var letturaI=await DB.from("impostazioni").select("*").eq("user_id",CLOUD.user.id).maybeSingle();
@@ -1376,13 +1438,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     CLOUD.busy=true; CLOUD.stato="Scaricamento…"; disegna();
     try{
       await utenteCloudVerificato();
-      var a=await DB.from("picks").select("*").eq("user_id",CLOUD.user.id).order("data",{ascending:true}); if(a.error) throw a.error;
-      var b=await DB.from("versamenti").select("*").eq("user_id",CLOUD.user.id).order("data",{ascending:true}); if(b.error) throw b.error;
+      var perData=function(x,y){ return String(x.data||"")<String(y.data||"")?-1:String(x.data||"")>String(y.data||"")?1:0; };
+      var a={data:(await leggiTutteCloud("picks")).sort(perData)};
+      var b={data:(await leggiTutteCloud("versamenti")).sort(perData)};
       var c=await DB.from("impostazioni").select("*").eq("user_id",CLOUD.user.id).maybeSingle(); if(c.error) throw c.error;
       var remotePicks=(a.data||[]).map(daCloudPick);
       CLOUD.remoteCount=remotePicks.length;
       CLOUD.lastDownloadCount=remotePicks.length;
-      S.giocate=riconciliaCloudPicks(remotePicks);
+      S.giocate=conservaId(S.giocate,riconciliaCloudPicks(remotePicks),legacyCloud);
       S.versamenti=(b.data||[]).map(function(v){return {
         id:v.legacy_id||v.id,cloudLegacyId:v.legacy_id||null,data:v.data,
         importo:Number(v.importo),nota:v.nota||"",
@@ -1913,6 +1976,9 @@ textarea{width:100%;min-height:78px;resize:vertical}
       propostaVeggenteId:idProposta,propostaTipo:idProposta?f.propostaTipo:"",propostaVariante:variante,
       codiceSchedina:origine==="CODICI"?(f.codiceSchedina||""):""};
     try{ localStorage.setItem(CHIAVE_BOOK,dati.bookmaker); }catch(e){}
+    if(inEdit && !S.giocate.some(function(g){return String(g.id)===String(S.editingId);})){
+      bloccaConErrore("Non trovo pi\u00F9 la giocata che stavi modificando: i dati che hai scritto sono ancora qui sotto. Annulla la modifica, riaprila dal Registro e riprova.");return;
+    }
     if(inEdit){
       // Stessa regola della ricevuta sui codici: cambiare il ticket in modifica
       // non deve cambiare l'identita' della giocata nel cloud.
@@ -2401,6 +2467,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
           .eq("user_id",CLOUD.user.id).eq("legacy_id",legacyCloud(g));
         if(up.error) throw up.error;
       }
+      var viva=giocataViva(g);
+      if(viva && viva!==g){ viva.esito="aperta"; viva.profitto=0; }
       salva(true);
       S.errore=null;
     }catch(e){
@@ -2444,6 +2512,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         if(up.error) throw up.error;
       }
 
+      g=giocataViva(g)||g;
       if(gambeVinte) g.gambe=gambeVinte;
       g.esito=esito;
       g.profitto=Number(profitto.toFixed(2));
@@ -3376,7 +3445,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     try{
       var r=await ocrRicevuta(file,function(p,fase){CODOCR.progresso=p;CODOCR.fase=fase;disegna();},true);
       if(g){
-        var vivo=S.giocate.find(function(x){ return x.id===g.id; });
+        var vivo=giocataViva(g);
         CODOCR.stato="fatto"; CODOCR.messaggio=vivo?attaccaRicevuta(vivo,r):"Il codice non c'e' piu'.";
       }else if(!gambeDaRicevuta(r).length){
         CODOCR.stato="error"; CODOCR.messaggio="Nello screenshot non ho trovato partite: apri il ticket con i dettagli delle selezioni.";

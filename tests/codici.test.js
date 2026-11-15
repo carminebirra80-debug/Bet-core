@@ -114,7 +114,7 @@ const db={
     upsert:async(rows,options)=>{calls.push({azione:"upsert",table,rows,options});salvaNelCloud(table,rows);return {error:null};},
     select:()=>{
       const result={error:null,data:table==="impostazioni"?null:righeCloud(table),count:0};
-      const chain={eq:()=>chain,order:async()=>result,maybeSingle:async()=>({error:null,data:null}),
+      const chain={eq:()=>chain,order:()=>chain,range:async(a,b)=>{const t=Array.isArray(result.data)?result.data:[];return {error:null,data:t.slice(a,b+1),count:t.length};},maybeSingle:async()=>({error:null,data:null}),
         then:(resolve,reject)=>Promise.resolve(result).then(resolve,reject)};
       return chain;
     },
@@ -331,7 +331,7 @@ function ultimeInviate(calls,table){
 
   // Sync: origine e codice vanno al cloud, i movimenti con la loro cassa.
   clickNav(app,"Dati");
-  assert.ok(app.textContent.includes("BET Core versione 4.58"),"la versione si vede in fondo a Dati");
+  assert.ok(app.textContent.includes("BET Core versione 4.59"),"la versione si vede in fondo a Dati");
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora").listeners.click();
   await new Promise(resolve=>setTimeout(resolve,5));
   const up=ultimeInviate(calls,"picks");

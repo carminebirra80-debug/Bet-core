@@ -100,7 +100,7 @@ const db={
   from:t=>({
     upsert:async rows=>{const m=cloud[t]||(cloud[t]=new Map());for(const r of [].concat(rows))m.set(r.legacy_id,{...r});return {error:null};},
     select:()=>{const fn=async()=>({error:null,data:t==="impostazioni"?null:[...((cloud[t]||new Map()).values())].map(r=>({...r})),count:0});
-      const c={eq:()=>c,order:fn,maybeSingle:async()=>({error:null,data:null}),then:(a,b)=>fn().then(a,b)};return c;},
+      const c={eq:()=>c,order:()=>c,range:async(a,b)=>{const r=await fn();const t=r.data||[];return {error:null,data:t.slice(a,b+1),count:t.length};},maybeSingle:async()=>({error:null,data:null}),then:(a,b)=>fn().then(a,b)};return c;},
     delete:()=>({eq:()=>({eq:async()=>({error:null})})}),update:()=>({eq:()=>({eq:async()=>({error:null})})})
   })
 };
