@@ -155,7 +155,9 @@ function findElement(root,predicate){
 }
 
 function clickNav(app,label){
-  const button=app.children[1].children.find(x=>x.textContent===label);
+  // Dalla v4.60 le schede sono nella barra in basso; Dati e Guida nell'intestazione.
+  const button=app.children[1].children.find(x=>x.textContent===label)
+    ||findElement(app.children[0],x=>x.tagName==="BUTTON"&&x.textContent===label);
   assert.ok(button,"Pulsante di navigazione non trovato: "+label);
   button.listeners.click();
 }

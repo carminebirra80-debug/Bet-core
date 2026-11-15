@@ -168,13 +168,15 @@ function ultimeInviate(calls,table){
   assert.ok(!/\b(MC|FR)\b/.test(reg),"sigle dei tipster eliminati ancora presenti");
   assert.ok(reg.includes("Settembre - Vecchia"),"le giocate di settembre restano visibili nel registro");
 
-  // Nuova giocata: l'origine si sceglie da un menu a tendina con le tre
-  // fonti, e i campi del protocollo non compaiono finche' non e' BET Core.
+  // Nuova giocata: l'origine si sceglie fra le tre fonti (dalla v4.60 con
+  // un bottone ciascuna), e i campi del protocollo non compaiono finche'
+  // non e' BET Core.
   clickNav(app,"Nuova");
   assert.ok(findElement(app,x=>x.tagName==="LABEL"&&x.textContent==="Origine"),"selettore Origine mancante");
-  const selOrigine=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Scegli l'origine…"));
-  assert.ok(selOrigine,"menu a tendina dell'origine non trovato");
-  assert.equal(selOrigine.children.map(o=>o.value).join(","),",VEGGENTE,BET_CORE,LIBERA");
+  const gruppoOrigine=findElement(app,x=>x.id==="campo-origine");
+  assert.ok(gruppoOrigine,"scelta dell'origine non trovata");
+  assert.equal(gruppoOrigine.children.map(o=>o.textContent).join(","),"Veggente,BET Core,Libera");
+  assert.ok(gruppoOrigine.children.every(o=>o.tagName==="BUTTON"&&o.attributes["aria-pressed"]==="false"),"all'inizio nessuna origine scelta");
   assert.ok(!app.textContent.includes("Probabilità stimata"),"i campi del protocollo vanno nascosti fuori da BET Core");
   for(const vecchio of ["Classificazione","Solo osservata","Fase di ingresso","Puntata consigliata","Confidence","Quota al check"]){
     assert.ok(!app.textContent.includes(vecchio),"campo superfluo ancora nel modulo: "+vecchio);
@@ -236,15 +238,13 @@ function ultimeInviate(calls,table){
   clickNav(app,"Nuova");
   const nuovaEv=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder==="Lazio - Genoa");
   nuovaEv.value="Lazio - Genoa"; nuovaEv.listeners.input.call(nuovaEv);
-  const selMercato=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Seleziona mercato…"));
-  selMercato.value="1"; selMercato.listeners.change.call(selMercato);
+  findElement(app,x=>x.tagName==="BUTTON"&&String(x.className).indexOf("scelta")===0&&x.textContent==="1").listeners.click();
   for(const [ph,v] of [["2.30","2.10"],["5.00","4"]]){
     const i=findElement(app,x=>x.tagName==="INPUT"&&x.attributes.placeholder===ph); i.value=v; i.listeners.input.call(i);
   }
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra giocata").listeners.click();
   assert.ok(app.children[0].textContent.includes("Scegli l'origine"),"senza origine la giocata va bloccata");
-  const sel=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Scegli l'origine…"));
-  sel.value="LIBERA"; sel.listeners.change.call(sel);
+  findElement(app,x=>x.tagName==="BUTTON"&&String(x.className).indexOf("scelta")===0&&x.textContent==="Libera").listeners.click();
   const selBook=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Lottomatica"));
   selBook.value="SNAI"; selBook.listeners.change.call(selBook);
   findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Registra giocata").listeners.click();
@@ -262,8 +262,7 @@ function ultimeInviate(calls,table){
     clickNav(app,"Nuova");
     // Il pannello manuale compare solo per le giocate Veggente.
     assert.ok(!findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Scegli proposta"),"senza origine Veggente il pannello manuale non serve");
-    const so=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Scegli l'origine…"));
-    so.value="VEGGENTE"; so.listeners.change.call(so);
+    findElement(app,x=>x.tagName==="BUTTON"&&String(x.className).indexOf("scelta")===0&&x.textContent==="Veggente").listeners.click();
     findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Scegli proposta").listeners.click();
     await new Promise(resolve=>setTimeout(resolve,5));
     const voce=findElement(app,x=>x.tagName==="BUTTON"&&x.className==="proposta-voce"&&x.textContent.startsWith(testoProposta));
@@ -336,7 +335,9 @@ function findElement(root,predicate){
 }
 
 function clickNav(app,label){
-  const button=app.children[1].children.find(x=>x.textContent===label);
+  // Dalla v4.60 le schede sono nella barra in basso; Dati e Guida nell'intestazione.
+  const button=app.children[1].children.find(x=>x.textContent===label)
+    ||findElement(app.children[0],x=>x.tagName==="BUTTON"&&x.textContent===label);
   assert.ok(button,"Pulsante di navigazione non trovato: "+label);
   button.listeners.click();
 }

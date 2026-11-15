@@ -148,9 +148,10 @@ function ultimeInviate(calls,table){
   // La probabilità stimata compare solo per le giocate BET Core: è il campo
   // su cui poggiano Brier, log loss e calibrazione del protocollo.
   assert.ok(!app.textContent.includes("Probabilità stimata"),"fuori da BET Core i campi del protocollo non servono");
-  const selOrigine=findElement(app,x=>x.tagName==="SELECT"&&x.children.some(o=>o.textContent==="Scegli l'origine…"));
-  assert.ok(selOrigine,"menu dell'origine non trovato");
-  selOrigine.value="BET_CORE"; selOrigine.listeners.change.call(selOrigine);
+  // Dalla v4.60 l'origine si sceglie con un bottone, non da una tendina.
+  const bOrigine=findElement(app,x=>x.tagName==="BUTTON"&&String(x.className).indexOf("scelta")===0&&x.textContent==="BET Core");
+  assert.ok(bOrigine,"bottone dell'origine non trovato");
+  bOrigine.listeners.click();
   assert.ok(app.textContent.includes("Probabilità stimata"));
   assert.ok(!app.textContent.includes("Probabilità indipendente congelata"));
   // Senza probabilità la riga di supporto dice cosa si sta perdendo.
@@ -223,7 +224,7 @@ function ultimeInviate(calls,table){
   const filtri=findElement(app,x=>x.className==="filtri");
   assert.ok(filtri,"filtri del registro mancanti");
 
-  clickNav(app,"?");
+  clickNav(app,"Guida");
   assert.ok(app.textContent.includes("Codici")&&!app.textContent.includes("Market Lab"));
   clickNav(app,"Dati");
   const invia=findElement(app,x=>x.tagName==="BUTTON"&&x.textContent==="Invia ora");
@@ -315,7 +316,9 @@ function findElement(root,predicate){
 }
 
 function clickNav(app,label){
-  const button=app.children[1].children.find(x=>x.textContent===label);
+  // Dalla v4.60 le schede sono nella barra in basso; Dati e Guida nell'intestazione.
+  const button=app.children[1].children.find(x=>x.textContent===label)
+    ||findElement(app.children[0],x=>x.tagName==="BUTTON"&&x.textContent===label);
   assert.ok(button,"Pulsante di navigazione non trovato: "+label);
   button.listeners.click();
 }

@@ -1,4 +1,4 @@
-const CACHE='bet-core-v4-59-sync-sicura';
+const CACHE='bet-core-v4-60-grafica';
 const ASSETS=['./','./index.html','./market-taxonomy.js?v=20261021a','./market-metrics.js?v=20261021a','./sync-merge.js?v=20261021a','./receipt-parser.js?v=20261021a','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 // Aggiornamento (v4.58, 07/11/2026). Prima la versione nuova prendeva il
