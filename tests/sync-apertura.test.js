@@ -101,7 +101,7 @@ const db={
     select:()=>{
       if(table==="picks") letture++;
       const result={error:null,data:table==="impostazioni"?null:(table==="picks"?nelCloud:[]),count:table==="picks"?nelCloud.length:0};
-      const chain={eq:()=>chain,order:async()=>result,maybeSingle:async()=>({error:null,data:null}),
+      const chain={eq:()=>chain,order:()=>chain,range:async(a,b)=>{const t=Array.isArray(result.data)?result.data:[];return {error:null,data:t.slice(a,b+1),count:t.length};},maybeSingle:async()=>({error:null,data:null}),
         then:(resolve,reject)=>Promise.resolve(result).then(resolve,reject)};
       return chain;
     },
