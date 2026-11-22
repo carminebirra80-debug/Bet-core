@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.60</title>
+<title>Registro BET Core v4.61</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -434,11 +434,16 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Origine della scelta, decisa da Carmine il 14/10/2026: tre fonti da
   // tenere separate. E' una cosa diversa dalla classificazione del protocollo,
   // che resta nel database ma non si sceglie piu' a mano.
+  // 22/11/2026: la rubrica Okpronostico (OKP) prende il posto di BET Core,
+  // che Carmine non usa piu'. Si gioca su Sportium e va nella cassa comune.
   var ORIGINI = [
     { id:"VEGGENTE", nome:"Veggente", sigla:"VG", tinta:"#C8873A" },
-    { id:"BET_CORE", nome:"BET Core", sigla:"BC", tinta:"#4E9AA8" },
+    { id:"OKP",      nome:"OKP",      sigla:"OK", tinta:"#5C8DD6" },
     { id:"LIBERA",   nome:"Libera",   sigla:"LB", tinta:"#8E7CC3" }
   ];
+  // Le giocate BET Core di settembre e ottobre restano nel registro (Tutte) e
+  // nel Rendimento come storico, ma non si scelgono piu' per le nuove.
+  var ORIGINE_BET_CORE = { id:"BET_CORE", nome:"BET Core (storico)", sigla:"BC", tinta:"#4E9AA8" };
   // Dal 15/09/2026 le giocate reali vengono dal Veggente (Sportbet).
   var INIZIO_VEGGENTE = "2026-09-15";
   // Codici schedina del Veggente (17/10/2026): giocati su Sportbet con una
@@ -451,7 +456,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.60";
+  var VERSIONE = "4.61";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -522,7 +527,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   }
 
   function origineValida(v){
-    return (v==="CODICI" || ORIGINI.some(function(o){ return o.id===v; })) ? v : "";
+    return (v==="CODICI" || v==="BET_CORE" || ORIGINI.some(function(o){ return o.id===v; })) ? v : "";
   }
 
   // Spostamento fra le due casse: due rettifiche con questa nota. Non e' ne'
@@ -566,6 +571,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
   function infoOrigine(id){
     if(id==="CODICI") return ORIGINE_CODICI;
+    if(id==="BET_CORE") return ORIGINE_BET_CORE;
     for(var i=0;i<ORIGINI.length;i++) if(ORIGINI[i].id===id) return ORIGINI[i];
     return ORIGINI[2];
   }
@@ -1993,6 +1999,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
 
     var opzioniOrigine=ORIGINI.map(function(o){return [o.id,o.nome];});
     if(f.origine==="CODICI") opzioniOrigine.push(["CODICI",ORIGINE_CODICI.nome]);
+    if(f.origine==="BET_CORE") opzioniOrigine.push(["BET_CORE",ORIGINE_BET_CORE.nome]);
     var inOrigine=gruppoScelte(opzioniOrigine,f.origine,function(v){
       f.origine=v; disegna();
     });
@@ -2134,7 +2141,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   function registraForm(){
     var f=S.form, inEdit=!!S.editingId;
     var origine=origineValida(f.origine);
-    if(!origine){bloccaConErrore("Scegli l'origine: Veggente, BET Core o Libera.");return;}
+    if(!origine){bloccaConErrore("Scegli l'origine: Veggente, OKP o Libera.");return;}
     var gambe=normalizzaGambe(f.gambe);
     var gambeCompilate=gambe.filter(function(x){return x.evento.trim() || x.mercato.trim();});
     // Multipla senza quota totale ma con tutte le quote delle gambe: il
@@ -2427,7 +2434,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       el("p",{"class":"guida-intro","text":"Registra ogni schedina una sola volta: i campi guidati alimentano cassa, archivio Supabase e debrief giornaliero."}),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Origine"}),
-        el("p",{"class":"guida-p","text":"Ogni giocata dice da dove arriva. Veggente: dalle analisi del Veggente. BET Core: dal protocollo, e solo allora compaiono probabilità e quota di chiusura. Libera: quando la spingi tu. Il Rendimento le tiene separate. Dopo lo screenshot l'app cerca la proposta del Veggente con le stesse partite e chiede conferma: collegata, la proposta risulta giocata nel registro del Veggente."})
+        el("p",{"class":"guida-p","text":"Ogni giocata dice da dove arriva. Veggente: dalle analisi del Veggente. OKP: dalla rubrica di Okpronostico, giocata su Sportium. Libera: quando la spingi tu. Le vecchie giocate BET Core restano in Tutte e nel Rendimento come storico. Il Rendimento le tiene separate. Dopo lo screenshot l'app cerca la proposta del Veggente con le stesse partite e chiede conferma: collegata, la proposta risulta giocata nel registro del Veggente."})
       ]),
       el("div",{"class":"guida-sez"},[
         el("h2",{"class":"guida-tit","text":"Codici"}),
@@ -2496,6 +2503,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     ORIGINI.forEach(function(o){ opzioni.push([o.id,o.nome]); });
     opzioni.push(["CODICI","Codici"]);
     if(scadute.length) opzioni.push(["scadute","Da chiudere"]);
+    if(!opzioni.some(function(o){ return o[0]===S.filtro; })) S.filtro="tutti";
     opzioni.forEach(function(o){
       filtri.appendChild(el("button",{
         "class":"chip"+(S.filtro===o[0]?" on":""), "text":o[1],
@@ -3994,7 +4002,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       }));
     }
 
-    ORIGINI.forEach(function(o){
+    ORIGINI.concat([ORIGINE_BET_CORE]).forEach(function(o){
       var sue = chiuse.filter(function(g){ return origineDi(g)===o.id; });
       var pend = aperte.filter(function(g){ return origineDi(g)===o.id; }).length;
       if(!sue.length && !pend) return;
