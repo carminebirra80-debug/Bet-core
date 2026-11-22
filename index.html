@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.65</title>
+<title>Registro BET Core v4.66</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -457,7 +457,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.65";
+  var VERSIONE = "4.66";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -516,7 +516,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // puntata x quota. La quota resta quella vera; il bonus entra nel profitto
   // solo quando la giocata e' vinta.
   function bonusDi(g){ var b=parseFloat(String(g&&g.bonus!=null?g.bonus:"").replace(",",".")); return isFinite(b)&&b>0?Math.round(b*100)/100:0; }
-  function profittoVinta(g){ return Number(g.stake||0)*Number(g.quota||0)-Number(g.stake||0)+bonusDi(g); }
+  // Incassato (22/11/2026, v4.66): quando la vincita vera non e' quota per
+  // puntata (sistemi, bonus, arrotondamenti del book) vale la cifra scritta.
+  function incassatoDi(g){ var n=Number(g&&g.incassato); return isFinite(n)&&n>0 ? n : null; }
+  function profittoVinta(g){
+    var inc=incassatoDi(g);
+    if(inc!=null) return inc-Number(g.stake||0);
+    return Number(g.stake||0)*Number(g.quota||0)-Number(g.stake||0)+bonusDi(g);
+  }
 
   function formVuoto(data,tipster){
     return { data:data||oggi(), tipster:tipster||"io", origine:"", evento:"", mercato:"", mercatoAltro:"", nota:"", bonus:"", quota:"", quotaCheck:"",
@@ -524,7 +531,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       confidence:"", debrief:"", statoCore:"ufficiale", stake:"", toccato:false, osservata:false,
       bookmaker:ultimoBookmaker(), faseIngresso:"PRE", classificazione:"PERSONALE",
       ticketId:"", orarioIngresso:valoreDataOraLocale(new Date().toISOString()), tipoSchedina:"SINGOLA", gambe:[],
-      propostaVeggenteId:null, propostaTipo:"", propostaVariante:false, propostaGambe:0, etichetta:"" };
+      propostaVeggenteId:null, propostaTipo:"", propostaVariante:false, propostaGambe:0, etichetta:"", incassato:"" };
   }
 
   function origineValida(v){
@@ -715,7 +722,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       bookmaker:g.bookmaker||"Sportium", faseIngresso:g.faseIngresso||"PRE", classificazione:classificazioneLegacy(g),
       ticketId:g.ticketId||"", orarioIngresso:valoreDataOraLocale(g.orarioIngresso), tipoSchedina:g.tipoSchedina||"SINGOLA",
       gambe:normalizzaGambe(g.gambe), propostaVeggenteId:g.propostaVeggenteId||null, propostaTipo:g.propostaTipo||"",
-      propostaVariante:!!g.propostaVariante, propostaGambe:0, codiceSchedina:g.codiceSchedina||"", etichetta:g.etichetta||"" };
+      propostaVariante:!!g.propostaVariante, propostaGambe:0, codiceSchedina:g.codiceSchedina||"", etichetta:g.etichetta||"", incassato:incassatoDi(g)!=null?String(incassatoDi(g)):"" };
   }
 
   function caricaLibreriaOCR(){
@@ -1349,7 +1356,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       ...(g.bonus!==undefined&&g.bonus!==null&&g.bonus!==""?{bonus:bonusDi(g)}:{}),
       // Etichetta della schedina (22/11/2026), es. "Raddoppio": va al cloud
       // solo se c'e', come il bonus.
-      ...(g.etichetta?{etichetta:String(g.etichetta).trim()}:{}) };
+      ...(g.etichetta?{etichetta:String(g.etichetta).trim()}:{}),
+      ...(Object.prototype.hasOwnProperty.call(g,"incassato")?{incassato:incassatoDi(g)}:{}) };
   }
   function versaCloud(v){ return {user_id:CLOUD.user.id,
     legacy_id:String(v.cloudLegacyId||v.id), data:v.data, importo:Number(v.importo),
@@ -1531,7 +1539,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
       famigliaMercato:g.famiglia_mercato||"NON_CLASSIFICATO",ambitoMercato:g.ambito_mercato||"PARTITA",
       selezioneNormalizzata:g.selezione_normalizzata||"",lineaMercato:g.linea_mercato||null,
       componentiMercato:Array.isArray(g.componenti_mercato)?g.componenti_mercato:[],versioneTassonomia:g.versione_tassonomia||"v0.1",
-      propostaVeggenteId:g.proposta_veggente_id==null?null:Number(g.proposta_veggente_id),propostaTipo:g.proposta_tipo||"",propostaVariante:!!g.proposta_variante,codiceSchedina:g.codice_schedina||"",etichetta:g.etichetta||""};
+      propostaVeggenteId:g.proposta_veggente_id==null?null:Number(g.proposta_veggente_id),propostaTipo:g.proposta_tipo||"",propostaVariante:!!g.proposta_variante,codiceSchedina:g.codice_schedina||"",etichetta:g.etichetta||"",incassato:g.incassato==null?null:Number(g.incassato)};
     pick.origine=origineDi(pick);
     return aggiornaTassonomia(pick);
   }
@@ -1931,11 +1939,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
     function bookTesta(nome,k,cls){
       return el("div",{"class":"book-testa "+cls},[
         el("span",{"class":"etich book-nome","text":nome}),
-        el("span",{"class":"serif tab book-cifra","text":euro(k.disponibile)}),
+        el("span",{"class":"serif tab book-cifra","text":euro(k.disponibile),"style":k.disponibile<-0.004?{color:"#D4635F"}:{}}),
         el("span",{"class":"tab book-gioco","text":k.impegnato>0 ? "+"+euro(k.impegnato)+" in gioco" : "nessuna in gioco"})
       ]);
     }
     var realeTot = c.reale + (codiciInTesta ? ccTesta.reale : 0);
+    // Saldo sotto zero (v4.66): quasi sempre e' un versamento non registrato.
+    var sottoZero = [[codiciInTesta?"Sportium":"La cassa",c],[ "Sportbet",codiciInTesta?ccTesta:null]]
+      .filter(function(x){ return x[1] && x[1].disponibile < -0.004; }).map(function(x){ return x[0]; });
     app.appendChild(el("header",{"class":codiciInTesta?"due-book":"un-book"},[
       bookTesta(codiciInTesta?"Sportium":"Cassa",c,"book-sx"),
       codiciInTesta ? bookTesta("Sportbet",ccTesta,"book-dx") : null,
@@ -1957,6 +1968,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
             "text":"\u2193 "+euro(a.drawdown)+" dal massimo documentato di "+euro(a.picco)+
                    " ("+a.pct.toFixed(0)+"%)"})
         : (c.chiuse.length ? el("p",{"class":"sotto tab testa-massimo","text":"sei al massimo storico"}) : null),
+      sottoZero.length ? el("p",{"class":"errore avviso-sotto-zero","text":sottoZero.join(" e ")+" sotto zero: manca un versamento? Registralo in Cassa."}) : null,
       S.errore ? el("p",{"class":"errore","text":S.errore}) : null
     ]));
 
@@ -2064,9 +2076,15 @@ textarea{width:100%;min-height:78px;resize:vertical}
     inNota.addEventListener("input",function(){f.nota=this.value;});
     // Etichetta (22/11/2026): cosa e' la schedina, es. "Raddoppio" o
     // "Sistema". Compare nel Live accanto all'origine.
-    var inEtichetta=el("input",{"type":"text","placeholder":"Es. Raddoppio","value":f.etichetta||"","maxlength":"24"});
+    // Dalla v4.66 a bottoni, cosi' le etichette restano scritte sempre uguali.
+    var opzEtichetta=ETICHETTE.map(function(x){ return [x,x]; });
+    if(f.etichetta && ETICHETTE.indexOf(f.etichetta)<0) opzEtichetta.push([f.etichetta,f.etichetta]);
+    opzEtichetta.unshift(["","Nessuna"]);
+    var inEtichetta=gruppoScelte(opzEtichetta,f.etichetta||"",function(v){ f.etichetta=v; disegna(); },3);
     inEtichetta.id="campo-etichetta";
-    inEtichetta.addEventListener("input",function(){f.etichetta=this.value;});
+    var inIncassato=el("input",{"type":"number","inputmode":"decimal","step":"0.01","placeholder":"solo se diverso da quota \u00D7 puntata","class":"tab","value":f.incassato||""});
+    inIncassato.id="campo-incassato";
+    inIncassato.addEventListener("input",function(){f.incassato=this.value;});
     // Live (19/10/2026): giocata fatta a partita in corso. La colonna
     // fase_ingresso nel cloud accetta gia' PRE e LIVE.
     var inFase=selectGuidato([["PRE","Prima della partita"],["LIVE","Live"]],f.faseIngresso==="LIVE"?"LIVE":"PRE",function(v){f.faseIngresso=v;});
@@ -2078,7 +2096,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     // Data, bonus, quando e nota servono di rado: restano dietro una riga
     // che dice gia' cosa c'e' dentro, e si aprono da soli se sono compilati.
     var dettagliAperti = S.formDettagli || inEdit || f.data!==oggi() || f.faseIngresso==="LIVE" ||
-      !!String(f.bonus||"").trim() || !!String(f.nota||"").trim() || !!String(f.etichetta||"").trim();
+      !!String(f.bonus||"").trim() || !!String(f.nota||"").trim() || !!String(f.etichetta||"").trim() || !!String(f.incassato||"").trim();
     var apriDettagli=el("button",{"type":"button","class":"dettagli-apri","aria-expanded":dettagliAperti?"true":"false",
       "onclick":function(){ S.formDettagli=!dettagliAperti; disegna(); }},[
       el("span",{"text":(f.data===oggi()?"Oggi ":"")+breve(f.data)+" \u00B7 "+(f.faseIngresso==="LIVE"?"live":"prima della partita")}),
@@ -2098,6 +2116,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
         el("div",{"class":"gruppo due"},[campo("Data",inData),campo("Quando",inFase)]),
         el("div",{"class":"gruppo"},[campo("Bonus \u20AC (se vince)",inBonus)]),
         el("div",{"class":"gruppo"},[campo("Etichetta (si vede nel Live)",inEtichetta)]),
+        el("div",{"class":"gruppo"},[campo("Incassato \u20AC (sistemi, bonus: la vincita vera)",inIncassato)]),
         el("div",{"class":"gruppo"},[campo("Nota",inNota)])
       ]),
       f.ticketId ? el("p",{"class":"avviso","text":"Ricevuta "+f.ticketId}) : null
@@ -2200,7 +2219,8 @@ textarea{width:100%;min-height:78px;resize:vertical}
       ticketId:ticket,orarioIngresso:isoDaDataOraLocale(f.orarioIngresso),tipoSchedina:f.tipoSchedina,gambe:f.tipoSchedina==="MULTIPLA"?gambe:[],
       propostaVeggenteId:idProposta,propostaTipo:idProposta?f.propostaTipo:"",propostaVariante:variante,
       codiceSchedina:origine==="CODICI"?(f.codiceSchedina||""):"",
-      etichetta:String(f.etichetta||"").trim()};
+      etichetta:String(f.etichetta||"").trim(),
+      incassato:(function(){ var n=leggiImporto(f.incassato); return n!=null&&n>0 ? n : null; })()};
     try{ localStorage.setItem(CHIAVE_BOOK,dati.bookmaker); }catch(e){}
     if(inEdit && !S.giocate.some(function(g){return String(g.id)===String(S.editingId);})){
       bloccaConErrore("Non trovo pi\u00F9 la giocata che stavi modificando: i dati che hai scritto sono ancora qui sotto. Annulla la modifica, riaprila dal Registro e riprova.");return;
@@ -2356,6 +2376,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // es. "Raddoppio · OKP". L'etichetta scritta vince; senza, per il
   // Veggente si usa il tipo della proposta collegata.
   var NOMI_TIPO_PROPOSTA = { RADDOPPIO:"Raddoppio", SISTEMA:"Sistema" };
+  var ETICHETTE = ["Raddoppio","Sistema","Multipla","Singola","Live"];
   function etichettaLive(s){
     var g=null, chiave=String(s.legacy_id||"");
     for(var i=0;i<S.giocate.length;i++){
@@ -2719,7 +2740,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(!DB || !CLOUD.user) return null;
     await utenteCloudVerificato();
     var rr=await DB.from("picks")
-      .select("id,legacy_id,data,tipster,origine,evento,mercato,nota,quota,quota_check,quota_chiusura,probabilita_stimata,probabilita_timestamp,confidence,debrief,stake,esito,profitto,tipo,stato_core,motivo_scarto,bookmaker,fase_ingresso,classificazione,ticket_id,orario_ingresso,tipo_schedina,gambe,famiglia_mercato,ambito_mercato,selezione_normalizzata,linea_mercato,componenti_mercato,versione_tassonomia,proposta_veggente_id,proposta_tipo,proposta_variante,codice_schedina,etichetta")
+      .select("id,legacy_id,data,tipster,origine,evento,mercato,nota,quota,quota_check,quota_chiusura,probabilita_stimata,probabilita_timestamp,confidence,debrief,stake,esito,profitto,tipo,stato_core,motivo_scarto,bookmaker,fase_ingresso,classificazione,ticket_id,orario_ingresso,tipo_schedina,gambe,famiglia_mercato,ambito_mercato,selezione_normalizzata,linea_mercato,componenti_mercato,versione_tassonomia,proposta_veggente_id,proposta_tipo,proposta_variante,codice_schedina,etichetta,incassato")
       .eq("user_id",CLOUD.user.id)
       .eq("legacy_id",legacyCloud(g))
       .maybeSingle();
@@ -2743,6 +2764,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
     g.componentiMercato=Array.isArray(r.componenti_mercato)?r.componenti_mercato:[];g.versioneTassonomia=r.versione_tassonomia||"v0.1";
     g.propostaVeggenteId=r.proposta_veggente_id==null?null:Number(r.proposta_veggente_id);g.propostaTipo=r.proposta_tipo||"";g.propostaVariante=!!r.proposta_variante;g.codiceSchedina=r.codice_schedina||g.codiceSchedina||"";
     if(Object.prototype.hasOwnProperty.call(r,"etichetta")) g.etichetta=r.etichetta||"";
+    if(Object.prototype.hasOwnProperty.call(r,"incassato")) g.incassato=r.incassato==null?null:Number(r.incassato);
     aggiornaTassonomia(g);
   }
 
@@ -2782,7 +2804,14 @@ textarea{width:100%;min-height:78px;resize:vertical}
       if(g.statoCore==="ufficiale" && stakeNum<=0) throw new Error("stake ufficiale mancante nel cloud");
       if(quotaNum<=1) throw new Error("quota iniziale non valida nel cloud");
 
-      var profitto = esito==="vinta" ? (stakeNum*quotaNum-stakeNum+bonusDi(g))
+      // Un sistema vinto non incassa quota per puntata: se manca l'incassato
+      // lo si chiede subito, cosi' cassa e risultato restano giusti.
+      if(esito==="vinta" && incassatoDi(g)==null && /sistema/i.test(String(g.evento||"")+" "+String(g.etichetta||"")) && typeof window.prompt==="function"){
+        var scritto=window.prompt("Sistema vinto: quanto hai incassato in tutto? (\u20AC)","");
+        var nInc=leggiImporto(scritto);
+        if(nInc!=null && nInc>0) g.incassato=nInc;
+      }
+      var profitto = esito==="vinta" ? profittoVinta(g)
         : esito==="persa" ? -stakeNum : 0;
 
       // Una multipla vinta ha vinto tutte le gambe: si segnano da sole. Su
@@ -2799,6 +2828,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
           esito:normalizzaEsitoCloud(esito),
           profitto:Number(profitto.toFixed(2))
         };
+        if(incassatoDi(g)!=null) campi.incassato=incassatoDi(g);
         if(gambeVinte) campi.gambe=gambeVinte;
         var up=await DB.from("picks").update(campi).eq("user_id",CLOUD.user.id).eq("legacy_id",legacyCloud(g));
         if(up.error) throw up.error;
