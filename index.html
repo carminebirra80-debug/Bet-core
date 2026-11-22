@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.64</title>
+<title>Registro BET Core v4.65</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -457,7 +457,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.64";
+  var VERSIONE = "4.65";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -1926,15 +1926,13 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var codiciInTesta = conCassa("CODICI",movimentiCassa).length || ccTesta.chiuse.length || ccTesta.aperte.length;
     // I due book in alto (22/11/2026, v4.64): Sportium e Sportbet affiancati,
     // stessa grandezza. La cifra grande e' quella che vedi sul sito (soldi
-    // liberi); sotto, cio' che e' in gioco e il risultato reale del book.
+    // liberi); sotto, solo cio' che e' in gioco adesso.
     // In fondo il risultato reale dei due insieme.
     function bookTesta(nome,k,cls){
       return el("div",{"class":"book-testa "+cls},[
         el("span",{"class":"etich book-nome","text":nome}),
         el("span",{"class":"serif tab book-cifra","text":euro(k.disponibile)}),
-        el("span",{"class":"tab book-gioco","text":k.impegnato>0 ? "+"+euro(k.impegnato)+" in gioco" : "nessuna in gioco"}),
-        el("span",{"class":"tab book-reale","text":segnato(k.reale)+" risultato",
-          "style":{color:k.reale>=0?"#4FB286":"#D4635F"}})
+        el("span",{"class":"tab book-gioco","text":k.impegnato>0 ? "+"+euro(k.impegnato)+" in gioco" : "nessuna in gioco"})
       ]);
     }
     var realeTot = c.reale + (codiciInTesta ? ccTesta.reale : 0);
