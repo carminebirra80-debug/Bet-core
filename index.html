@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.63</title>
+<title>Registro BET Core v4.64</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -38,17 +38,16 @@ header{padding:14px 20px 0;border-bottom:1px solid var(--bordo);
   display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px}
 .etich{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tenue);margin:0}
 header .etich{color:var(--tenue2)}
-.testa-etich{grid-column:1;grid-row:1}
-.cassa{font-size:28px;font-weight:700;line-height:1.15}
-.riga-cassa{grid-column:1;grid-row:2;display:flex;align-items:baseline;gap:10px}
-.delta{font-size:13px;font-weight:600}
-.delta-box{display:flex;flex-direction:column;line-height:1.25}
-.delta-etich{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--tenue2);white-space:nowrap}
-.netto{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:flex-end;text-align:right}
-.netto-val{display:flex;flex-direction:column;align-items:flex-end}
-.netto-cifra{font-size:22px;font-weight:700;line-height:1.45}
-.netto-gioco{font-size:11px;color:var(--tenue2);margin-top:-2px}
-.netto-sep{display:none}
+/* I due book in alto (v4.64, 22/11/2026): affiancati e della stessa grandezza. */
+header.un-book{grid-template-columns:minmax(0,1fr)}
+header.due-book{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.book-testa{display:flex;flex-direction:column;gap:1px;min-width:0;padding-bottom:4px}
+.book-dx{align-items:flex-end;text-align:right;border-left:1px solid var(--bordo2);padding-left:12px}
+.book-nome{font-size:11px;letter-spacing:.14em;color:var(--testo)!important}
+.book-cifra{font-size:28px;font-weight:700;line-height:1.15}
+.book-gioco{font-size:11px;color:var(--tenue2)}
+.book-reale{font-size:12px;font-weight:600}
+.testa-totale-cifra{font-weight:700}
 .testa-fondo{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px}
 .sotto{font-size:12px;color:var(--tenue2);margin:0;min-width:0}
 .testa-link{display:flex;gap:4px;flex:0 0 auto;margin-right:-10px}
@@ -60,7 +59,7 @@ header .errore{grid-column:1 / -1;margin:0;padding-bottom:12px}
 @media (max-width:380px){
   header{column-gap:10px}
   header .etich{letter-spacing:.08em}
-  .cassa{font-size:26px}
+  .book-cifra{font-size:24px}
   .sotto{font-size:11px}
 }
 body{padding-bottom:calc(57px + env(safe-area-inset-bottom))}
@@ -458,7 +457,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.63";
+  var VERSIONE = "4.64";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -1925,32 +1924,31 @@ textarea{width:100%;min-height:78px;resize:vertical}
     // sua: la cifra grande resta la cassa principale (Sportium).
     var ccTesta = conCassa("CODICI",conti);
     var codiciInTesta = conCassa("CODICI",movimentiCassa).length || ccTesta.chiuse.length || ccTesta.aperte.length;
-    app.appendChild(el("header",null,[
-      el("p",{"class":"etich testa-etich","text":codiciInTesta ? "Cassa · Sportium" : "Cassa"}),
-      el("div",{"class":"riga-cassa"},[
-        el("span",{"class":"serif tab cassa","text":euro(c.bankroll)}),
-        // Accanto alla cifra, cosa misura: cassa + prelevato - versato.
-        el("span",{"class":"delta-box"},[
-          el("span",{"class":"tab delta","text":segnato(c.reale),
-            "style":{color: c.reale>=0 ? "#4FB286" : "#D4635F"}}),
-          el("span",{"class":"delta-etich","text":"risultato reale"})
-        ])
-      ]),
-      codiciInTesta ? el("div",{"class":"netto"},[
-        el("span",{"class":"etich","text":"Sportbet · codici"}),
-        el("span",{"class":"netto-val"},[
-          el("span",{"class":"serif tab netto-cifra","text":euro(ccTesta.bankroll)}),
-          ccTesta.impegnato>0 ? el("span",{"class":"netto-sep","text":" · "}) : null,
-          ccTesta.impegnato>0 ? el("span",{"class":"tab netto-gioco","text":euro(ccTesta.impegnato)+" in gioco"}) : null
-        ])
-      ]) : null,
+    // I due book in alto (22/11/2026, v4.64): Sportium e Sportbet affiancati,
+    // stessa grandezza. La cifra grande e' quella che vedi sul sito (soldi
+    // liberi); sotto, cio' che e' in gioco e il risultato reale del book.
+    // In fondo il risultato reale dei due insieme.
+    function bookTesta(nome,k,cls){
+      return el("div",{"class":"book-testa "+cls},[
+        el("span",{"class":"etich book-nome","text":nome}),
+        el("span",{"class":"serif tab book-cifra","text":euro(k.disponibile)}),
+        el("span",{"class":"tab book-gioco","text":k.impegnato>0 ? "+"+euro(k.impegnato)+" in gioco" : "nessuna in gioco"}),
+        el("span",{"class":"tab book-reale","text":segnato(k.reale)+" risultato",
+          "style":{color:k.reale>=0?"#4FB286":"#D4635F"}})
+      ]);
+    }
+    var realeTot = c.reale + (codiciInTesta ? ccTesta.reale : 0);
+    app.appendChild(el("header",{"class":codiciInTesta?"due-book":"un-book"},[
+      bookTesta(codiciInTesta?"Sportium":"Cassa",c,"book-sx"),
+      codiciInTesta ? bookTesta("Sportbet",ccTesta,"book-dx") : null,
       // Intestazione compatta (v4.60, 15/11/2026): occupava un terzo dello
       // schermo su ogni scheda. In gioco e liberi restano su una riga, con
       // accanto Dati e Guida; la distanza dal massimo si legge in Cassa.
       el("div",{"class":"testa-fondo"},[
-        el("p",{"class":"sotto tab","text": c.impegnato>0
-          ? euro(c.impegnato)+" in gioco \u00B7 "+euro(c.disponibile)+" liberi"
-          : "\u00A0"}),
+        el("p",{"class":"sotto tab testa-totale"},[
+          el("span",{"text":codiciInTesta?"Risultato reale dei due book ":"Risultato reale "}),
+          el("span",{"class":"testa-totale-cifra","text":segnato(realeTot),"style":{color:realeTot>=0?"#4FB286":"#D4635F"}})
+        ]),
         el("div",{"class":"testa-link"},[["dati","Dati"],["guida","Guida"]].map(function(v){
           return el("button",{"type":"button","class":"testa-voce"+(S.vista===v[0]?" on":""),"text":v[1],"data-vista":v[0],
             "onclick":function(){ S.vista=v[0]; disegna(); window.scrollTo(0,0); }});
