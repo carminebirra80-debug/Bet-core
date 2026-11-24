@@ -70,7 +70,13 @@ const picks=[
   // 282731 con partite di sabato e domenica): il Live cerca anche quel giorno.
   {id:"i",legacy_id:"9",data:"2026-10-18",evento:"Codice 999999",mercato:"MULTIPLA",nota:"",
     gambe:[{evento:"Fiorentina vs Como",mercato:"GG",data:"2026-10-18"},{evento:"Udinese vs Lecce",mercato:"1",data:"2026-10-20"}],
-    quota:2,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"999999",tipo_schedina:"MULTIPLA"}
+    quota:2,stake:1,bookmaker:"Sportbet",origine:"CODICI",codice_schedina:"999999",tipo_schedina:"MULTIPLA"},
+  // Multipla OKP del 24/11/2026 con partite del 26: la gamba di un giorno
+  // futuro si cerca solo in quel giorno (Juventus gioca anche il 18 nel
+  // tabellone finto) e, se non c'e', resta "da iniziare" con la sua data.
+  {id:"j",legacy_id:"10",data:"2026-10-18",evento:"Multipla · 2 gambe",mercato:"MULTIPLA",nota:"",
+    gambe:[{evento:"Udinese vs Lecce",mercato:"1",data:"2026-10-18"},{evento:"Juventus vs Lazio",mercato:"1",data:"2099-01-01"}],
+    quota:2,stake:1,bookmaker:"Sportbet",origine:"OKP",tipo_schedina:"MULTIPLA"}
 ];
 
 const chiamate=[];
@@ -152,6 +158,16 @@ assert.ok(gestore,"Deno.serve non chiamato");
   assert.ok(espnGiorni.includes("20261020"),"partita del 20 in un codice del 18: ESPN va letto anche il 20 ("+espnGiorni.join(",")+")");
   assert.ok(espnGiorni.includes("20261017")&&espnGiorni.includes("20261018"),"restano i giorni della giocata");
   assert.equal(per["9"].gambe.length,2);
+
+  const fut=per["10"];
+  const juve=fut.gambe.find(g=>/Juventus/.test(g.partita)), udi=fut.gambe.find(g=>/Udinese/.test(g.partita));
+  assert.equal(juve.abbinata,null,"gamba del 2099: non abbinata a Juventus-Lazio del 18");
+  assert.equal(juve.stato,"da_iniziare","partita futura non nel tabellone: da iniziare, non 'partita non trovata'");
+  assert.equal(juve.data,"2099-01-01","la gamba porta la sua data");
+  assert.equal(udi.data,"2026-10-18");
+  assert.equal(udi.stato,"vinta");
+  assert.deepEqual(fut.gambe.map(g=>g.partita),["Udinese vs Lecce","Juventus vs Lazio"],"ordine: prima la partita di oggi");
+  assert.equal(fut.proposta,null,"con una gamba ancora da giocare nessuna proposta");
 
   // Orari in ora italiana (ESPN li da' in UTC).
   assert.equal(sis.gambe[0].ora,"2026-10-18T15:00:00+02:00");

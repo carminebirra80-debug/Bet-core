@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.66</title>
+<title>Registro BET Core v4.67</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -457,7 +457,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.66";
+  var VERSIONE = "4.67";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -2356,12 +2356,32 @@ textarea{width:100%;min-height:78px;resize:vertical}
     if(S.vista==="live" && document.visibilityState==="visible") liveSeVecchio(60000);
   });
   function oraLive(iso){ return iso ? iso.slice(11,16) : "--:--"; }
+  // Giorno della gamba (v4.67, 24/11/2026): OKP mette nella stessa multipla
+  // partite dei giorni dopo (Juventus-Omonia, Ajax-Thun del 26). Se la
+  // partita non e' di oggi, sopra l'orario si legge il giorno, es. "gio 26/11".
+  var GIORNI_SETT=["dom","lun","mar","mer","gio","ven","sab"];
+  function oggiRomaLive(){
+    try{ var p={}; new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Rome",year:"numeric",month:"2-digit",day:"2-digit"})
+      .formatToParts(new Date()).forEach(function(x){ p[x.type]=x.value; }); return p.year+"-"+p.month+"-"+p.day; }
+    catch(e){ return new Date().toISOString().slice(0,10); }
+  }
+  function giornoLive(d){
+    if(!/^\d{4}-\d\d-\d\d$/.test(String(d||""))) return "";
+    var x=new Date(d+"T12:00:00Z");
+    return GIORNI_SETT[x.getUTCDay()]+" "+d.slice(8,10)+"/"+d.slice(5,7);
+  }
   function tempoGamba(g){
     var st=g.stato_partita||"";
     if(st==="HT") return el("span",{"class":"live-min tab","text":"Int."});
     if(["1H","2H","ET","BT","P","LIVE","INT"].indexOf(st)>=0)
       return el("span",{"class":"live-min tab","text":(g.minuto!=null?g.minuto:"")+"'"});
     if(["FT","AET","PEN"].indexOf(st)>=0) return el("span",{"class":"live-ora","text":"Finale"});
+    var giorno=(g.ora?String(g.ora).slice(0,10):"")||g.data||"";
+    if(giorno && giorno!==oggiRomaLive())
+      return el("span",{"class":"live-ora tab"},[
+        el("span",{"text":giornoLive(giorno),"style":{display:"block",fontSize:"0.8em"}}),
+        el("span",{"text":g.ora?oraLive(g.ora):""})
+      ]);
     return el("span",{"class":"live-ora tab","text":oraLive(g.ora)});
   }
   function statoSchedina(s){
