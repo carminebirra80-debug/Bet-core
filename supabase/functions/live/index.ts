@@ -186,6 +186,17 @@ function squadre(evento: string): [string, string] | null {
 }
 const GIOVANILI = /\b(u1[5-9]|u2[0-3]|women|w|ii|iii|b|reserves?|youth|primavera|jong|amateurs)\b/i;
 const LEGHE_ESCLUSE = /(u1[5-9]|u2[0-3]|women|feminine|wsl|youth|primavera|reserve|frauen|femenina|liga f\b|ncaa)/i;
+// Gamba con il suo giorno (24/11/2026): una multipla OKP giocata il 24 con
+// Juventus-Omonia e Ajax-Thun del 26. Si cerca la partita solo fra quelle di
+// quel giorno (ora italiana), cosi' non si abbina la stessa squadra in un
+// altro giorno; senza giorno si cerca in tutti, come prima.
+const GIORNO_RE = /^\d{4}-\d\d-\d\d$/;
+function abbinaNelGiorno(evento: string, data: string | null, partite: any[]) {
+  if (!data || !GIORNO_RE.test(data)) return abbina(evento, partite);
+  return abbina(evento, partite.filter((f: any) => String(f.ora || "").slice(0, 10) === data));
+}
+function oggiRoma() { return (oraRoma(new Date().toISOString()) || "").slice(0, 10); }
+
 function abbina(evento: string, partite: any[]) {
   const sq = squadre(evento);
   if (!sq) return null;
@@ -393,27 +404,29 @@ Deno.serve(async (req) => {
         gambe = ric.map((r: any) => {
           const sr = squadre(r.evento);
           const v: any = sr && vg.find((x: any) => { const sv = squadre(x.partita); return sv && simile(sr[0], sv[0]) >= 0.6 && simile(sr[1], sv[1]) >= 0.6; });
-          const daRicevuta = { evento: r.evento, mercato: r.mercato, fonte: "ricevuta" };
+          const giornoV = v && v.kickoff ? (oraRoma(v.kickoff) || "").slice(0, 10) : null;
+          const daRicevuta = { evento: r.evento, mercato: r.mercato, data: r.data || giornoV || null, fonte: "ricevuta" };
           if (!v) return daRicevuta;
           const mr = piatto(r.mercato), mv = piatto(v.mercato);
           const qv = Number(v.quota_sportbet || v.quota_rif) || 0, qr = Number(r.quota) || 0;
           const quotaDiversa = qv > 1 && qr > 1 && Math.abs(qr - qv) / qv > 0.15;
-          if (!mr || (mv.startsWith(mr) && !quotaDiversa)) return { evento: r.evento, mercato: v.mercato, fonte: "veggente" };
+          if (!mr || (mv.startsWith(mr) && !quotaDiversa)) return { evento: r.evento, mercato: v.mercato, data: daRicevuta.data, fonte: "veggente" };
           return daRicevuta;
         });
       }
       if (prop && (colonne || !ric.length)) {
         gambe = pg.filter((g: any) => g.proposta_id === prop.id).map((g: any) => {
           const v: any = giocById.get(g.giocata_id) || {};
-          return { evento: v.partita, mercato: v.mercato, segni: g.ruolo === "DOPPIA" || g.ruolo === "TRIPLA" ? g.segni : null, ruolo: g.ruolo, fonte: "veggente" };
+          return { evento: v.partita, mercato: v.mercato, segni: g.ruolo === "DOPPIA" || g.ruolo === "TRIPLA" ? g.segni : null, ruolo: g.ruolo,
+            data: v.kickoff ? (oraRoma(v.kickoff) || "").slice(0, 10) || null : null, fonte: "veggente" };
         }).filter((g: any) => g.evento);
       }
       if (!gambe.length) {
         const gg = Array.isArray(p.gambe) ? p.gambe : [];
-        gambe = gg.length ? gg.map((g: any) => ({ evento: g.evento, mercato: g.mercato, fonte: "ricevuta" }))
+        gambe = gg.length ? gg.map((g: any) => ({ evento: g.evento, mercato: g.mercato, data: g.data || null, fonte: "ricevuta" }))
           : (squadre(p.evento) ? [{ evento: p.evento, mercato: p.mercato, fonte: "ricevuta" }] : []);
       }
-      return { p, prop, gambe: gambe.map((g: any) => ({ ...g, f: abbina(g.evento, partite) })) };
+      return { p, prop, gambe: gambe.map((g: any) => ({ ...g, f: abbinaNelGiorno(g.evento, g.data, partite) })) };
     });
 
     let schedine = prepara();
@@ -435,19 +448,24 @@ Deno.serve(async (req) => {
     if (errori) avvisi.push("La fonte dei risultati (ESPN) non ha risposto: punteggi forse non aggiornati.");
 
     // 7. Risposta.
+    const oggi = oggiRoma();
     const out = schedine.map((s: any) => {
       const gambe = s.gambe.map((g: any) => {
         const f = g.f || null;
         const m = leggiMercato(g.mercato, g.segni);
+        // Partita di un giorno che deve ancora venire e non (ancora) nel
+        // tabellone: "da iniziare" con la sua data, non "partita non trovata".
+        const futura = !f && g.data && GIORNO_RE.test(g.data) && g.data > oggi;
         return {
+          data: f && f.ora ? String(f.ora).slice(0, 10) : (g.data || null),
           partita: g.evento, mercato: m.leggibile ? descrivi(m.cond) : (g.mercato || "").slice(0, 40),
           ruolo: g.ruolo || null, fonte: g.fonte,
           abbinata: f ? { id: f.id, casa: f.casa, ospite: f.ospite, lega: f.lega } : null,
           ora: f ? f.ora : null, stato_partita: f ? f.stato : null, minuto: f ? f.minuto : null,
           punteggio: f && f.gc !== null && f.gc !== undefined ? `${f.gc}-${f.go}` : null,
-          stato: statoGamba(m.cond, f),
+          stato: futura ? "da_iniziare" : statoGamba(m.cond, f),
         };
-      }).sort((a: any, b: any) => String(a.ora || "9").localeCompare(String(b.ora || "9")));
+      }).sort((a: any, b: any) => String(a.ora || (a.data ? a.data + "T99" : "9")).localeCompare(String(b.ora || (b.data ? b.data + "T99" : "9"))));
       const st = gambe.map((g: any) => g.stato);
       const sistema = !!(s.prop && s.prop.colonne);
       // Sistema a combinazioni del ticket Sportbet (18/10/2026): l'app scrive
