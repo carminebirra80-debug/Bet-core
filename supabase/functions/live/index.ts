@@ -9,6 +9,11 @@
 // garanzie: se cambia o smette di rispondere, il Live mostra un avviso.
 // Il campo da_scaricare resta nella risposta, sempre vuoto, per le app
 // v4.37 che sanno ancora scaricare il calendario dal telefono.
+//
+// Marcatori (25/11/2026): "segna", "segna o assist", "segna o palo" (anche
+// "o suo sostituto", "inc. TS") si valutano dal riepilogo ESPN della partita
+// (summary: gol, assist, tiri sul palo/traversa, cambi, rosa). Le combo
+// "Multigol x-y casa + Multigol z-w ospite" si valutano dal risultato.
 
 const URL_DB = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -16,6 +21,7 @@ const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const GIORNO_TTL_MS = 6 * 3600 * 1000; // calendario del giorno: ogni 6 ore
 const LIVE_TTL_MS = 120 * 1000; // con partite in corso: ogni 2 minuti
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard";
+const ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/summary";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -111,6 +117,63 @@ async function scaricaEspn(g: string) {
   return lista;
 }
 
+// Riepilogo di una partita (25/11/2026), solo per le gambe sui giocatori:
+// gol (con assist), tiri sul legno, cambi e chi e' sceso in campo.
+function periodo(x: any) { return numero(x?.period?.number) ?? numero(x?.play?.period?.number) ?? 1; }
+function nomiDi(x: any): string[] {
+  const ps = x?.participants || x?.play?.participants || [];
+  return ps.map((q: any) => String(q?.athlete?.displayName || "")).filter(Boolean);
+}
+function compattaRiepilogo(j: any) {
+  const gol: any[] = [], assist: any[] = [], pali: any[] = [], cambi: any[] = [], rosa: any[] = [];
+  for (const k of (j?.keyEvents || [])) {
+    if (!k || !k.scoringPlay || k.shootout) continue;
+    const n = nomiDi(k), p = periodo(k);
+    const og = !!k.ownGoal || /own goal|autogol/i.test(String(k?.type?.text || ""));
+    if (n[0]) gol.push({ n: n[0], p, og });
+    if (n[1] && !og) assist.push({ n: n[1], p });
+  }
+  for (const c of (j?.commentary || [])) {
+    const tipo = String(c?.play?.type?.type || c?.play?.type?.text || "").toLowerCase();
+    const testo = String(c?.text || "");
+    const n = nomiDi(c), p = periodo(c);
+    if (/woodwork/.test(tipo) || /\bhits the (?:left |right )?(?:post|bar|crossbar)\b/i.test(testo)) {
+      const chi = n[0] || (testo.match(/^([^(]+?)\s*\(/) || [])[1];
+      if (chi) pali.push({ n: String(chi).trim(), p });
+    } else if (/substitution/.test(tipo)) {
+      if (n[0] && n[1]) cambi.push({ dentro: n[0], fuori: n[1], p });
+      else {
+        const m = testo.match(/\.\s*(.+?) replaces (.+?)\.?$/);
+        if (m) cambi.push({ dentro: m[1].trim(), fuori: m[2].trim(), p });
+      }
+    }
+  }
+  for (const r of (j?.rosters || [])) {
+    for (const x of (r?.roster || [])) {
+      const n = String(x?.athlete?.displayName || "");
+      if (n) rosa.push({ n, gioca: !!(x.starter || x.subbedIn) });
+    }
+  }
+  const st = j?.header?.competitions?.[0]?.status?.type || {};
+  return { fin: !!st.completed, gol, assist, pali, cambi, rosa };
+}
+async function riepilogo(id: number, finita: boolean): Promise<any | null> {
+  const chiave = "espn-sum:" + id;
+  const c = await cacheLeggi(chiave).catch(() => null);
+  if (c && c.dati && (c.dati.fin || (!finita && c.eta < LIVE_TTL_MS))) return c.dati;
+  try {
+    const r = await fetch(`${ESPN_SUMMARY}?event=${id}`, {
+      headers: { "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/129 Mobile Safari/537.36", Accept: "application/json" },
+    });
+    if (!r.ok) throw new Error(`ESPN summary ${r.status}`);
+    const d = compattaRiepilogo(await r.json());
+    await cacheScrivi(chiave, d);
+    return d;
+  } catch (_) {
+    return c ? c.dati : null;
+  }
+}
+
 // ---------- nomi squadre ----------
 const ALIAS: Record<string, string> = {
   "bayern monaco": "bayern munich", "bayern munchen": "bayern munich", "lipsia": "rb leipzig", "barcellona": "barcelona", "strasburgo": "strasbourg",
@@ -122,7 +185,7 @@ const ALIAS: Record<string, string> = {
   "sporting lisbona": "sporting cp", "lisbona": "sporting cp", "marsiglia": "marseille", "lione": "lyon",
   "nizza": "nice", "tolosa": "toulouse", "amburgo": "hamburg", "stoccarda": "stuttgart", "magonza": "mainz",
   "friburgo": "freiburg", "brema": "werder bremen", "werder brema": "werder bremen", "norimberga": "nurnberg",
-  "salisburgo": "salzburg", "stella rossa": "crvena zvezda", "red star belgrade": "crvena zvezda", "bruges": "club brugge", "anversa": "antwerp",
+  "salisburgo": "salzburg", "stella rossa": "crvena zvezda", "red star belgrade": "crvena zvezda", "bruges": "club brugge", "club bruges": "club brugge", "anversa": "antwerp",
   "maiorca": "mallorca", "saragozza": "zaragoza", "copenaghen": "copenhagen", "zurigo": "zurich",
   "basilea": "basel", "ginevra": "servette", "atene": "athens", "lovanio": "oh leuven", "praga": "prague",
   "monaco 1860": "1860 munich", "eintracht": "eintracht frankfurt", "verona": "verona", "spal": "spal",
@@ -214,7 +277,47 @@ function abbina(evento: string, partite: any[]) {
 // ---------- mercati ----------
 type Cond = { tipo: "segno"; segno: string } | { tipo: "ou"; over: boolean; linea: number | null }
   | { tipo: "gg"; si: boolean } | { tipo: "multigol"; da: number; a: number }
-  | { tipo: "squadra"; lato: "c" | "o"; da: number | null; a: number | null; over: boolean | null; linea: number | null };
+  | { tipo: "squadra"; lato: "c" | "o"; da: number | null; a: number | null; over: boolean | null; linea: number | null }
+  | { tipo: "giocatore"; nome: string[]; virgola: boolean; assist: boolean; palo: boolean; sost: boolean; supp: boolean };
+
+// Due squadre insieme (25/11/2026: codice con "MultiGol 2-4 Casa + MultiGol
+// 1-3 Ospite"): due condizioni sul risultato, una per squadra.
+function mercatoDueSquadre(s: string): Cond[] | null {
+  const t = s.replace(/[^A-Z0-9+\- ]/g, " ").replace(/\s+/g, " ").trim();
+  const m = t.match(/^MULTI ?GOL (\d) ?- ?(\d) (CASA|OSPITE) ?\+ ?MULTI ?GOL (\d) ?- ?(\d) (CASA|OSPITE)(?: S[IL1])?$/);
+  if (!m || m[3] === m[6]) return null;
+  const c1: Cond = { tipo: "squadra", lato: m[3] === "CASA" ? "c" : "o", da: Number(m[1]), a: Number(m[2]), over: null, linea: null };
+  const c2: Cond = { tipo: "squadra", lato: m[6] === "CASA" ? "c" : "o", da: Number(m[4]), a: Number(m[5]), over: null, linea: null };
+  return c1.lato === "c" ? [c1, c2] : [c2, c1];
+}
+
+// Giocatore (25/11/2026): "SEGNA o PALO o SUO SOSTITUTO (INC.TS.) Demirovic,
+// Ermedin (Stoccarda)", "Segna o Assist DUO Brown, Nathaniel", "Tresoldi segna".
+// Restano non seguiti primo/ultimo marcatore, doppietta, "non segna", tiri.
+const PAROLE_GIOCATORE = new Set(["SEGNA", "O", "OR", "PALO", "TRAVERSA", "LEGNO", "ASSIST", "SUO", "SOSTITUTO", "INC", "TS",
+  "SI", "MARCATORE", "GOLEADOR", "ANYTIME", "DUO", "GOL", "GOAL", "E", "IL", "LA", "DEL", "IN", "PARTITA"]);
+function mercatoGiocatore(s: string): Cond | null {
+  if (!/\bSEGNA\b|MARCATORE|GOLEADOR|ANYTIME/.test(s)) return null;
+  if (/SEGNA IN|NON SEGNA|PRIMO|ULTIMO|DOPPIETTA|TRIPLETTA|HAT|\b[2-9]\s*\+|TIRI|\bTRI\b|PORTA|SQUADRA|\bCASA\b|\bOSPITE\b|TEMPO|\b[12]\s?T\b|CARTELL|AMMONIZ|ESATT|\bNO\b|\+/.test(s)) return null;
+  const senza = s.replace(/\([^)]*\)/g, " ");
+  const virgola = senza.includes(",");
+  const nome = senza.replace(/[^A-Z\u00C0-\u017F ,'’-]/g, " ").replace(/,/g, " ").split(/\s+/)
+    .map((x) => x.replace(/^['’-]+|['’-]+$/g, "")).filter((x) => x.length >= 2 && !PAROLE_GIOCATORE.has(x));
+  if (!nome.length || nome.length > 4) return null;
+  return { tipo: "giocatore", nome: nome.map((x) => base(x)).filter(Boolean), virgola, assist: /ASSIST/.test(s),
+    palo: /PALO|TRAVERSA|LEGNO/.test(s), sost: /SOSTITUT/.test(s), supp: /INC\.?\s*T\.?S|SUPPLEMENTAR/.test(s) };
+}
+// Il ticket scrive "Suarez, Luis", ESPN "Luis Suárez": contano le parole.
+function stessoGiocatore(c: { nome: string[]; virgola: boolean }, espn: string, tutti: string[]) {
+  const pe = base(espn).split(" ").filter(Boolean);
+  const trova = (t: string) => pe.some((u) => parolaUguale(t, u));
+  if (c.nome.every(trova)) return true;
+  // Solo il cognome (prima parola con la virgola, unica parola altrimenti),
+  // se in quella partita non c'e' un altro giocatore con lo stesso cognome.
+  const cognome = c.virgola || c.nome.length === 1 ? c.nome[0] : null;
+  if (!cognome || cognome.length < 4 || !trova(cognome)) return false;
+  return tutti.filter((n) => base(n).split(" ").some((u) => parolaUguale(cognome, u))).length === 1;
+}
 
 // Gol di una sola squadra (20/10/2026: codice con sei "MULTIGOL x-y OSPITE SI"
 // tutti "non seguito"). Si valutano col risultato: multigol e over/under della
@@ -252,6 +355,10 @@ function leggiMercato(testo: string, segni?: string | null): { cond: Cond[]; leg
   let s = (testo || "").toUpperCase();
   const tronca = s.indexOf("COMBINAZIONI");
   if (tronca > 0) s = s.slice(0, tronca);
+  const gio = mercatoGiocatore(s);
+  if (gio) return { cond: [gio], leggibile: true };
+  const due = mercatoDueSquadre(s);
+  if (due) return { cond: due, leggibile: true };
   const sq = mercatoSquadra(s);
   if (sq) return { cond: [sq], leggibile: true };
   // Prudenza (17/10/2026): un mercato che il Live non sa valutare (tempi,
@@ -284,7 +391,10 @@ function leggiMercato(testo: string, segni?: string | null): { cond: Cond[]; leg
   return { cond, leggibile: cond.length > 0 };
 }
 function descrivi(cond: Cond[]) {
-  return cond.map((c) => c.tipo === "segno" ? c.segno
+  return cond.map((c) => c.tipo === "giocatore"
+      ? c.nome.map((x) => x.charAt(0).toUpperCase() + x.slice(1)).join(" ") + " segna" + (c.assist ? " o assist" : "") +
+        (c.palo ? " o palo" : "") + (c.sost ? " (o sostituto)" : "") + (c.supp ? " (supplementari inclusi)" : "")
+    : c.tipo === "segno" ? c.segno
     : c.tipo === "ou" ? (c.over ? "Over" : "Under") + (c.linea !== null ? " " + c.linea : " (linea?)")
     : c.tipo === "gg" ? (c.si ? "Goal" : "No Goal")
     : c.tipo === "squadra" ? (c.da !== null ? `Multigol ${c.da}-${c.a}` : (c.over ? "Over " : "Under ") + c.linea) + (c.lato === "c" ? " casa" : " ospite")
@@ -292,6 +402,7 @@ function descrivi(cond: Cond[]) {
 }
 function verifica(c: Cond, h: number, a: number): boolean | null {
   const tot = h + a;
+  if (c.tipo === "giocatore") return null;
   if (c.tipo === "segno") {
     const r = h > a ? "1" : h < a ? "2" : "X";
     return c.segno.includes(r);
@@ -306,6 +417,32 @@ function verifica(c: Cond, h: number, a: number): boolean | null {
   return tot >= c.da && tot <= c.a;
 }
 const FINITE = new Set(["FT", "AET", "PEN"]);
+// Gamba su un giocatore: presa appena segna (o assist, o palo, se il mercato
+// li comprende); persa solo a partita finita se ha giocato e non ha fatto
+// niente. Se non si sa se ha giocato (rimborso?), resta da verificare.
+function statoGiocatore(c: Cond & { tipo: "giocatore" }, f: any, d: any): string {
+  if (!f) return "non_abbinata";
+  if (NULLE.has(f.stato)) return "rinviata";
+  if (!IN_CORSO.has(f.stato) && !FINITE.has(f.stato)) return "da_iniziare";
+  if (!d) return "da_verificare";
+  const fin = FINITE.has(f.stato) && !!d.fin;
+  const maxP = c.supp ? 99 : 2;
+  const nomi = [...new Set([...d.rosa.map((x: any) => x.n), ...d.gol.map((x: any) => x.n), ...d.assist.map((x: any) => x.n),
+    ...d.pali.map((x: any) => x.n), ...d.cambi.flatMap((x: any) => [x.dentro, x.fuori])])] as string[];
+  const lui = new Set(nomi.filter((n) => stessoGiocatore(c, n, nomi)));
+  if (!lui.size) return fin ? "da_verificare" : "non_passa";
+  const titolare = new Set(lui);
+  if (c.sost) {
+    for (let i = 0; i < 3; i++) d.cambi.forEach((x: any) => { if (lui.has(x.fuori)) lui.add(x.dentro); });
+  }
+  const fatto = d.gol.some((x: any) => !x.og && x.p <= maxP && lui.has(x.n)) ||
+    (c.assist && d.assist.some((x: any) => x.p <= maxP && lui.has(x.n))) ||
+    (c.palo && d.pali.some((x: any) => x.p <= maxP && lui.has(x.n)));
+  if (fatto) return fin ? "vinta" : "passa";
+  if (!fin) return "non_passa";
+  const inRosa = d.rosa.filter((x: any) => titolare.has(x.n));
+  return inRosa.some((x: any) => x.gioca) ? "persa" : "da_verificare";
+}
 const IN_CORSO = new Set(["1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP"]);
 const NULLE = new Set(["PST", "CANC", "ABD", "AWD", "WO"]);
 function statoGamba(cond: Cond[], f: any): string {
@@ -447,7 +584,18 @@ Deno.serve(async (req) => {
     if (rifatti) { partite = tutte(); schedine = prepara(); }
     if (errori) avvisi.push("La fonte dei risultati (ESPN) non ha risposto: punteggi forse non aggiornati.");
 
-    // 7. Risposta.
+    // 7. Riepiloghi ESPN delle partite con gambe sui giocatori (iniziate).
+    const riep = new Map<number, any>();
+    for (const s of schedine) {
+      for (const g of s.gambe) {
+        const f = g.f;
+        if (!f || riep.has(f.id) || (!IN_CORSO.has(f.stato) && !FINITE.has(f.stato))) continue;
+        if (!leggiMercato(g.mercato, g.segni).cond.some((c: Cond) => c.tipo === "giocatore")) continue;
+        riep.set(f.id, await riepilogo(f.id, FINITE.has(f.stato)));
+      }
+    }
+
+    // 8. Risposta.
     const oggi = oggiRoma();
     const out = schedine.map((s: any) => {
       const gambe = s.gambe.map((g: any) => {
@@ -463,7 +611,9 @@ Deno.serve(async (req) => {
           abbinata: f ? { id: f.id, casa: f.casa, ospite: f.ospite, lega: f.lega } : null,
           ora: f ? f.ora : null, stato_partita: f ? f.stato : null, minuto: f ? f.minuto : null,
           punteggio: f && f.gc !== null && f.gc !== undefined ? `${f.gc}-${f.go}` : null,
-          stato: futura ? "da_iniziare" : statoGamba(m.cond, f),
+          stato: futura ? "da_iniziare"
+            : m.cond.length === 1 && m.cond[0].tipo === "giocatore" ? statoGiocatore(m.cond[0] as any, f, f ? riep.get(f.id) : null)
+            : statoGamba(m.cond, f),
         };
       }).sort((a: any, b: any) => String(a.ora || (a.data ? a.data + "T99" : "9")).localeCompare(String(b.ora || (b.data ? b.data + "T99" : "9"))));
       const st = gambe.map((g: any) => g.stato);
@@ -497,7 +647,7 @@ Deno.serve(async (req) => {
       // Avviso esplicito (17/10/2026): partite finite, nessuna persa, ma una o
       // piu' gambe il Live non le sa giudicare. La schedina aspetta Carmine.
       if (!proposta && !motivo && gambe.length && !combinazioni) {
-        const INCERTE: Record<string, string> = { non_seguita: "non seguita", da_verificare: "linea mancante", non_abbinata: "partita non trovata" };
+        const INCERTE: Record<string, string> = { non_seguita: "non seguita", da_verificare: "da verificare", non_abbinata: "partita non trovata" };
         const incerte = gambe.filter((g: any) => INCERTE[g.stato]);
         const chiuse = gambe.every((g: any) => g.stato === "vinta" ||
           (INCERTE[g.stato] && (g.stato === "non_abbinata" || FINITE.has(g.stato_partita))));
