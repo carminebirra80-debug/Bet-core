@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111820">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Registro BET Core v4.67</title>
+<title>Registro BET Core v4.68</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111820'/><text y='73' x='50' text-anchor='middle' font-size='62' font-family='Georgia,serif' fill='%23C8873A'>R</text></svg>">
@@ -273,6 +273,8 @@ li.vers{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:ba
 .cassa-sottotitolo{font-size:12px;color:var(--tenue2);margin:0 0 10px}
 .verdetto-soldi{margin-top:12px}
 .verdetto-soldi .tetto{border:0;border-top:1px solid var(--bordo);border-radius:0;padding:14px 16px;margin:0}
+/* Da dove arrivano i soldi (v4.68): righe a capo, il testo e' lungo sul telefono. */
+.freschi-riga{flex-direction:column;align-items:flex-start;gap:2px}
 .cassa-totali{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .cassa-totali div{border:1px solid var(--bordo);border-radius:4px;padding:10px 12px}
 .cassa-totali span{display:block}
@@ -457,7 +459,7 @@ textarea{width:100%;min-height:78px;resize:vertical}
   // Versione dell'app (18/10/2026): si vede in fondo a Dati, cosi' dopo un
   // merge si capisce se il telefono ha gia' preso quella nuova. Deve
   // coincidere col <title> (lo controlla tests/cache-versioni.test.js).
-  var VERSIONE = "4.67";
+  var VERSIONE = "4.68";
   var CASSA = "PRINCIPALE";
   var ESITI_GAMBA = [["","Esito —"],["vinta","Vinta"],["persa","Persa"],["rimborsata","Rimborsata"]];
   var CHIAVE_BOOK = "registro-ultimo-bookmaker";
@@ -3074,7 +3076,60 @@ textarea{width:100%;min-height:78px;resize:vertical}
     var t=tipoMovimento(v);
     if(t==="rettifica" && /^bonus/i.test(String(v&&v.nota||""))) return "bonus";
     if(t==="rettifica" && /^rettifica: codici/i.test(String(v&&v.nota||""))) return "codici";
+    var f=fonteMovimento(v);
+    if(t==="versamento" && f==="fondo") return "versamento dal fondo";
+    if(t==="prelievo" && f==="fondo") return "prelievo al fondo";
+    if(t==="prelievo" && f==="conto") return "prelievo sul conto";
     return t;
+  }
+
+  // Soldi freschi e fondo vincite (v4.68, 27/11/2026). Carmine mette da
+  // parte le vincite prelevate in un fondo e a volte versa da li': quei soldi
+  // non arrivano dal conto in banca. Il movimento lo dice nella nota, cosi'
+  // non serve cambiare il database: "Dal fondo vincite" sui versamenti,
+  // "Al fondo vincite" o "Sul conto" sui prelievi. Un versamento senza nota
+  // viene dal conto; un prelievo senza nota resta "non indicato".
+  // I soldi del fondo restano soldi suoi: la misura serve a vedere quanto
+  // il gioco costa al conto, non a considerarli soldi gratis.
+  var NOTA_DAL_FONDO = "Dal fondo vincite", NOTA_AL_FONDO = "Al fondo vincite", NOTA_SUL_CONTO = "Sul conto";
+  function fonteMovimento(v){
+    var t=tipoMovimento(v), n=String(v&&v.nota||"");
+    if(t==="versamento") return /^dal fondo vincite/i.test(n) ? "fondo" : "conto";
+    if(t==="prelievo"){
+      if(/^al fondo vincite/i.test(n)) return "fondo";
+      if(/^sul conto/i.test(n)) return "conto";
+      return "";
+    }
+    return "";
+  }
+  // Somme su tutti e due i book, fra due date comprese ("AAAA-MM-GG").
+  function soldiFreschi(dal, al){
+    var r={ dalConto:0, dalFondo:0, sulConto:0, alFondo:0, prelievoNonIndicato:0 };
+    S.versamenti.forEach(function(v){
+      var d=String(v&&v.data||"");
+      if((dal && d<dal) || (al && d>al)) return;
+      var t=tipoMovimento(v), f=fonteMovimento(v), n=Math.abs(Number(v.importo||0));
+      if(t==="versamento"){ if(f==="fondo") r.dalFondo+=n; else r.dalConto+=n; }
+      else if(t==="prelievo"){
+        if(f==="fondo") r.alFondo+=n; else if(f==="conto") r.sulConto+=n; else r.prelievoNonIndicato+=n;
+      }
+    });
+    Object.keys(r).forEach(function(k){ r[k]=cent(r[k]); });
+    r.netti=cent(r.dalConto-r.sulConto);       // quanto e' uscito dal conto, al netto di quanto e' tornato
+    r.fondo=cent(r.alFondo-r.dalFondo);        // quanto il fondo e' cresciuto (o calato)
+    return r;
+  }
+  function rigaFreschi(titolo, r){
+    var parti=["dal conto "+euro(r.dalConto)];
+    if(r.sulConto) parti.push("tornati sul conto "+euro(r.sulConto));
+    if(r.dalFondo) parti.push("dal fondo "+euro(r.dalFondo));
+    if(r.alFondo) parti.push("al fondo "+euro(r.alFondo));
+    if(r.prelievoNonIndicato) parti.push("prelievi senza destinazione "+euro(r.prelievoNonIndicato));
+    return el("div",{"class":"tetto-riga freschi-riga"},[
+      el("span",{"class":"etich","text":titolo}),
+      el("span",{"class":"tab","style":{fontSize:"12px",color:"#8C9BA8"},"text":parti.join(" · ")+
+        " → soldi freschi "+euro(r.netti)+(r.alFondo||r.dalFondo?", fondo "+segnato(r.fondo):"")})
+    ]);
   }
 
   // Saldo di una cassa alla fine di un giorno: movimenti e giocate chiuse
@@ -3231,7 +3286,17 @@ textarea{width:100%;min-height:78px;resize:vertical}
         el("p",{"class":"avviso","text": mese >= S.budgetMese
           ? "Budget del mese esaurito. Il prossimo versamento lo supera."
           : "Restano "+euro(restaMese)+" di budget questo mese."})
-      ])
+      ]),
+      // Da dove arrivano i soldi (v4.68): conto in banca o fondo vincite.
+      (function(){
+        var oggiS=oggi(), m=oggiS.slice(0,7), a=oggiS.slice(0,4);
+        return el("div",{"class":"tetto freschi"},[
+          el("p",{"class":"etich","style":{margin:"0 0 6px"},"text":"Da dove arrivano i soldi"}),
+          rigaFreschi("Questo mese", soldiFreschi(m+"-01", m+"-31")),
+          rigaFreschi("Anno "+a, soldiFreschi(a+"-01-01", a+"-12-31")),
+          el("p",{"class":"avviso","text":"Soldi freschi = versato dal conto meno quanto e' tornato sul conto. Il fondo vincite sono soldi tuoi messi da parte: versarli non e' gratis."})
+        ]);
+      })()
     ]));
 
     // 2. Movimenti: il modulo si apre solo quando serve.
@@ -3255,6 +3320,12 @@ textarea{width:100%;min-height:78px;resize:vertical}
           nuovoMovimento(verso,"rettifica",v,data,NOTA_SPOSTAMENTO+": da "+NOMI_BOOK[book],base+1);
         }else if(tipo==="bonus"){
           nuovoMovimento(book,"rettifica",v,data,"Bonus "+NOMI_BOOK[book]);
+        }else if(tipo==="versamento-fondo"){
+          nuovoMovimento(book,"versamento",v,data,NOTA_DAL_FONDO);
+        }else if(tipo==="prelievo-fondo"){
+          nuovoMovimento(book,"prelievo",v,data,NOTA_AL_FONDO);
+        }else if(tipo==="prelievo-conto"){
+          nuovoMovimento(book,"prelievo",v,data,NOTA_SUL_CONTO);
         }else{
           nuovoMovimento(book,tipo,v,data);
         }
@@ -3270,8 +3341,10 @@ textarea{width:100%;min-height:78px;resize:vertical}
         el("label",{"for":"movimento-importo","text":"Importo e data"}),
         el("div",{"class":"due","style":{marginBottom:"12px"}},[ inImporto, inDataV ]),
         el("div",{"class":"due cassa-tasti"},[
-          el("button",{"type":"button","class":"secondario","text":"Versamento","onclick":function(){ registraMovimento("versamento"); }}),
-          el("button",{"type":"button","class":"secondario","text":"Prelievo","onclick":function(){ registraMovimento("prelievo"); }}),
+          el("button",{"type":"button","class":"secondario","text":"Versamento dal conto","onclick":function(){ registraMovimento("versamento"); }}),
+          el("button",{"type":"button","class":"secondario","text":"Versamento dal fondo","onclick":function(){ registraMovimento("versamento-fondo"); }}),
+          el("button",{"type":"button","class":"secondario","text":"Prelievo al fondo","onclick":function(){ registraMovimento("prelievo-fondo"); }}),
+          el("button",{"type":"button","class":"secondario","text":"Prelievo sul conto","onclick":function(){ registraMovimento("prelievo-conto"); }}),
           codiciAttivi ? el("button",{"type":"button","class":"secondario","text":"Sposta su "+NOMI_BOOK[altroBook(book)],"onclick":function(){ registraMovimento("sposta"); }}) : null,
           el("button",{"type":"button","class":"secondario","text":"Bonus","onclick":function(){ registraMovimento("bonus"); }})
         ])
